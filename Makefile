@@ -10,12 +10,12 @@ BIN := build/bin/ascc
 all: $(BIN)
 
 $(BIN): $(OBJ)
-    @mkdir -p build/bin
-    $(CC) $(OBJ) -o $@
+	@mkdir -p build/bin
+	$(CC) $(OBJ) -o $@
 
 build/%.o: src/%.c
 	@mkdir -p build
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-    rm -rf build bin
+	rm -rf build bin
