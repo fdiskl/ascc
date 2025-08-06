@@ -20,6 +20,7 @@ struct _token {
   union {
     int int_val;  // for TOK_INTLIT
     string s_val; // for TOK_STRLIT
+    string ident; // for TOK_IDENT
   } v;
   int start_pos;
   int len;
@@ -107,17 +108,17 @@ enum {
   TOK_STRLIT,
 
   // structural
-  TOK_SEMI,
-  TOK_IDENT,
-  TOK_LBRACE,
-  TOK_RBRACE,
-  TOK_LPAREN,
-  TOK_RPAREN,
-  TOK_LBRACKET,
-  TOK_RBRACKET,
-  TOK_COMMA,
-  TOK_DOT,
-  TOK_ARROW,
+  TOK_SEMI,     // ;
+  TOK_IDENT,    // <foo>
+  TOK_LBRACE,   // {
+  TOK_RBRACE,   // }
+  TOK_LPAREN,   // (
+  TOK_RPAREN,   // )
+  TOK_LBRACKET, // [
+  TOK_RBRACKET, // ]
+  TOK_COMMA,    // ,
+  TOK_DOT,      // .
+  TOK_ARROW,    // ->
 };
 
 #endif
