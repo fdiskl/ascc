@@ -1,8 +1,9 @@
 #include "string.h"
 #include "arena.h"
-#include "globals.h"
 #include <assert.h>
 #include <string.h>
+
+arena str_arena;
 
 string new_string(const char *s) {
   unsigned long len = strlen(s);
