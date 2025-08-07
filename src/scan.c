@@ -1,5 +1,6 @@
 #include "scan.h"
 #include "string.h"
+#include <assert.h>
 #include <ctype.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -96,21 +97,23 @@ static char skip_whitespaces(lexer *l) {
 // scans string literal, doesnt expect first '"', but will consume second
 static string scan_string(lexer *l) {
   size_t i = 0;
-
   char c;
 
-  while ((c = next_char(l)) != '"') {
-    if (l->ident_buf_len - 1 == i) {
-      fprintf(stderr, "string literal is too long, on line %d", l->line);
+  while ((c = next_char(l)) != '"' && c != EOF) {
+    if (i >= l->ident_buf_len - 1) {
+      fprintf(stderr, "string literal is too long, on line %d\n", l->line);
       exit(1);
-    } else if (i < l->ident_buf_len - 1)
-      l->ident_buf[i++] = c;
-    c = next_char(l);
+    }
+
+    l->ident_buf[i++] = c;
   }
 
-  putback(l, c);
-  l->ident_buf[i] = '\0';
+  if (c != '"') {
+    fprintf(stderr, "unterminated string literal, on line %d\n", l->line);
+    exit(1);
+  }
 
+  l->ident_buf[i] = '\0';
   return new_string(l->ident_buf);
 }
 
@@ -146,12 +149,29 @@ static uint64_t scan_int(lexer *l, char c) {
   return val;
 }
 
+// reads preprocessor line directive in form like '# 5 "src/main.c" 2'
 static char handle_preprocessor_directive(lexer *l) {
-  char c = next_char(l);
-  while (c != '\n')
+  char c;
+  next_char(l); // skip ' '
+  c = next_char(l);
+  if (!isdigit(c))
+    assert(1 == 2); // TODO: errors
+  l->line = scan_int(l, c);
+  next_char(l); // skip ' '
+  if (!match_char(l, '"'))
+    assert(2 == 3); // TODO: errors
+
+  // read file name
+  l->f_name = scan_string(l);
+  // TODO: not ideal, we are allocating new string
+  // for same file name, but ok for now
+
+  // skip till \n
+  do {
     c = next_char(l);
-  // TODO, for now skip line
-  return next_char(l);
+  } while (c != '\n' && c != EOF);
+
+  return c;
 }
 
 size_t scan_ident(lexer *l, char c) {
@@ -364,7 +384,9 @@ void next(lexer *l, token *t) {
 
       t->token = TOK_IDENT;
       t->v.ident = new_string(l->ident_buf);
+      break;
     }
+    assert(0); // TODO: errors
     break;
   }
 
