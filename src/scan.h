@@ -2,28 +2,39 @@
 #define _ASCC_SCAN_H
 
 #include "string.h"
+#include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 typedef struct _token token;
 typedef struct _lexer lexer;
 
+#define DEFAULT_IDENT_BUF_LEN 1023
+
 struct _lexer {
-  int line;
-  int pos;
-  FILE *f;
+  int line;      // curr line
+  int pos;       // curr position
+  FILE *f;       // curr file reader
+  string f_name; // curr file name
+  char putback;  // putback character, 0 if none
+
+  char *ident_buf;      // tmp buffer to store idents
+  size_t ident_buf_len; // len of ident buf
 };
 
 void init_lexer(lexer *l, FILE *f);
-void next(lexer *l);
+void free_lexer(lexer *l);
+void next(lexer *l, token *t);
+void print_token(const token *t);
 
 struct _token {
   int token; // token type
   union {
-    int int_val;  // for TOK_INTLIT
-    string s_val; // for TOK_STRLIT
-    string ident; // for TOK_IDENT
+    uint64_t int_val; // for TOK_INTLIT
+    string s_val;     // for TOK_STRLIT
+    string ident;     // for TOK_IDENT
   } v;
   int start_pos;
-  int len;
+  int end_pos;
   int line;
   string filename;
 };
@@ -32,28 +43,28 @@ enum {
   TOK_EOF,
 
   // assignment operators
-  TOK_ASSIGN,   // =
-  TOK_ASPLUS,   // +=
-  TOK_ASMINUS,  // -=
-  TOK_ASSTAR,   // *=
-  TOK_ASSLASH,  // /=
-  TOK_ASMOD,    // %=
-  TOK_ASLSHIFT, // <<=
-  TOK_ASRSHIFT, // >>=
-  TOK_ASAND,    // &=
-  TOK_ASXOR,    // ^=
-  TOK_ASOR,     // |=
+  TOK_ASSIGN,    // =
+  TOK_ASPLUS,    // +=
+  TOK_ASMINUS,   // -=
+  TOK_ASSTAR,    // *=
+  TOK_ASSLASH,   // /=
+  TOK_ASPERCENT, // %=
+  TOK_ASLSHIFT,  // <<=
+  TOK_ASRSHIFT,  // >>=
+  TOK_ASAMP,     // &=
+  TOK_ASCARET,   // ^=
+  TOK_ASPIPE,    // |=
 
   // logical operators
-  TOK_LOGOR,  // ||
-  TOK_LOGAND, // &&
-  TOK_LOGNOT, // !
+  TOK_DOUBLE_PIPE, // ||
+  TOK_DOUBLE_AMP,  // &&
+  TOK_EXCL,        // !
 
   // bitwise operators
-  TOK_OR,     // |
-  TOK_XOR,    // ^
+  TOK_PIPE,   // |
+  TOK_CARRET, // ^
   TOK_AMPER,  // &
-  TOK_INVERT, // ~
+  TOK_TILDE,  // ~
 
   // equality and relational
   TOK_EQ, // ==
@@ -68,13 +79,13 @@ enum {
   TOK_RSHIFT, // >>
 
   // arithmetic operators
-  TOK_PLUS,  // +
-  TOK_MINUS, // -
-  TOK_STAR,  // *
-  TOK_SLASH, // /
-  TOK_MOD,   // %
-  TOK_INC,   // ++
-  TOK_DEC,   // --
+  TOK_PLUS,         // +
+  TOK_MINUS,        // -
+  TOK_STAR,         // *
+  TOK_SLASH,        // /
+  TOK_MOD,          // %
+  TOK_DOUBLE_PLUS,  // ++
+  TOK_DOUBLE_MINUS, // --
 
   // ternary operator
   TOK_QUESTION, // ?
@@ -102,6 +113,7 @@ enum {
   TOK_DEFAULT,
   TOK_SIZEOF,
   TOK_STATIC,
+  TOK_CONST,
 
   // literals
   TOK_INTLIT,
