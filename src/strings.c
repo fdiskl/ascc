@@ -1,7 +1,7 @@
-#include "string.h"
+#include "strings.h"
 #include "arena.h"
+#include "string.h"
 #include <assert.h>
-#include <string.h>
 
 arena str_arena;
 

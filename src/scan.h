@@ -1,7 +1,7 @@
 #ifndef _ASCC_SCAN_H
 #define _ASCC_SCAN_H
 
-#include "string.h"
+#include "strings.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>

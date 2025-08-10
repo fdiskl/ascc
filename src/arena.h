@@ -1,8 +1,7 @@
 #ifndef _ASCC_ARENA_H
 #define _ASCC_ARENA_H
 
-#include <stdalign.h>
-#include <stddef.h>
+#include "common.h"
 
 typedef struct _arena arena;
 typedef struct _arena_chunk _arena_chunk;
