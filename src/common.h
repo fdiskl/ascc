@@ -4,7 +4,6 @@
 #include "stdio.h"
 #include <stdalign.h>
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdint.h>
 
 // If "DEBUG_INFO" is defined, compiler will emit extra debug info
