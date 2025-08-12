@@ -11,7 +11,9 @@
 void init_lexer(lexer *l, FILE *f) {
   l->f = f;
   l->line = 1;
-  l->pos = 1;
+  l->pos = 0;
+
+  l->putback = 0;
 
   l->ident_buf = malloc(DEFAULT_IDENT_BUF_LEN + 1);
   l->ident_buf_len = DEFAULT_IDENT_BUF_LEN;
@@ -34,8 +36,10 @@ static char next_char(lexer *l) {
 
   if (c != EOF)
     ++l->pos;
-  if (c == '\n')
+  if (c == '\n') {
     ++l->line;
+    l->pos = 0;
+  }
 
   if (c == '#')
     return handle_preprocessor_directive(l);
@@ -175,6 +179,8 @@ static char handle_preprocessor_directive(lexer *l) {
   do {
     c = next_char(l);
   } while (c != '\n' && c != EOF);
+
+  --l->line; // correct for '\n' which will happen in loop above
 
   return c;
 }
