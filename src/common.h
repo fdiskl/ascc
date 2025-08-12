@@ -13,4 +13,6 @@
   fprintf(stderr, "unreachable code reached (file: %d, line: %d)", __FILE__,   \
           __LINE__)
 
+void after_error();
+
 #endif

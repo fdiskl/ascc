@@ -1,4 +1,6 @@
 #include "driver.h"
+#include "arena.h"
+#include "common.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -156,4 +158,23 @@ static void print_driver_options(const driver_options *d) {
   printf("Output file: %s\n", d->output ? d->output : "(none)");
   printf("Stage      : %s\n", dof_to_string(d->dof));
   printf("----------------------\n");
+}
+
+void after_success() {
+  for (int i = 0; i < files_to_close_len; ++i)
+    fclose(files_to_close[i]);
+
+  for (int i = 0; i < files_to_delete_len; ++i)
+    remove(files_to_delete[i]);
+
+  for (int i = 0; i < arenas_to_free_len; ++i)
+    free_arena(arenas_to_free[i]);
+
+  for (int i = 0; i < arenas_to_destroy_len; ++i)
+    destroy_arena(arenas_to_destroy[i]);
+}
+
+void after_error() {
+  after_success();
+  exit(1);
 }
