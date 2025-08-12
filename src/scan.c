@@ -14,12 +14,7 @@ void init_lexer(lexer *l, FILE *f) {
   l->pos = 0;
 
   l->putback = 0;
-
-  l->ident_buf = malloc(DEFAULT_IDENT_BUF_LEN + 1);
-  l->ident_buf_len = DEFAULT_IDENT_BUF_LEN;
 }
-
-void free_lexer(lexer *l) { free(l->ident_buf); }
 
 static char handle_preprocessor_directive(lexer *l);
 
@@ -104,7 +99,7 @@ static string scan_string(lexer *l) {
   char c;
 
   while ((c = next_char(l)) != '"' && c != EOF) {
-    if (i >= l->ident_buf_len - 1) {
+    if (i >= IDENT_BUF_LEN - 1) {
       fprintf(stderr, "string literal is too long, on line %d\n", l->line);
       exit(1);
     }
@@ -189,10 +184,10 @@ size_t scan_ident(lexer *l, char c) {
   size_t i = 0;
 
   while (isalpha(c) || isdigit(c) || c == '_') {
-    if (l->ident_buf_len - 1 == i) {
+    if (IDENT_BUF_LEN - 1 == i) {
       fprintf(stderr, "identifier is too long, on line %d", l->line);
       exit(1);
-    } else if (i < l->ident_buf_len - 1)
+    } else if (i < IDENT_BUF_LEN - 1)
       l->ident_buf[i++] = c;
     c = next_char(l);
   }

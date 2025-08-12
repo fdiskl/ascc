@@ -8,7 +8,7 @@
 typedef struct _token token;
 typedef struct _lexer lexer;
 
-#define DEFAULT_IDENT_BUF_LEN 1023
+#define IDENT_BUF_LEN 1023
 
 struct _lexer {
   int line;      // curr line
@@ -17,12 +17,10 @@ struct _lexer {
   string f_name; // curr file name
   char putback;  // putback character, 0 if none
 
-  char *ident_buf;      // tmp buffer to store idents
-  size_t ident_buf_len; // len of ident buf
+  char ident_buf[IDENT_BUF_LEN]; // tmp buffer to store idents
 };
 
 void init_lexer(lexer *l, FILE *f);
-void free_lexer(lexer *l);
 void next(lexer *l, token *t);
 void print_token(const token *t);
 
