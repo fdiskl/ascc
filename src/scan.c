@@ -1,4 +1,5 @@
 #include "scan.h"
+#include "common.h"
 #include "string.h"
 #include <assert.h>
 #include <ctype.h>
@@ -75,7 +76,7 @@ static char skip_whitespaces(lexer *l) {
           c = next_char(l);
           if (c == EOF) {
             fprintf(stderr, "unterminated block comment on line %d\n", l->line);
-            exit(1);
+            after_error();
           }
           if (prev == '*' && c == '/')
             break;
@@ -101,7 +102,7 @@ static string scan_string(lexer *l) {
   while ((c = next_char(l)) != '"' && c != EOF) {
     if (i >= IDENT_BUF_LEN - 1) {
       fprintf(stderr, "string literal is too long, on line %d\n", l->line);
-      exit(1);
+      after_error();
     }
 
     l->ident_buf[i++] = c;
@@ -109,7 +110,7 @@ static string scan_string(lexer *l) {
 
   if (c != '"') {
     fprintf(stderr, "unterminated string literal, on line %d\n", l->line);
-    exit(1);
+    after_error();
   }
 
   l->ident_buf[i] = '\0';
@@ -140,8 +141,10 @@ static uint64_t scan_int(lexer *l, char c) {
 
   // Convert each character into an int value
   while (1) {
-    if (isalpha(c) || c == '_')
-      assert(1 == 2); // TODO: errors
+    if (isalpha(c) || c == '_') {
+      printf("invalid identifier starting with num on line %d", l->line);
+      after_error();
+    }
 
     if ((k = chrpos("0123456789", c)) < 0)
       break;
@@ -158,17 +161,21 @@ static char handle_preprocessor_directive(lexer *l) {
   char c;
   next_char(l); // skip ' '
   c = next_char(l);
-  if (!isdigit(c))
-    assert(1 == 2); // TODO: errors
+  if (!isdigit(c)) {
+    printf("invalid preprocessor directive, expected digit, found %c\n", c);
+    after_error();
+  }
   l->line = scan_int(l, c);
   next_char(l); // skip ' '
-  if (!match_char(l, '"'))
-    assert(2 == 3); // TODO: errors
+  if (!match_char(l, '"')) {
+    printf("invalid preprocessor directive, expected '\"', found %c\n", c);
+    after_error();
+  }
 
   // read file name
   l->f_name = scan_string(l);
   // TODO: not ideal, we are allocating new string
-  // for same file name, but ok for now
+  // for same file name, but should be fine for now
 
   // skip till \n
   do {
@@ -185,8 +192,8 @@ size_t scan_ident(lexer *l, char c) {
 
   while (isalpha(c) || isdigit(c) || c == '_') {
     if (IDENT_BUF_LEN - 1 == i) {
-      fprintf(stderr, "identifier is too long, on line %d", l->line);
-      exit(1);
+      fprintf(stderr, "identifier is too long, on line %d\n", l->line);
+      after_error();
     } else if (i < IDENT_BUF_LEN - 1)
       l->ident_buf[i++] = c;
     c = next_char(l);
@@ -392,7 +399,8 @@ void next(lexer *l, token *t) {
       t->v.ident = new_string(l->ident_buf);
       break;
     }
-    assert(0); // TODO: errors
+    fprintf(stderr, "invalid character on line %d, pos %d", l->line, l->pos);
+    after_error();
     break;
   }
 
@@ -570,7 +578,7 @@ const char *token_name(int token) {
 }
 
 void print_token(const token *t) {
-  printf("[%s:%d:%d] ", t->filename, t->line, t->start_pos);
+  printf("[%s:%d:%3d:%3d] ", t->filename, t->line, t->start_pos, t->end_pos);
 
   const char *name = token_name(t->token);
   printf("Token: %s", name);

@@ -1,6 +1,7 @@
 #include "arena.h"
 #include "driver.h"
 #include "scan.h"
+#include "strings.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,6 +10,7 @@
 
 int main(int argc, char *argv[]) {
   init_arena(&str_arena);
+  ADD_TO_CLEANUP_ARRAY(arenas_to_free, &str_arena);
 
   driver_options opts;
   parse_driver_options(&opts, argc, argv);
@@ -32,6 +34,8 @@ int main(int argc, char *argv[]) {
   {
     char cmd[1024];
     sprintf(cmd, "gcc -E %s -o %s", opts.input, preprocessor_file_path);
+
+    ADD_TO_CLEANUP_ARRAY(files_to_delete, preprocessor_file_path);
 
     int status = system(cmd);
 
@@ -66,14 +70,12 @@ int main(int argc, char *argv[]) {
       print_token(&t);
     } while (t.token != TOK_EOF);
 
-    remove(preprocessor_file_path);
+    after_success();
     return 0;
   }
 
-  remove(preprocessor_file_path);
+  assert(0 && "todo"); // other stages are not implemented
 
-  assert(0 && "todo");
-
-  free_lexer(&l);
-  free_arena(&str_arena);
+  after_success();
+  return 0;
 }
