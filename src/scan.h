@@ -23,6 +23,7 @@ struct _lexer {
 void init_lexer(lexer *l, FILE *f);
 void next(lexer *l, token *t);
 void print_token(const token *t);
+const char *token_name(int token);
 
 struct _token {
   int token; // token type
