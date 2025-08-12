@@ -8,8 +8,7 @@ typedef struct _decl decl;
 typedef struct _stmt stmt;
 typedef struct _expr expr;
 
-typedef struct _global_decl global_decl;
-typedef global_decl program;
+typedef decl program;
 
 typedef struct _parser parser;
 
@@ -42,11 +41,7 @@ struct _decl {
     func_decl func;
     var_decl var;
   } v;
-};
-
-struct _global_decl {
-  decl *d;
-  global_decl *next;
+  decl *next; // NULL if decl is not global
 };
 
 /*
