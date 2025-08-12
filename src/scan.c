@@ -140,7 +140,12 @@ static uint64_t scan_int(lexer *l, char c) {
   int k = 0;
 
   // Convert each character into an int value
-  while ((k = chrpos("0123456789", c)) >= 0) {
+  while (1) {
+    if (isalpha(c) || c == '_')
+      assert(1 == 2); // TODO: errors
+
+    if ((k = chrpos("0123456789", c)) < 0)
+      break;
     val = val * 10 + k;
     c = next_char(l);
   }
