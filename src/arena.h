@@ -6,6 +6,8 @@
 typedef struct _arena arena;
 typedef struct _arena_chunk _arena_chunk;
 
+// TODO: make alignment constant for whole arena
+
 // Single chunk in the arena
 struct _arena_chunk {
   char *region;       // pointer to allocated memory block
