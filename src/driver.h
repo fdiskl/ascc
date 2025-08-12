@@ -33,25 +33,38 @@ void parse_driver_options(driver_options *d, int argc, char *argv[]);
  *
  */
 
-// files to close before exiting
-extern FILE **files_to_close;
-// len of array 'files_to_close'
-extern size_t files_to_close_len;
+/* NOTE 1:
+* we could add last element indexes for 4 arrays below (files_to_close,
+files_to_delete, arenas_to_free, arenas_to_destroy), but because this arrs are
+really small (<100 elements) - it is just easier to go through and find first
+NULL element
+*/
 
-// files to delete before exiting
-extern char **files_to_delete;
-// len of array 'files_to_delete'
-extern size_t files_to_delete_len;
+/* NOTE 2:
+* 4 arrays below (files_to_close,
+files_to_delete, arenas_to_free, arenas_to_destroy) are initialized with NULL's
+in 'parse_driver_options' function, because i dont want separate func for it
+ */
 
-// arenas to free
-extern arena **arenas_to_free;
-// len of array 'arenas_to_free'
-extern size_t arenas_to_free_len;
+// len for next 4 arrays (files_to_close, files_to_delete, arenas_to_free,
+// arenas_to_destroy)
+#define ARRAY_FOR_CLEANUP_LEN 32
 
-// arenas to destroy
-extern arena **arenas_to_destroy;
-// len of array 'arenas_to_destory'
-extern size_t arenas_to_destroy_len;
+// files to close before exiting (NULL for empty 'slots')
+extern FILE *files_to_close[ARRAY_FOR_CLEANUP_LEN];
+// files to delete before exiting (NULL for empty 'slots')
+extern char *files_to_delete[ARRAY_FOR_CLEANUP_LEN];
+// arenas to free (NULL for empty 'slots')
+extern arena *arenas_to_free[ARRAY_FOR_CLEANUP_LEN];
+// arenas to destroy (NULL for empty 'slots')
+extern arena *arenas_to_destroy[ARRAY_FOR_CLEANUP_LEN];
+
+#define ADD_TO_CLEANUP_ARRAY(arr, new_element)                                 \
+  for (int i = 0; i < ARRAY_FOR_CLEANUP_LEN; ++i)                              \
+    if (arr[i] == NULL) {                                                      \
+      arr[i] = new_element;                                                    \
+      break;                                                                   \
+    }
 
 // function that should be invoked after any fatal error
 // to free arenas, close/delete files etc

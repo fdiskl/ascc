@@ -40,6 +40,21 @@ void parse_driver_options(driver_options *d, int argc, char *argv[]) {
   d->output = NULL;
   d->input = NULL;
 
+  // -- init arrays for cleanup (see NOTE 2 in driver.h)
+  for (int i = 0; i < ARRAY_FOR_CLEANUP_LEN; ++i)
+    files_to_close[i] = NULL;
+
+  for (int i = 0; i < ARRAY_FOR_CLEANUP_LEN; ++i)
+    files_to_delete[i] = NULL;
+
+  for (int i = 0; i < ARRAY_FOR_CLEANUP_LEN; ++i)
+    arenas_to_free[i] = NULL;
+
+  for (int i = 0; i < ARRAY_FOR_CLEANUP_LEN; ++i)
+    arenas_to_destroy[i] = NULL;
+
+  // --
+
   // i=0 for program name :)
   for (int i = 1; i < argc; ++i) {
     assert(strlen(argv[i]) > 1);
@@ -161,20 +176,29 @@ static void print_driver_options(const driver_options *d) {
 }
 
 void after_success() {
-  for (int i = 0; i < files_to_close_len; ++i)
-    fclose(files_to_close[i]);
+  for (int i = 0; i < ARRAY_FOR_CLEANUP_LEN; ++i)
+    if (files_to_close[i] != NULL)
+      fclose(files_to_close[i]);
 
-  for (int i = 0; i < files_to_delete_len; ++i)
-    remove(files_to_delete[i]);
+  for (int i = 0; i < ARRAY_FOR_CLEANUP_LEN; ++i)
+    if (files_to_delete[i] != NULL)
+      remove(files_to_delete[i]);
 
-  for (int i = 0; i < arenas_to_free_len; ++i)
-    free_arena(arenas_to_free[i]);
+  for (int i = 0; i < ARRAY_FOR_CLEANUP_LEN; ++i)
+    if (arenas_to_free[i] != NULL)
+      free_arena(arenas_to_free[i]);
 
-  for (int i = 0; i < arenas_to_destroy_len; ++i)
-    destroy_arena(arenas_to_destroy[i]);
+  for (int i = 0; i < ARRAY_FOR_CLEANUP_LEN; ++i)
+    if (arenas_to_destroy[i] != NULL)
+      destroy_arena(arenas_to_destroy[i]);
 }
 
 void after_error() {
   after_success();
   exit(1);
 }
+
+FILE *files_to_close[ARRAY_FOR_CLEANUP_LEN];
+char *files_to_delete[ARRAY_FOR_CLEANUP_LEN];
+arena *arenas_to_free[ARRAY_FOR_CLEANUP_LEN];
+arena *arenas_to_destroy[ARRAY_FOR_CLEANUP_LEN];
