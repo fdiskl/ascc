@@ -3,6 +3,7 @@
 
 #include "scan.h"
 #include "strings.h"
+#include <stdint.h>
 
 typedef struct _decl decl;
 typedef struct _stmt stmt;
@@ -11,6 +12,57 @@ typedef struct _expr expr;
 typedef decl program;
 
 typedef struct _parser parser;
+
+typedef struct _block_stmt block_stmt;
+
+/*
+ *
+ * EXPRS
+ *
+ */
+
+typedef struct _int_const int_const;
+
+enum {
+  EXPR_INT_CONST,
+};
+
+struct _int_const {
+  uint64_t v;
+};
+
+struct _expr {
+  int t;
+  union {
+    int_const intc;
+  };
+};
+
+/*
+ *
+ * STMTS
+ *
+ */
+
+typedef struct _return_stmt return_stmt;
+
+enum { STMT_RETURN, STMT_BLOCK };
+
+struct _return_stmt {
+  expr *e;
+};
+
+struct _block_stmt {
+  stmt *stmts[4]; // TODO: vec instead of fixed size array, ok for now
+};
+
+struct _stmt {
+  int t;
+  union {
+    return_stmt ret;
+    block_stmt block;
+  } v;
+};
 
 /*
  *
@@ -32,6 +84,7 @@ struct _var_decl {
 
 struct _func_decl {
   string name;
+  stmt *body[4]; // TODO: vec instead of fixed size array, ok for now
   // todo: return type, arg type
 };
 
@@ -46,60 +99,24 @@ struct _decl {
 
 /*
  *
- * STMTS
- *
- */
-
-typedef struct _return_stmt return_stmt;
-
-enum { STMT_RETURN };
-
-struct _return_stmt {
-  expr *e;
-};
-
-struct _stmt {
-  int t;
-  union {
-    return_stmt ret;
-  } v;
-};
-
-/*
- *
- * EXPRS
- *
- */
-
-typedef struct _int_const int_const;
-
-enum {
-  EXPR_INT_CONST,
-};
-
-struct _int_const {
-  int v;
-};
-
-struct _expr {
-  int t;
-  union {
-    int_const intc;
-  };
-};
-
-/*
- *
  * PARSER and it's FUNCS
  *
  */
 
 struct _parser {
   lexer *l;
-  // todo
+
+  token curr;
+  token next;
+
+  arena decl_arena;
+  arena stmt_arena;
+  arena expr_arena;
 };
 
 void init_parser(parser *p, lexer *l);
 program *parse(parser *p);
+
+void print_program(program *p);
 
 #endif
