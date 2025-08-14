@@ -57,5 +57,6 @@ void init_tacgen(tacgen *tg);
 tacf *gen_tac(tacgen *tg, program *p);
 
 void print_tac(tacf *first);
+const char *tacop_str(tacop op);
 
 #endif
