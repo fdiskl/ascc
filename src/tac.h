@@ -1,34 +1,61 @@
 #ifndef _ASCC_TAC_H
 #define _ASCC_TAC_H
 
+#include "arena.h"
+#include "parser.h"
 #include <stdint.h>
 typedef struct _tac_instr taci;
 typedef struct _tac_val tacv;
+typedef struct _tac_func tacf;
 
-enum {
+typedef struct _tacgen tacgen;
+
+typedef enum {
   TAC_RET,
-};
+} tacop;
 
-struct _tac_instr {
-  int op;
-
-  tacv *dst;
-  tacv *src1;
-  tacv *src2;
-};
-
-enum {
+typedef enum {
   TACV_CONST,
   TACV_VAR,
-};
+} tacvt;
 
 struct _tac_val {
-  int t;
+  tacvt t;
 
   union {
     uint64_t intv;
     int var_idx;
   };
 };
+
+struct _tac_instr {
+  tacop op;
+
+  tacv dst;
+  tacv src1; // used for single val instructions (like return)
+  tacv src2;
+
+  taci *next;
+};
+
+struct _tac_func {
+  string name;
+  taci *firsti;
+
+  tacf *next;
+};
+
+struct _tacgen {
+  arena taci_arena;
+  arena tacf_arena;
+
+  taci *head; // head of instr linked list of curr func
+  taci *tail; // tail of instr linked list of curr func
+};
+
+void init_tacgen(tacgen *tg);
+tacf *gen_tac(tacgen *tg, program *p);
+
+void print_tac(tacf *first);
 
 #endif
