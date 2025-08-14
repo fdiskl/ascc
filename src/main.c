@@ -3,6 +3,7 @@
 #include "parser.h"
 #include "scan.h"
 #include "strings.h"
+#include "tac.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -82,6 +83,17 @@ int main(int argc, char *argv[]) {
 
   if (opts.dof == DOF_PARSE) {
     print_program(parsed_ast);
+    after_success();
+    return 0;
+  }
+
+  tacgen tg;
+  init_tacgen(&tg);
+
+  tacf *tac_prog = gen_tac(&tg, parsed_ast);
+
+  if (opts.dof == DOF_CODEGEN) {
+    print_tac(tac_prog);
     after_success();
     return 0;
   }
