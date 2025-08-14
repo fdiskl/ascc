@@ -23,16 +23,16 @@ typedef struct _block_stmt block_stmt;
 
 typedef struct _int_const int_const;
 
-enum {
+typedef enum {
   EXPR_INT_CONST,
-};
+} exprt;
 
 struct _int_const {
   uint64_t v;
 };
 
 struct _expr {
-  int t;
+  exprt t;
   union {
     int_const intc;
   };
@@ -46,7 +46,7 @@ struct _expr {
 
 typedef struct _return_stmt return_stmt;
 
-enum { STMT_RETURN, STMT_BLOCK };
+typedef enum { STMT_RETURN, STMT_BLOCK } stmtt;
 
 struct _return_stmt {
   expr *e;
@@ -57,7 +57,7 @@ struct _block_stmt {
 };
 
 struct _stmt {
-  int t;
+  stmtt t;
   union {
     return_stmt ret;
     block_stmt block;
@@ -73,10 +73,10 @@ struct _stmt {
 typedef struct _var_decl var_decl;
 typedef struct _func_decl func_decl;
 
-enum {
+typedef enum {
   DECL_FUNC,
   DECL_VAR,
-};
+} declt;
 
 struct _var_decl {
   // todo
@@ -89,7 +89,7 @@ struct _func_decl {
 };
 
 struct _decl {
-  int t;
+  declt t;
   union {
     func_decl func;
     var_decl var;
