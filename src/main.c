@@ -1,5 +1,6 @@
 #include "arena.h"
 #include "driver.h"
+#include "parser.h"
 #include "scan.h"
 #include "strings.h"
 #include <assert.h>
@@ -70,6 +71,17 @@ int main(int argc, char *argv[]) {
       print_token(&t);
     } while (t.token != TOK_EOF);
 
+    after_success();
+    return 0;
+  }
+
+  parser p;
+  init_parser(&p, &l);
+
+  program *parsed_ast = parse(&p);
+
+  if (opts.dof == DOF_PARSE) {
+    print_program(parsed_ast);
     after_success();
     return 0;
   }
