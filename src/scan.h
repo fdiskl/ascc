@@ -7,8 +7,16 @@
 #include <stdio.h>
 typedef struct _token token;
 typedef struct _lexer lexer;
+typedef struct _tok_pos tok_pos;
 
 #define IDENT_BUF_LEN 1023
+
+struct _tok_pos {
+  int line;
+  int start_pos;
+  int end_pos;
+  string filename;
+};
 
 struct _lexer {
   int line;      // curr line
@@ -32,10 +40,7 @@ struct _token {
     string s_val;     // for TOK_STRLIT
     string ident;     // for TOK_IDENT
   } v;
-  int start_pos;
-  int end_pos;
-  int line;
-  string filename;
+  tok_pos pos;
 };
 
 enum {

@@ -97,8 +97,8 @@ static expr *parse_expr(parser *p) {
     return e;
   default:
     fprintf(stderr, "invalid token found %s (%d:%d:%d)",
-            token_name(p->next.token), p->next.line, p->next.start_pos,
-            p->next.end_pos); // FIXME: idk, dont really like how it is
+            token_name(p->next.token), p->next.pos.line, p->next.pos.start_pos,
+            p->next.pos.end_pos); // FIXME: idk, dont really like how it is
     after_error();
     return NULL;
   }
@@ -110,7 +110,6 @@ static stmt *parse_stmt(parser *p);
 static stmt *parse_block_stmt(parser *p) {
   stmt *s = alloc_stmt(p, STMT_BLOCK);
   expect(p, TOK_LBRACE);
-  int i = 0;
   while (p->next.token != TOK_RBRACE)
     vec_push_back(s->v.block.stmts, parse_stmt(p));
   expect(p, TOK_RBRACE);
@@ -150,7 +149,6 @@ static decl *parse_decl(parser *p) {
     expect(p, TOK_RPAREN);
 
     expect(p, TOK_LBRACE);
-    int i = 0;
     while (p->next.token != TOK_RBRACE) {
       vec_push_back(res->v.func.body, parse_stmt(p));
     }

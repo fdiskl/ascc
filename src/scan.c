@@ -280,9 +280,9 @@ int is_keyword(lexer *l) {
 
 void next(lexer *l, token *t) {
   char c = skip_whitespaces(l);
-  t->line = l->line;
-  t->filename = l->f_name;
-  t->start_pos = l->pos;
+  t->pos.line = l->line;
+  t->pos.filename = l->f_name;
+  t->pos.start_pos = l->pos;
 
   switch (c) {
   case EOF:
@@ -404,5 +404,5 @@ void next(lexer *l, token *t) {
     break;
   }
 
-  t->end_pos = l->pos;
+  t->pos.end_pos = l->pos;
 }
