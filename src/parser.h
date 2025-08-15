@@ -23,19 +23,32 @@ typedef struct _block_stmt block_stmt;
  */
 
 typedef struct _int_const int_const;
+typedef struct _unary unary;
 
 typedef enum {
   EXPR_INT_CONST,
+  EXPR_UNARY,
 } exprt;
 
 struct _int_const {
   uint64_t v;
 };
 
+typedef enum {
+  UNARY_NEGATE,
+  UNARY_COMPLEMENT,
+} unaryt;
+
+struct _unary {
+  unaryt t;
+  expr *e;
+};
+
 struct _expr {
   exprt t;
   union {
     int_const intc;
+    unary u;
   };
 };
 

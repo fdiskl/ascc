@@ -15,10 +15,23 @@ static void print_expr(expr *e, int indent) {
     return;
   }
 
+  print_indent(indent);
   switch (e->t) {
   case EXPR_INT_CONST:
-    print_indent(indent);
     printf("IntConst %llu\n", (unsigned long long)e->intc.v);
+    break;
+  case EXPR_UNARY:
+    printf("Unary (");
+    switch (e->u.t) {
+    case UNARY_NEGATE:
+      printf("negate");
+      break;
+    case UNARY_COMPLEMENT:
+      printf("complement");
+      break;
+    }
+    printf(")\n");
+    print_expr(e->u.e, indent + 1);
     break;
   default:
     unreachable();
