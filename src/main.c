@@ -4,6 +4,7 @@
 #include "scan.h"
 #include "strings.h"
 #include "tac.h"
+#include "x86.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -94,6 +95,23 @@ int main(int argc, char *argv[]) {
 
   if (opts.dof == DOF_TAC) {
     print_tac(tac_prog);
+    after_success();
+    return 0;
+  }
+
+  x86_asm_gen ag;
+  init_x86_asm_gen(&ag);
+
+  x86_func *x86_prog = gen_asm(&ag, tac_prog);
+
+  if (opts.dof == DOF_CODEGEN) {
+    // TODO: print mb
+    after_success();
+    return 0;
+  }
+
+  if (opts.dof == DOF_S) {
+    emit_x86(stdout, x86_prog);
     after_success();
     return 0;
   }
