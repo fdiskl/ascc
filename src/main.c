@@ -1,4 +1,5 @@
 #include "arena.h"
+#include "common.h"
 #include "driver.h"
 #include "parser.h"
 #include "scan.h"
@@ -11,6 +12,8 @@
 #include <string.h>
 #include <sys/wait.h>
 
+static void replace_ext(const char *original, char *dst, const char *ext);
+
 int main(int argc, char *argv[]) {
   init_arena(&str_arena);
   ADD_TO_CLEANUP_ARRAY(arenas_to_free, &str_arena);
@@ -19,31 +22,40 @@ int main(int argc, char *argv[]) {
   parse_driver_options(&opts, argc, argv);
   assert(strlen(opts.input) <= 255 && "input file name is too long");
 
-  // create preprocessor file path (replace .c with .i)
+  // create some file names
   char preprocessor_file_path[256];
-  {
-    strcpy(preprocessor_file_path, opts.input);
-    char *dot = strrchr(preprocessor_file_path, '.');
-    assert(dot != NULL);
-    // replace extension
-    sprintf(dot, ".i");
+  replace_ext(opts.input, preprocessor_file_path, ".i");
+#ifdef DEBUG_INFO
+  printf("preprocessed file path: %s\n", preprocessor_file_path);
+#endif
+
+  char output_file_path[256];
+  if (opts.output == NULL) {
+    replace_ext(opts.input, output_file_path, "");
+    opts.output = output_file_path;
+  }
 
 #ifdef DEBUG_INFO
-    printf("preprocessed file path: %s\n", preprocessor_file_path);
+  printf("output file path: %s\n", opts.output);
 #endif
-  }
+
+  char asm_file_path[256];
+  replace_ext(opts.input, asm_file_path, ".s");
+
+#ifdef DEBUG_INFO
+  printf("asm file path: %s\n", asm_file_path);
+#endif
 
   // run preprocessor
   {
     char cmd[1024];
     sprintf(cmd, "gcc -E %s -o %s", opts.input, preprocessor_file_path);
 
-    ADD_TO_CLEANUP_ARRAY(files_to_delete, preprocessor_file_path);
-
     int status = system(cmd);
 
     if (status == -1) {
       fprintf(stderr, "system failed");
+      after_error();
       return 1;
     }
 
@@ -52,16 +64,21 @@ int main(int argc, char *argv[]) {
       if (exit_code != 0) {
         fprintf(stderr, "gcc preprocessor failed with exit code %d\n",
                 exit_code);
+        after_error();
         return exit_code;
       }
     } else if (WIFSIGNALED(status)) {
       fprintf(stderr, "gcc preprocessor terminated by signal %d\n",
               WTERMSIG(status));
+      after_error();
       return 1;
     }
   }
 
   FILE *in_file = fopen(preprocessor_file_path, "r");
+
+  ADD_TO_CLEANUP_ARRAY(files_to_close, in_file);
+  ADD_TO_CLEANUP_ARRAY(files_to_delete, preprocessor_file_path);
 
   lexer l;
   init_lexer(&l, in_file);
@@ -110,14 +127,67 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
+  FILE *asm_file = fopen(asm_file_path, "w");
+  // NOTE: we dont add this file to cleanup array files to close and do it
+  // mannualy, because it should be done before assembler
+
+  emit_x86(asm_file, x86_prog);
+  fclose(asm_file);
+
   if (opts.dof == DOF_S) {
+#ifdef DEBUG_INFO
     emit_x86(stdout, x86_prog);
+#endif
+
     after_success();
     return 0;
   }
 
-  assert(0 && "todo"); // other stages are not implemented
+  ADD_TO_CLEANUP_ARRAY(files_to_delete, asm_file_path);
+
+  if (opts.dof == DOF_C) {
+    todo()
+  };
+
+  // run assembler
+  {
+    char cmd[1024];
+    sprintf(cmd, "gcc %s -o %s", asm_file_path, opts.output);
+
+    int status = system(cmd);
+
+    if (status == -1) {
+      fprintf(stderr, "system failed");
+      after_error();
+      return 1;
+    }
+
+    if (WIFEXITED(status)) {
+      int exit_code = WEXITSTATUS(status);
+      if (exit_code != 0) {
+        fprintf(stderr, "gcc assembler failed with exit code %d\n", exit_code);
+        after_error();
+        return exit_code;
+      }
+    } else if (WIFSIGNALED(status)) {
+      fprintf(stderr, "gcc assembler terminated by signal %d\n",
+              WTERMSIG(status));
+      after_error();
+      return 1;
+    }
+
+    after_success();
+    return 0;
+  }
 
   after_success();
   return 0;
+}
+
+static void replace_ext(const char *original, char *dst, const char *ext) {
+  strcpy(dst, original);
+  char *dot = strrchr(dst, '.');
+  assert(dot != NULL);
+  // replace extension
+  sprintf(dot, "%s", ext);
 }
