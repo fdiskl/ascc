@@ -11,7 +11,8 @@ enum {          // (dof - Driver Option Flag)
   DOF_LEX,      // stop after lexer                      | --lex
   DOF_PARSE,    // stop after parser                     | --parse
   DOF_VALIDATE, // stop after sema                       | --validate, --sema
-  DOF_CODEGEN,  // stop after TAC codegen                | --codegen, --tac
+  DOF_TAC,      // stop after tac                        | --tacky, --tac
+  DOF_CODEGEN,  // stop after asm codegen                | --codegen
   DOF_S,        // stop after asm gen (emits .s file)    | -S, -s
   DOF_C,        // stop after assembling (emits .o file) | -c, -C
   DOF_ALL,      // do full pipeline

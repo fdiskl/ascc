@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
 
   tacf *tac_prog = gen_tac(&tg, parsed_ast);
 
-  if (opts.dof == DOF_CODEGEN) {
+  if (opts.dof == DOF_TAC) {
     print_tac(tac_prog);
     after_success();
     return 0;

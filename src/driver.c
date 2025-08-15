@@ -92,7 +92,9 @@ void parse_driver_options(driver_options *d, int argc, char *argv[]) {
           break;
         case 't':
           if (!strcmp(argv[i], "--tac")) // --tac
-            SET_COMPILER_DOF(d, DOF_CODEGEN);
+            SET_COMPILER_DOF(d, DOF_TAC);
+          if (!strcmp(argv[i], "--tacky")) // --tacky
+            SET_COMPILER_DOF(d, DOF_TAC);
           break;
         }
       else
