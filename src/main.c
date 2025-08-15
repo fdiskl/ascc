@@ -11,10 +11,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
+#include <time.h>
 
 static void replace_ext(const char *original, char *dst, const char *ext);
 
 int main(int argc, char *argv[]) {
+#ifdef DEBUG_INFO
+  struct timespec start, end;
+  clock_gettime(CLOCK_MONOTONIC, &start);
+#endif
+
   init_arena(&str_arena);
   ADD_TO_CLEANUP_ARRAY(arenas_to_free, &str_arena);
 
@@ -134,11 +140,13 @@ int main(int argc, char *argv[]) {
   emit_x86(asm_file, x86_prog);
   fclose(asm_file);
 
-  if (opts.dof == DOF_S) {
 #ifdef DEBUG_INFO
-    emit_x86(stdout, x86_prog);
+  printf("-------asm  res-------\n");
+  emit_x86(stdout, x86_prog);
+  printf("----------------------\n");
 #endif
 
+  if (opts.dof == DOF_S) {
     after_success();
     return 0;
   }
@@ -175,10 +183,14 @@ int main(int argc, char *argv[]) {
       after_error();
       return 1;
     }
-
-    after_success();
-    return 0;
   }
+
+#ifdef DEBUG_INFO
+  clock_gettime(CLOCK_MONOTONIC, &end);
+  double elapsed =
+      (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+  printf("Done in %.9f seconds\n", elapsed);
+#endif
 
   after_success();
   return 0;
