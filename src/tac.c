@@ -3,6 +3,7 @@
 #include "common.h"
 #include "driver.h"
 #include "parser.h"
+#include "vec.h"
 
 void init_tacgen(tacgen *tg) {
   init_arena(&tg->taci_arena);
@@ -55,9 +56,7 @@ static void gen_tac_from_stmt(tacgen *tg, stmt *s);
 
 static void gen_tac_from_block_stmt(tacgen *tg, block_stmt bs) {
   for (int i = 0; i < 4; i++) {
-    if (bs.stmts[i] == NULL)
-      break; // FIXME: when vecs
-    gen_tac_from_stmt(tg, bs.stmts[i]);
+    vec_foreach(stmt *, bs.stmts, it) gen_tac_from_stmt(tg, *it);
   }
 }
 
@@ -77,9 +76,8 @@ static tacf *gen_tac_from_func_decl(tacgen *tg, func_decl fd) {
 
   tg->head = tg->tail = NULL;
   for (int i = 0; i < 4; i++) {
-    if (fd.body[i] == NULL)
-      break; // FIXME: when vecs
-    gen_tac_from_stmt(tg, fd.body[i]);
+
+    vec_foreach(stmt *, fd.body, it) gen_tac_from_stmt(tg, *it);
   }
 
   res->firsti = tg->head;

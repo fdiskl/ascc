@@ -3,6 +3,7 @@
 
 #include "scan.h"
 #include "strings.h"
+#include "vec.h"
 #include <stdint.h>
 
 typedef struct _decl decl;
@@ -53,7 +54,7 @@ struct _return_stmt {
 };
 
 struct _block_stmt {
-  stmt *stmts[4]; // TODO: vec instead of fixed size array, ok for now
+  VEC(stmt *) stmts;
 };
 
 struct _stmt {
@@ -84,7 +85,7 @@ struct _var_decl {
 
 struct _func_decl {
   string name;
-  stmt *body[4]; // TODO: vec instead of fixed size array, ok for now
+  VEC(stmt *) body; // TODO: vec instead of fixed size array, ok for now
   // todo: return type, arg type
 };
 

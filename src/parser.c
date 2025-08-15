@@ -3,6 +3,7 @@
 #include "common.h"
 #include "driver.h"
 #include "scan.h"
+#include "vec.h"
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -73,7 +74,7 @@ static stmt *parse_block_stmt(parser *p) {
   expect(p, TOK_LBRACE);
   int i = 0;
   while (p->next.token != TOK_RBRACE)
-    s->v.block.stmts[i++] = parse_stmt(p);
+    vec_push_back(s->v.block.stmts, parse_stmt(p));
   expect(p, TOK_RBRACE);
 
   return s;
@@ -113,10 +114,8 @@ static decl *parse_decl(parser *p) {
     expect(p, TOK_LBRACE);
     int i = 0;
     while (p->next.token != TOK_RBRACE) {
-      res->v.func.body[i++] = parse_stmt(p);
+      vec_push_back(res->v.func.body, parse_stmt(p));
     }
-    if (i < 4)
-      res->v.func.body[i] = NULL; // FIXME when vec
 
     expect(p, TOK_RBRACE);
 

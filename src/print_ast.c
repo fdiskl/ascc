@@ -1,5 +1,6 @@
 #include "common.h"
 #include "parser.h"
+#include "vec.h"
 #include <stdio.h>
 
 static void print_indent(int indent) {
@@ -41,12 +42,10 @@ static void print_stmt(stmt *s, int indent) {
   case STMT_BLOCK:
     print_indent(indent);
     printf("BlockStmt\n");
-    for (int i = 0; i < 4; i++) {
-      if (s->v.block.stmts[i])
-        print_stmt(s->v.block.stmts[i], indent + 1);
-    }
-    break;
 
+    vec_foreach(stmt *, s->v.block.stmts, it) print_stmt(*it, indent + 1);
+
+    break;
   default:
     unreachable();
   }
@@ -60,12 +59,8 @@ static void print_decl(decl *d, int indent) {
   case DECL_FUNC:
     print_indent(indent);
     printf("FuncDecl (%s)\n", d->v.func.name);
-    for (int i = 0; i < 4;
-         i++) // TODO: change when array is replaced with vector
-      if (d->v.func.body[i] != NULL)
-        print_stmt(d->v.func.body[i], indent + 1);
-      else
-        break;
+
+    vec_foreach(stmt *, d->v.func.body, it) print_stmt(*it, indent + 1);
 
     break;
 
