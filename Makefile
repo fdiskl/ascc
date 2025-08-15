@@ -19,3 +19,6 @@ build/%.o: src/%.c
 
 clean:
 	rm -rf build bin
+
+count:
+	find ./src -type f \( -name "*.c" -o -name "*.h" \) -exec wc -l {} +
