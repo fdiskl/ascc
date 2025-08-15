@@ -57,7 +57,7 @@ static decl *alloc_decl(parser *p, int t) {
 
 static expr *parse_int_const_expr(parser *p) {
   expr *e = alloc_expr(p, EXPR_INT_CONST);
-  e->intc.v = expect(p, TOK_INTLIT)->v.int_val;
+  e->v.intc.v = expect(p, TOK_INTLIT)->v.int_val;
   return e;
 }
 
@@ -67,10 +67,10 @@ static expr *parse_unary_expr(parser *p) {
   expr *e = alloc_expr(p, EXPR_UNARY);
   switch (p->next.token) {
   case TOK_TILDE:
-    e->u.t = UNARY_COMPLEMENT;
+    e->v.u.t = UNARY_COMPLEMENT;
     break;
   case TOK_MINUS:
-    e->u.t = UNARY_NEGATE;
+    e->v.u.t = UNARY_NEGATE;
     break;
   default:
     unreachable();
@@ -78,7 +78,7 @@ static expr *parse_unary_expr(parser *p) {
 
   advance(p);
 
-  e->u.e = parse_expr(p);
+  e->v.u.e = parse_expr(p);
 
   return e;
 }

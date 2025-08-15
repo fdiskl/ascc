@@ -49,7 +49,7 @@ struct _expr {
   union {
     int_const intc;
     unary u;
-  };
+  } v;
 };
 
 /*

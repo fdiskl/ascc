@@ -18,11 +18,11 @@ static void print_expr(expr *e, int indent) {
   print_indent(indent);
   switch (e->t) {
   case EXPR_INT_CONST:
-    printf("IntConst %llu\n", (unsigned long long)e->intc.v);
+    printf("IntConst %llu\n", (unsigned long long)e->v.intc.v);
     break;
   case EXPR_UNARY:
     printf("Unary (");
-    switch (e->u.t) {
+    switch (e->v.u.t) {
     case UNARY_NEGATE:
       printf("negate");
       break;
@@ -31,7 +31,7 @@ static void print_expr(expr *e, int indent) {
       break;
     }
     printf(")\n");
-    print_expr(e->u.e, indent + 1);
+    print_expr(e->v.u.e, indent + 1);
     break;
   default:
     unreachable();

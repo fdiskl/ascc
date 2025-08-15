@@ -43,7 +43,7 @@ static tacv gen_tac_from_expr(tacgen *tg, expr *e) {
   // FIXME: this is tmp
   tacv v;
   v.t = TACV_CONST;
-  v.intv = e->intc.v;
+  v.intv = e->v.intc.v;
   return v;
 }
 
