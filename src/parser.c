@@ -8,6 +8,15 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#define SET_POS(n, start, end)                                                 \
+  {                                                                            \
+    n->pos.filename = start.filename;                                          \
+    n->pos.line_start = start.line;                                            \
+    n->pos.line_end = end.line;                                                \
+    n->pos.pos_start = start.start_pos;                                        \
+    n->pos.pos_end = end.end_pos;                                              \
+  }
+
 static token *advance(parser *p) {
   p->curr = p->next;
   next(p->l, &p->next);
@@ -84,17 +93,21 @@ static expr *parse_unary_expr(parser *p) {
 }
 
 static expr *parse_expr(parser *p) {
+  tok_pos start = p->next.pos;
+  expr *e;
   switch (p->next.token) {
   case TOK_INTLIT:
-    return parse_int_const_expr(p);
+    e = parse_int_const_expr(p);
+    break;
   case TOK_TILDE:
   case TOK_MINUS:
-    return parse_unary_expr(p);
+    e = parse_unary_expr(p);
+    break;
   case TOK_LPAREN:
     expect(p, TOK_LPAREN);
-    expr *e = parse_expr(p);
+    e = parse_expr(p);
     expect(p, TOK_RPAREN);
-    return e;
+    break;
   default:
     fprintf(stderr, "invalid token found %s (%d:%d:%d)",
             token_name(p->next.token), p->next.pos.line, p->next.pos.start_pos,
@@ -102,7 +115,9 @@ static expr *parse_expr(parser *p) {
     after_error();
     return NULL;
   }
-  // for now only int const
+
+  SET_POS(e, start, p->curr.pos);
+  return e;
 }
 
 static stmt *parse_stmt(parser *p);
@@ -126,18 +141,25 @@ static stmt *parse_return_stmt(parser *p) {
 }
 
 static stmt *parse_stmt(parser *p) {
+  tok_pos start = p->next.pos;
+  stmt *res;
   switch (p->next.token) {
   case TOK_LBRACE:
-    return parse_block_stmt(p);
+    res = parse_block_stmt(p);
+    break;
   case TOK_RETURN:
-    return parse_return_stmt(p);
+    res = parse_return_stmt(p);
+    break;
   default:
     assert(0 && "todo"); // TODO: parse expr
   }
+
+  SET_POS(res, start, p->curr.pos);
+  return res;
 }
 
 static decl *parse_decl(parser *p) {
-  expect(p, TOK_INT); // TODO: parse return type
+  tok_pos start = expect(p, TOK_INT)->pos; // TODO: parse return type
   string ident = expect(p, TOK_IDENT)->v.ident;
 
   if (p->next.token == TOK_LPAREN) {
@@ -153,12 +175,12 @@ static decl *parse_decl(parser *p) {
       vec_push_back(res->v.func.body, parse_stmt(p));
     }
 
-    expect(p, TOK_RBRACE);
+    tok_pos end = expect(p, TOK_RBRACE)->pos;
+    SET_POS(res, start, end);
 
     return res;
   } else {
-    // TODO: var decl
-    assert(0 && "todo");
+    todo();
   }
 }
 

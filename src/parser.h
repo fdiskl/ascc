@@ -15,6 +15,15 @@ typedef decl program;
 typedef struct _parser parser;
 
 typedef struct _block_stmt block_stmt;
+typedef struct _ast_pos ast_pos;
+
+struct _ast_pos {
+  string filename;
+  int line_start;
+  int line_end;
+  int pos_start;
+  int pos_end;
+};
 
 /*
  *
@@ -46,6 +55,7 @@ struct _unary {
 
 struct _expr {
   exprt t;
+  ast_pos pos;
   union {
     int_const intc;
     unary u;
@@ -72,6 +82,7 @@ struct _block_stmt {
 
 struct _stmt {
   stmtt t;
+  ast_pos pos;
   union {
     return_stmt ret;
     block_stmt block;
@@ -104,6 +115,7 @@ struct _func_decl {
 
 struct _decl {
   declt t;
+  ast_pos pos;
   union {
     func_decl func;
     var_decl var;
