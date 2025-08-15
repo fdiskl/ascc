@@ -10,6 +10,16 @@
 // If "DEBUG_INFO" is defined, compiler will emit extra debug info
 #define DEBUG_INFO
 
+// If "AST_PRINT_LOC" is defined AST printer will emit location info
+#define AST_PRINT_LOC
+
+// If "AST_PRINT_FILENAME_LOC" is defined AST printer will emit filename
+// location info too
+#define AST_PRINT_FILENAME_LOC
+
+// i feel like it's too much info, so undef
+#undef AST_PRINT_FILENAME_LOC
+
 #define unreachable()                                                          \
   fprintf(stderr, "unreachable code reached (file: %s, line: %d)", __FILE__,   \
           __LINE__);                                                           \
