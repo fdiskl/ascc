@@ -33,6 +33,9 @@ void parse_driver_options(driver_options *d, int argc, char *argv[]);
  *
  */
 
+// TODO: it still is a good idea to free arenas where they are not needed. Add
+// REMOVE_FROM_CLEANUP_ARRAY macro
+
 /* NOTE 1:
 * we could add last element indexes for 4 arrays below (files_to_close,
 files_to_delete, arenas_to_free, arenas_to_destroy), but because this arrs are
