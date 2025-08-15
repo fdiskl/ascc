@@ -61,10 +61,48 @@ static expr *parse_int_const_expr(parser *p) {
   return e;
 }
 
-static expr *parse_expr(parser *p) {
+static expr *parse_expr(parser *p);
 
+static expr *parse_unary_expr(parser *p) {
+  expr *e = alloc_expr(p, EXPR_UNARY);
+  switch (p->next.token) {
+  case TOK_TILDE:
+    e->u.t = UNARY_COMPLEMENT;
+    break;
+  case TOK_MINUS:
+    e->u.t = UNARY_NEGATE;
+    break;
+  default:
+    unreachable();
+  }
+
+  advance(p);
+
+  e->u.e = parse_expr(p);
+
+  return e;
+}
+
+static expr *parse_expr(parser *p) {
+  switch (p->next.token) {
+  case TOK_INTLIT:
+    return parse_int_const_expr(p);
+  case TOK_TILDE:
+  case TOK_MINUS:
+    return parse_unary_expr(p);
+  case TOK_LPAREN:
+    expect(p, TOK_LPAREN);
+    expr *e = parse_expr(p);
+    expect(p, TOK_RPAREN);
+    return e;
+  default:
+    fprintf(stderr, "invalid token found %s (%d:%d:%d)",
+            token_name(p->next.token), p->next.line, p->next.start_pos,
+            p->next.end_pos); // FIXME: idk, dont really like how it is
+    after_error();
+    return NULL;
+  }
   // for now only int const
-  return parse_int_const_expr(p);
 }
 
 static stmt *parse_stmt(parser *p);
