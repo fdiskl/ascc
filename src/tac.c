@@ -4,6 +4,7 @@
 #include "driver.h"
 #include "parser.h"
 #include "vec.h"
+#include <stdio.h>
 
 void init_tacgen(tacgen *tg) {
   init_arena(&tg->taci_arena);
@@ -38,26 +39,63 @@ static taci *insert_taci(tacgen *tg, int op) {
   return i;
 }
 
-static tacv gen_tac_from_expr(tacgen *tg, expr *e) {
-  // for now only int const
-  // FIXME: this is tmp
+static tacv new_tmp(tacgen *tg) {
+  static int idx = 0;
   tacv v;
-  v.t = TACV_CONST;
-  v.intv = e->v.intc.v;
+  v.t = TACV_VAR;
+  v.var_idx = idx++;
   return v;
 }
 
+static tacv gen_tac_from_int_const_expr(tacgen *tg, int_const ic) {
+  tacv v;
+  v.t = TACV_CONST;
+  v.intv = ic.v;
+  return v;
+}
+
+static tacv gen_tac_from_expr(tacgen *tg, expr *e);
+
+static tacv gen_tac_from_unary_expr(tacgen *tg, unary u) {
+  tacv inner_v = gen_tac_from_expr(tg, u.e);
+
+  int op;
+  switch (u.t) {
+  case UNARY_NEGATE:
+    op = TAC_NEGATE;
+    break;
+  case UNARY_COMPLEMENT:
+    op = TAC_COMPLEMENT;
+    break;
+  }
+
+  taci *i = insert_taci(tg, op);
+
+  i->dst = new_tmp(tg);
+  i->src1 = inner_v;
+
+  return i->dst;
+}
+
+static tacv gen_tac_from_expr(tacgen *tg, expr *e) {
+  switch (e->t) {
+  case EXPR_INT_CONST:
+    return gen_tac_from_int_const_expr(tg, e->v.intc);
+  case EXPR_UNARY:
+    return gen_tac_from_unary_expr(tg, e->v.u);
+  }
+}
+
 static void gen_tac_from_return_stmt(tacgen *tg, return_stmt rs) {
+  tacv e = gen_tac_from_expr(tg, rs.e);
   taci *i = insert_taci(tg, TAC_RET);
-  i->src1 = gen_tac_from_expr(tg, rs.e);
+  i->src1 = e;
 }
 
 static void gen_tac_from_stmt(tacgen *tg, stmt *s);
 
 static void gen_tac_from_block_stmt(tacgen *tg, block_stmt bs) {
-  for (int i = 0; i < 4; i++) {
-    vec_foreach(stmt *, bs.stmts, it) gen_tac_from_stmt(tg, *it);
-  }
+  vec_foreach(stmt *, bs.stmts, it) gen_tac_from_stmt(tg, *it);
 }
 
 static void gen_tac_from_stmt(tacgen *tg, stmt *s) {
@@ -75,10 +113,7 @@ static tacf *gen_tac_from_func_decl(tacgen *tg, func_decl fd) {
   tacf *res = alloc_tacf(tg, fd.name);
 
   tg->head = tg->tail = NULL;
-  for (int i = 0; i < 4; i++) {
-
-    vec_foreach(stmt *, fd.body, it) gen_tac_from_stmt(tg, *it);
-  }
+  vec_foreach(stmt *, fd.body, it) gen_tac_from_stmt(tg, *it);
 
   res->firsti = tg->head;
 
