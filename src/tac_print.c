@@ -1,9 +1,14 @@
 #include "tac.h"
+#include <stdio.h>
 
 const char *tacop_str(tacop op) {
   switch (op) {
   case TAC_RET:
     return "ret";
+  case TAC_COMPLEMENT:
+    return "complement";
+  case TAC_NEGATE:
+    return "negate";
   default:
     unreachable();
   }
@@ -22,6 +27,12 @@ static void print_val(tacv *v) {
   }
 }
 
+static void print_unary(tacv *dst, tacv *src) {
+  print_val(dst);
+  printf(", ");
+  print_val(src);
+}
+
 void print_tac_func(tacf *f) {
   printf("func %s:\n", f->name);
 
@@ -32,6 +43,9 @@ void print_tac_func(tacf *f) {
     case TAC_RET:
       print_val(&i->src1);
       break;
+    case TAC_COMPLEMENT:
+    case TAC_NEGATE:
+      print_unary(&i->dst, &i->src1);
     default:
       unreachable();
     }
