@@ -11,7 +11,12 @@ typedef struct _tac_func tacf;
 typedef struct _tacgen tacgen;
 
 typedef enum {
+  // singe val
   TAC_RET,
+
+  // unary
+  TAC_NEGATE,
+  TAC_COMPLEMENT
 } tacop;
 
 typedef enum {
