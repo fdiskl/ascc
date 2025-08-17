@@ -9,27 +9,45 @@ typedef struct _x86_asm_gen x86_asm_gen;
 typedef struct _x86_op x86_op;
 typedef struct _x86_func x86_func;
 
+// Automatically enable ASM_DONT_FIX_INSTRUCTIONS if ASM_DONT_FIX_PSEUDO is
+// enabled. (see common.h)
+#ifdef ASM_DONT_FIX_PSEUDO
+#define ASM_DONT_FIX_INSTRUCTIONS
+#endif
+
 typedef enum {
   X86_AX,
+  X86_R10,
 } x86_reg;
 
 typedef enum {
   X86_OP_IMM,
   X86_OP_REG,
+  X86_OP_PSEUDO,
+  X86_OP_STACK,
 } x86_op_t;
 
 typedef enum {
   // 0 operands
   X86_RET,
 
+  // unary
+  X86_NOT,
+  X86_NEG,
+
   // binary
   X86_MOV,
+
+  // special
+  X86_ALLOC_STACK,
 } x86_t;
 
 struct _x86_op {
   x86_op_t t;
   union {
     uint64_t imm;
+    int pseudo_idx;
+    int stack_offset;
     struct {
       x86_reg t;
       int size;
@@ -44,8 +62,13 @@ struct _x86_instr {
       x86_op dst;
       x86_op src;
     } binary;
+    struct {
+      x86_op src;
+    } unary;
+    int bytes_to_alloc;
   } v;
   x86_instr *next;
+  x86_instr *prev;
 };
 
 struct _x86_func {
@@ -65,6 +88,14 @@ struct _x86_asm_gen {
 void init_x86_asm_gen(x86_asm_gen *ag);
 
 x86_func *gen_asm(x86_asm_gen *ag, tacf *tac_first_f);
+
+// replaces pseudo instructions, is called by gen_asm
+// returns amount of bytes to be allocated
+int fix_pseudo_for_func(x86_func *f);
+
+// fixes invalid instructions, is called by gen_asm
+void fix_instructions_for_func(x86_asm_gen *ag, x86_func *f);
+
 void emit_x86(FILE *w, x86_func *first_func);
 
 #endif
