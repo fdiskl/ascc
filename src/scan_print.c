@@ -171,7 +171,8 @@ const char *token_name(int token) {
 }
 
 void print_token(const token *t) {
-  printf("[%s:%d:%3d:%3d] ", t->filename, t->line, t->start_pos, t->end_pos);
+  printf("[%s:%d:%3d:%3d] ", t->pos.filename, t->pos.line, t->pos.start_pos,
+         t->pos.end_pos);
 
   const char *name = token_name(t->token);
   printf("Token: %s", name);
