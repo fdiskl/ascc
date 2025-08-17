@@ -8,6 +8,10 @@
 #include <stdint.h>
 #include <stdio.h>
 
+// binary_op returns 0 on non-bin op, so MIN_PREC should be <= -1 so when
+// comparing with >= it still would work
+#define MIN_PREC -100
+
 #define SET_POS(n, start, end)                                                 \
   {                                                                            \
     n->pos.filename = start.filename;                                          \
@@ -15,6 +19,13 @@
     n->pos.line_end = end.line;                                                \
     n->pos.pos_start = start.start_pos;                                        \
     n->pos.pos_end = end.end_pos;                                              \
+  }
+
+#define SET_POS_FROM_NODES(n, startn, endn)                                    \
+  {                                                                            \
+    n->pos = startn->pos;                                                      \
+    n->pos.line_end = endn->pos.line_end;                                      \
+    n->pos.pos_end = endn->pos.pos_end;                                        \
   }
 
 static token *advance(parser *p) {
@@ -26,8 +37,9 @@ static token *advance(parser *p) {
 static token *expect(parser *p, int t) {
   if (p->next.token == t)
     return advance(p);
-  fprintf(stderr, "expected %s, found %s", token_name(t),
-          token_name(p->next.token));
+  fprintf(stderr, "expected %s, found %s at [%d:%d:%d]\n", token_name(t),
+          token_name(p->next.token), p->next.pos.line, p->next.pos.start_pos,
+          p->next.pos.end_pos);
   after_error();
   return NULL;
 }
@@ -72,6 +84,8 @@ static expr *parse_int_const_expr(parser *p) {
 
 static expr *parse_expr(parser *p);
 
+static expr *parse_factor(parser *p);
+
 static expr *parse_unary_expr(parser *p) {
   expr *e = alloc_expr(p, EXPR_UNARY);
   switch (p->next.token) {
@@ -87,12 +101,12 @@ static expr *parse_unary_expr(parser *p) {
 
   advance(p);
 
-  e->v.u.e = parse_expr(p);
+  e->v.u.e = parse_factor(p);
 
   return e;
 }
 
-static expr *parse_expr(parser *p) {
+static expr *parse_factor(parser *p) {
   tok_pos start = p->next.pos;
   expr *e;
   switch (p->next.token) {
@@ -109,7 +123,7 @@ static expr *parse_expr(parser *p) {
     expect(p, TOK_RPAREN);
     break;
   default:
-    fprintf(stderr, "invalid token found %s (%d:%d:%d)",
+    fprintf(stderr, "invalid token found %s (%d:%d:%d)\n",
             token_name(p->next.token), p->next.pos.line, p->next.pos.start_pos,
             p->next.pos.end_pos); // FIXME: idk, dont really like how it is
     after_error();
@@ -119,6 +133,61 @@ static expr *parse_expr(parser *p) {
   SET_POS(e, start, p->curr.pos);
   return e;
 }
+
+// returns precedence or 0 if not binary op
+static int binary_op(int t) {
+  switch (t) {
+  case TOK_PLUS:
+  case TOK_MINUS:
+    return 90;
+  case TOK_STAR:
+  case TOK_SLASH:
+  case TOK_MOD:
+    return 100;
+
+  default:
+    return 0;
+  }
+}
+
+// converts token into bin op
+static int get_bin_op(parser *p, int t) {
+#define b(tok, op)                                                             \
+  case tok:                                                                    \
+    expect(p, tok);                                                            \
+    return op;
+
+  switch (t) {
+    b(TOK_PLUS, BINARY_ADD);
+    b(TOK_MINUS, BINARY_SUB);
+    b(TOK_STAR, BINARY_MUL);
+    b(TOK_SLASH, BINARY_DIV);
+    b(TOK_MOD, BINARY_MOD);
+  default:
+    unreachable(); // should be, at least :)
+  }
+}
+
+static expr *_parse_expr(parser *p, int min_prec) {
+  expr *l = parse_factor(p);
+
+  int prec;
+  while ((prec = binary_op(p->next.token)) != 0 && prec >= min_prec) {
+    int binop = get_bin_op(p, p->next.token);
+    expr *r = _parse_expr(p, prec + 1);
+
+    expr *tmp = l;
+    l = alloc_expr(p, EXPR_BINARY);
+    l->v.b.l = tmp;
+    l->v.b.r = r;
+    l->v.b.t = binop;
+    SET_POS_FROM_NODES(l, tmp, r);
+  }
+
+  return l;
+}
+
+static expr *parse_expr(parser *p) { return _parse_expr(p, MIN_PREC); }
 
 static stmt *parse_stmt(parser *p);
 
