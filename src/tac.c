@@ -39,7 +39,7 @@ static taci *insert_taci(tacgen *tg, int op) {
   return i;
 }
 
-static tacv new_tmp(tacgen *tg) {
+static tacv new_tmp() {
   static int idx = 0;
   tacv v;
   v.t = TACV_VAR;
@@ -71,8 +71,36 @@ static tacv gen_tac_from_unary_expr(tacgen *tg, unary u) {
 
   taci *i = insert_taci(tg, op);
 
-  i->dst = new_tmp(tg);
+  i->dst = new_tmp();
   i->src1 = inner_v;
+
+  return i->dst;
+}
+
+static tacv gen_tac_from_binary_expr(tacgen *tg, binary b) {
+#define b(bin, tac)                                                            \
+  case bin:                                                                    \
+    op = tac;                                                                  \
+    break;
+
+  int op;
+
+  switch (b.t) {
+    b(BINARY_ADD, TAC_ADD);
+    b(BINARY_SUB, TAC_SUB);
+    b(BINARY_MUL, TAC_MUL);
+    b(BINARY_DIV, TAC_DIV);
+    b(BINARY_MOD, TAC_MOD);
+    break;
+  }
+
+  tacv v1 = gen_tac_from_expr(tg, b.l);
+  tacv v2 = gen_tac_from_expr(tg, b.r);
+
+  taci *i = insert_taci(tg, op);
+  i->src1 = v1;
+  i->src2 = v2;
+  i->dst = new_tmp();
 
   return i->dst;
 }
@@ -83,6 +111,8 @@ static tacv gen_tac_from_expr(tacgen *tg, expr *e) {
     return gen_tac_from_int_const_expr(tg, e->v.intc);
   case EXPR_UNARY:
     return gen_tac_from_unary_expr(tg, e->v.u);
+  case EXPR_BINARY:
+    return gen_tac_from_binary_expr(tg, e->v.b);
   }
 }
 
