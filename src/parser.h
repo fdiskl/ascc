@@ -33,10 +33,12 @@ struct _ast_pos {
 
 typedef struct _int_const int_const;
 typedef struct _unary unary;
+typedef struct _binary binary;
 
 typedef enum {
   EXPR_INT_CONST,
   EXPR_UNARY,
+  EXPR_BINARY,
 } exprt;
 
 struct _int_const {
@@ -53,12 +55,27 @@ struct _unary {
   expr *e;
 };
 
+typedef enum {
+  BINARY_ADD,
+  BINARY_SUB,
+  BINARY_MUL,
+  BINARY_DIV,
+  BINARY_MOD,
+} binaryt;
+
+struct _binary {
+  binaryt t;
+  expr *l;
+  expr *r;
+};
+
 struct _expr {
   exprt t;
   ast_pos pos;
   union {
     int_const intc;
     unary u;
+    binary b;
   } v;
 };
 
