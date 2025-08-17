@@ -7,7 +7,10 @@ static void emit_x86_reg(FILE *w, x86_reg reg, int size) {
   case 4:
     switch (reg) {
     case X86_AX:
-      fprintf(w, "%%rax");
+      fprintf(w, "%%eax");
+      break;
+    case X86_R10:
+      fprintf(w, "%%r10d");
       break;
     default:
       todo();
@@ -26,7 +29,19 @@ static void emit_x86_op(FILE *w, x86_op op) {
   case X86_OP_REG:
     emit_x86_reg(w, op.v.reg.t, op.v.reg.size);
     break;
+  case X86_OP_PSEUDO:
+    fprintf(w, "PSEUDO(%d)", op.v.pseudo_idx);
+    break;
+  case X86_OP_STACK:
+    fprintf(w, "-%d(%%rbp)", op.v.stack_offset);
+    break;
   }
+}
+
+static void emit_x86_unary(FILE *w, x86_instr *i, const char *name) {
+  fprintf(w, "\t%s ", name);
+  emit_x86_op(w, i->v.unary.src);
+  fprintf(w, "\n");
 }
 
 static void emit_x86_binary(FILE *w, x86_instr *i, const char *name) {
@@ -40,10 +55,21 @@ static void emit_x86_binary(FILE *w, x86_instr *i, const char *name) {
 static void emit_x86_instr(FILE *w, x86_instr *i) {
   switch (i->op) {
   case X86_RET:
+    fprintf(w, "\tmovq %%rbp, %%rsp\n");
+    fprintf(w, "\tpopq %%rbp\n");
     fprintf(w, "\tret\n");
     break;
   case X86_MOV:
-    emit_x86_binary(w, i, "mov");
+    emit_x86_binary(w, i, "movl");
+    break;
+  case X86_NOT:
+    emit_x86_unary(w, i, "notl");
+    break;
+  case X86_NEG:
+    emit_x86_unary(w, i, "negl");
+    break;
+  case X86_ALLOC_STACK:
+    fprintf(w, "\tsubq $%d, %%rsp\n", i->v.bytes_to_alloc);
     break;
   }
 }
@@ -51,6 +77,8 @@ static void emit_x86_instr(FILE *w, x86_instr *i) {
 static void emit_x86_func(FILE *w, x86_func *f) {
   fprintf(w, "\t.globl %s\n", f->name);
   fprintf(w, "%s:\n", f->name);
+  fprintf(w, "\tpushq %%rbp\n");
+  fprintf(w, "\tmovq %%rsp, %%rbp\n");
 
   for (x86_instr *i = f->first; i != NULL; i = i->next) {
     emit_x86_instr(w, i);
