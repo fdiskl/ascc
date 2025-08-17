@@ -50,6 +50,32 @@ static void print_expr(expr *e, int indent) {
     print_expr(e->v.u.e, indent + 1);
     break;
 
+  case EXPR_BINARY:
+    printf("Binary (");
+    switch (e->v.b.t) {
+    case BINARY_ADD:
+      printf("add");
+      break;
+    case BINARY_SUB:
+      printf("sub");
+      break;
+    case BINARY_MUL:
+      printf("mul");
+      break;
+    case BINARY_DIV:
+      printf("div");
+      break;
+    case BINARY_MOD:
+      printf("mod");
+      break;
+    }
+    printf(")");
+    print_ast_pos(e->pos);
+    printf("\n");
+    print_expr(e->v.b.l, indent + 1);
+    print_expr(e->v.b.r, indent + 1);
+    break;
+
   default:
     unreachable();
   }
