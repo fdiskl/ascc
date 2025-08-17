@@ -16,7 +16,14 @@ typedef enum {
 
   // unary
   TAC_NEGATE,
-  TAC_COMPLEMENT
+  TAC_COMPLEMENT,
+
+  // binary
+  TAC_ADD,
+  TAC_SUB,
+  TAC_MUL,
+  TAC_DIV,
+  TAC_MOD,
 } tacop;
 
 typedef enum {
