@@ -20,6 +20,17 @@
 // i feel like it's too much info, so undef
 #undef AST_PRINT_FILENAME_LOC
 
+// If "ASM_DONT_FIX_PSEUDO" is defined pseudo-regs won't be replaced. Will
+// result in not compiling asm, but useful for debugging
+// Automatically will enable ASM_DONT_FIX_INSTRUCTIONS
+#define ASM_DONT_FIX_PSEUDO
+#undef ASM_DONT_FIX_PSEUDO
+
+// If "ASM_DONT_FIX_INSTRUCTIONS" is defined invalid instructions won't be
+// replaced. Will result in not compiling asm, but useful for debugging
+#define ASM_DONT_FIX_INSTRUCTIONS
+#undef ASM_DONT_FIX_INSTRUCTIONS
+
 #define unreachable()                                                          \
   fprintf(stderr, "unreachable code reached (file: %s, line: %d)", __FILE__,   \
           __LINE__);                                                           \
