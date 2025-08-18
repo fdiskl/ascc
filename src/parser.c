@@ -137,6 +137,15 @@ static expr *parse_factor(parser *p) {
 // returns precedence or 0 if not binary op
 static int binary_op(int t) {
   switch (t) {
+  case TOK_PIPE:
+    return 50;
+  case TOK_CARRET:
+    return 60;
+  case TOK_AMPER:
+    return 70;
+  case TOK_LSHIFT:
+  case TOK_RSHIFT:
+    return 80;
   case TOK_PLUS:
   case TOK_MINUS:
     return 90;
@@ -163,6 +172,11 @@ static int get_bin_op(parser *p, int t) {
     b(TOK_STAR, BINARY_MUL);
     b(TOK_SLASH, BINARY_DIV);
     b(TOK_MOD, BINARY_MOD);
+    b(TOK_AMPER, BINARY_BITWISE_AND);
+    b(TOK_PIPE, BINARY_BITWISE_OR);
+    b(TOK_CARRET, BINARY_XOR);
+    b(TOK_LSHIFT, BINARY_LSHIFT);
+    b(TOK_RSHIFT, BINARY_RSHIFT);
   default:
     unreachable(); // should be, at least :)
   }
