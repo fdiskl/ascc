@@ -32,13 +32,13 @@
 #undef ASM_DONT_FIX_INSTRUCTIONS
 
 #define unreachable()                                                          \
-  fprintf(stderr, "unreachable code reached (file: %s, line: %d)", __FILE__,   \
+  fprintf(stderr, "unreachable code reached (file: %s, line: %d)\n", __FILE__, \
           __LINE__);                                                           \
   after_error();                                                               \
   exit(1);
 
 #define todo()                                                                 \
-  fprintf(stderr, "not implemented yet (file: %s, line %d)", __FILE__,         \
+  fprintf(stderr, "not implemented yet (file: %s, line %d)\n", __FILE__,       \
           __LINE__);                                                           \
   after_error();                                                               \
   exit(1);
