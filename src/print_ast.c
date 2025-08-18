@@ -68,6 +68,21 @@ static void print_expr(expr *e, int indent) {
     case BINARY_MOD:
       printf("mod");
       break;
+    case BINARY_BITWISE_AND:
+      printf("bitwise and");
+      break;
+    case BINARY_BITWISE_OR:
+      printf("bitwise or");
+      break;
+    case BINARY_XOR:
+      printf("xor");
+      break;
+    case BINARY_LSHIFT:
+      printf("lshift");
+      break;
+    case BINARY_RSHIFT:
+      printf("rshift");
+      break;
     }
     printf(")");
     print_ast_pos(e->pos);

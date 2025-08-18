@@ -61,6 +61,12 @@ typedef enum {
   BINARY_MUL,
   BINARY_DIV,
   BINARY_MOD,
+
+  BINARY_BITWISE_AND,
+  BINARY_BITWISE_OR,
+  BINARY_XOR,
+  BINARY_LSHIFT,
+  BINARY_RSHIFT,
 } binaryt;
 
 struct _binary {
