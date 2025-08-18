@@ -17,7 +17,9 @@ typedef struct _x86_func x86_func;
 
 typedef enum {
   X86_AX,
+  X86_DX,
   X86_R10,
+  X86_R11,
 } x86_reg;
 
 typedef enum {
@@ -30,13 +32,18 @@ typedef enum {
 typedef enum {
   // 0 operands
   X86_RET,
+  X86_CDQ,
 
   // unary
   X86_NOT,
   X86_NEG,
+  X86_IDIV,
 
   // binary
   X86_MOV,
+  X86_ADD,
+  X86_SUB,
+  X86_MULT,
 
   // special
   X86_ALLOC_STACK,
