@@ -27,13 +27,18 @@ static void fix_pseudo_for_instr(x86_instr *i) {
   switch (i->op) {
   case X86_NOT:
   case X86_NEG:
+  case X86_IDIV:
     fix_pseudo_unary(i);
     break;
   case X86_MOV:
+  case X86_ADD:
+  case X86_SUB:
+  case X86_MULT:
     fix_pseudo_binary(i);
     break;
   case X86_RET:
   case X86_ALLOC_STACK:
+  case X86_CDQ:
     break;
   }
 }
