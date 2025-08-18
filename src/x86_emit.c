@@ -9,7 +9,13 @@ static void emit_x86_reg(FILE *w, x86_reg reg, int size) {
     case X86_AX:
       fprintf(w, "%%eax");
       break;
+    case X86_DX:
+      fprintf(w, "%%edx");
+      break;
     case X86_R10:
+      fprintf(w, "%%r10d");
+      break;
+    case X86_R11:
       fprintf(w, "%%r10d");
       break;
     default:
@@ -62,14 +68,29 @@ static void emit_x86_instr(FILE *w, x86_instr *i) {
   case X86_MOV:
     emit_x86_binary(w, i, "movl");
     break;
+  case X86_ADD:
+    emit_x86_binary(w, i, "addl");
+    break;
+  case X86_SUB:
+    emit_x86_binary(w, i, "subl");
+    break;
+  case X86_MULT:
+    emit_x86_binary(w, i, "imull");
+    break;
   case X86_NOT:
     emit_x86_unary(w, i, "notl");
     break;
   case X86_NEG:
     emit_x86_unary(w, i, "negl");
     break;
+  case X86_IDIV:
+    emit_x86_unary(w, i, "idivl");
+    break;
   case X86_ALLOC_STACK:
     fprintf(w, "\tsubq $%d, %%rsp\n", i->v.bytes_to_alloc);
+    break;
+  case X86_CDQ:
+    fprintf(w, "\tcdq\n");
     break;
   }
 }
