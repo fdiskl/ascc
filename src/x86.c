@@ -106,6 +106,49 @@ static void gen_asm_from_unary_instr(x86_asm_gen *ag, taci *i) {
   u->v.unary.src = operand_from_tac_val(i->dst);
 }
 
+static void gen_asm_from_binary_instr(x86_asm_gen *ag, taci *i) {
+  if (i->op == TAC_DIV || i->op == TAC_MOD) {
+    x86_instr *mov1 = insert_x86_instr(ag, X86_MOV);
+    insert_x86_instr(ag, X86_CDQ);
+    x86_instr *idiv = insert_x86_instr(ag, X86_IDIV);
+    x86_instr *mov2 = insert_x86_instr(ag, X86_MOV);
+
+    mov1->v.binary.dst = new_x86_reg(X86_AX, 4);
+    mov1->v.binary.src = operand_from_tac_val(i->src1);
+
+    idiv->v.unary.src = operand_from_tac_val(i->src2);
+
+    mov2->v.binary.src = new_x86_reg(i->op == TAC_DIV ? X86_AX : X86_DX, 4);
+    mov2->v.binary.dst = operand_from_tac_val(i->dst);
+
+    return;
+  }
+
+  int op;
+  switch (i->op) {
+  case TAC_ADD:
+    op = X86_ADD;
+    break;
+  case TAC_SUB:
+    op = X86_SUB;
+    break;
+  case TAC_MUL:
+    op = X86_MULT;
+    break;
+  default:
+    unreachable();
+  }
+
+  x86_instr *mov = insert_x86_instr(ag, X86_MOV);
+  x86_instr *bini = insert_x86_instr(ag, op);
+
+  mov->v.binary.dst = operand_from_tac_val(i->dst);
+  mov->v.binary.src = operand_from_tac_val(i->src1);
+
+  bini->v.binary.dst = mov->v.binary.dst;
+  bini->v.binary.src = operand_from_tac_val(i->src2);
+}
+
 static void gen_asm_from_instr(x86_asm_gen *ag, taci *i) {
   switch (i->op) {
   case TAC_RET:
@@ -115,8 +158,13 @@ static void gen_asm_from_instr(x86_asm_gen *ag, taci *i) {
   case TAC_COMPLEMENT:
     gen_asm_from_unary_instr(ag, i);
     break;
-  default:
-    unreachable();
+  case TAC_ADD:
+  case TAC_SUB:
+  case TAC_MUL:
+  case TAC_DIV:
+  case TAC_MOD:
+    gen_asm_from_binary_instr(ag, i);
+    break;
   }
 }
 
