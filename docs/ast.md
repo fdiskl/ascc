@@ -6,7 +6,7 @@ decl = Var(identifier name) | Func(identifier name, statement body)
 statement = Return(expr) | Block(statement*)
 expr = Constant(int) | Unary(unop, expr) | Binary(binop, expr)
 unop = Complement | Negate
-binop = Add | Sub | Mul | Div | Mod
+binop = Add | Sub | Mul | Div | Mod | BitwiseAnd | BitwiseOr | BitwiseXor | Lshift | Rshift
 ```
 
 # Formal grammar
@@ -19,7 +19,7 @@ binop = Add | Sub | Mul | Div | Mod
 <statement> ::= "return" <expr>
 <expr> ::= <factor> | <expr> <binop> <expr>
 <factor> ::= <int> | <unop> <factor> | "(" <expr> ")"
-<binop> ::= "+" | "-" | "*" | "/" | "%"
+<binop> ::= "+" | "-" | "*" | "/" | "%" | "&" | "|" | "^" | "<<" | ">>"
 <unop> ::= "-" | "~"
 <identifier> ::= ? ident token ?
 <int> ::= ? int literal token ?
