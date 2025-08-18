@@ -24,6 +24,11 @@ typedef enum {
   TAC_MUL,
   TAC_DIV,
   TAC_MOD,
+  TAC_AND,
+  TAC_OR,
+  TAC_XOR,
+  TAC_LSHIFT,
+  TAC_RSHIFT,
 } tacop;
 
 typedef enum {

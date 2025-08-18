@@ -19,6 +19,16 @@ const char *tacop_str(tacop op) {
     return "/";
   case TAC_MOD:
     return "%";
+  case TAC_AND:
+    return "&";
+  case TAC_OR:
+    return "|";
+  case TAC_XOR:
+    return "^";
+  case TAC_LSHIFT:
+    return "<<";
+  case TAC_RSHIFT:
+    return ">>";
     break;
   }
 }
@@ -70,6 +80,11 @@ void print_tac_func(tacf *f) {
     case TAC_MUL:
     case TAC_DIV:
     case TAC_MOD:
+    case TAC_AND:
+    case TAC_OR:
+    case TAC_XOR:
+    case TAC_LSHIFT:
+    case TAC_RSHIFT:
       print_binary(&i->dst, &i->src1, &i->src2, tacop_str(i->op));
       break;
     }
