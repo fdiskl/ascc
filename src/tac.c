@@ -4,7 +4,6 @@
 #include "driver.h"
 #include "parser.h"
 #include "vec.h"
-#include <stdio.h>
 
 void init_tacgen(tacgen *tg) {
   init_arena(&tg->taci_arena);
@@ -91,6 +90,11 @@ static tacv gen_tac_from_binary_expr(tacgen *tg, binary b) {
     b(BINARY_MUL, TAC_MUL);
     b(BINARY_DIV, TAC_DIV);
     b(BINARY_MOD, TAC_MOD);
+    b(BINARY_BITWISE_AND, TAC_AND);
+    b(BINARY_BITWISE_OR, TAC_OR);
+    b(BINARY_XOR, TAC_XOR);
+    b(BINARY_LSHIFT, TAC_LSHIFT);
+    b(BINARY_RSHIFT, TAC_RSHIFT);
     break;
   }
 
