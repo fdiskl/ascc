@@ -34,6 +34,11 @@ static void fix_pseudo_for_instr(x86_instr *i) {
   case X86_ADD:
   case X86_SUB:
   case X86_MULT:
+  case X86_AND:
+  case X86_OR:
+  case X86_XOR:
+  case X86_SHL:
+  case X86_SAR:
     fix_pseudo_binary(i);
     break;
   case X86_RET:
