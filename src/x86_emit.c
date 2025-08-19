@@ -3,28 +3,50 @@
 #include <stdio.h>
 
 static void emit_x86_reg(FILE *w, x86_reg reg, int size) {
+
   switch (size) {
-  case 4:
+  case 4: {
     switch (reg) {
     case X86_AX:
       fprintf(w, "%%eax");
-      break;
+      return;
     case X86_DX:
       fprintf(w, "%%edx");
-      break;
+      return;
+    case X86_CX:
+      fprintf(w, "%%ecx");
+      return;
     case X86_R10:
       fprintf(w, "%%r10d");
-      break;
+      return;
     case X86_R11:
-      fprintf(w, "%%r10d");
-      break;
-    default:
-      todo();
+      fprintf(w, "%%r11d");
+      return;
     }
-    break;
-  default:
-    todo();
+  } break;
+
+  case 1: {
+    switch (reg) {
+    case X86_AX:
+      fprintf(w, "%%al");
+      return;
+    case X86_DX:
+      fprintf(w, "%%dl");
+      return;
+    case X86_CX:
+      fprintf(w, "%%cl");
+      return;
+    case X86_R10:
+      fprintf(w, "%%r10b");
+      return;
+    case X86_R11:
+      fprintf(w, "%%r11b");
+      return;
+    }
+  } break;
   }
+
+  todo();
 }
 
 static void emit_x86_op(FILE *w, x86_op op) {
@@ -76,6 +98,21 @@ static void emit_x86_instr(FILE *w, x86_instr *i) {
     break;
   case X86_MULT:
     emit_x86_binary(w, i, "imull");
+    break;
+  case X86_AND:
+    emit_x86_binary(w, i, "andl");
+    break;
+  case X86_OR:
+    emit_x86_binary(w, i, "orl");
+    break;
+  case X86_XOR:
+    emit_x86_binary(w, i, "xorl");
+    break;
+  case X86_SHL:
+    emit_x86_binary(w, i, "shll");
+    break;
+  case X86_SAR:
+    emit_x86_binary(w, i, "sarl");
     break;
   case X86_NOT:
     emit_x86_unary(w, i, "notl");
