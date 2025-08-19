@@ -135,6 +135,21 @@ static void gen_asm_from_binary_instr(x86_asm_gen *ag, taci *i) {
   case TAC_MUL:
     op = X86_MULT;
     break;
+  case TAC_AND:
+    op = X86_AND;
+    break;
+  case TAC_OR:
+    op = X86_OR;
+    break;
+  case TAC_XOR:
+    op = X86_XOR;
+    break;
+  case TAC_LSHIFT:
+    op = X86_SHL;
+    break;
+  case TAC_RSHIFT:
+    op = X86_SAR;
+    break;
   default:
     unreachable();
   }
@@ -163,6 +178,11 @@ static void gen_asm_from_instr(x86_asm_gen *ag, taci *i) {
   case TAC_MUL:
   case TAC_DIV:
   case TAC_MOD:
+  case TAC_AND:
+  case TAC_OR:
+  case TAC_XOR:
+  case TAC_LSHIFT:
+  case TAC_RSHIFT:
     gen_asm_from_binary_instr(ag, i);
     break;
   }
