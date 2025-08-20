@@ -30,6 +30,26 @@ const char *tacop_str(tacop op) {
     return "<<";
   case TAC_RSHIFT:
     return ">>";
+  case TAC_NOT:
+    return "not";
+  case TAC_EQ:
+    return "eq";
+  case TAC_NE:
+    return "ne";
+  case TAC_LT:
+    return "lt";
+  case TAC_LE:
+    return "le";
+  case TAC_GT:
+    return "gt";
+  case TAC_GE:
+    return "ge";
+  case TAC_CPY:
+  case TAC_JMP:
+  case TAC_JZ:
+  case TAC_JNZ:
+  case TAC_LABEL:
+    break;
   }
 
   UNREACHABLE();
@@ -87,7 +107,35 @@ void print_tac_func(tacf *f) {
     case TAC_XOR:
     case TAC_LSHIFT:
     case TAC_RSHIFT:
+    case TAC_NOT:
+    case TAC_EQ:
+    case TAC_NE:
+    case TAC_LT:
+    case TAC_LE:
+    case TAC_GT:
+    case TAC_GE:
       print_binary(&i->dst, &i->src1, &i->src2, tacop_str(i->op));
+      break;
+    case TAC_CPY:
+      print_val(&i->dst);
+      printf(" = ");
+      print_val(&i->src1);
+      break;
+    case TAC_JMP:
+      printf("jmp -> L%d", i->label_idx);
+      break;
+    case TAC_JZ:
+      printf("jz ");
+      print_val(&i->src1);
+      printf(" -> L%d", i->label_idx);
+      break;
+    case TAC_JNZ:
+      printf("jnz ");
+      print_val(&i->src1);
+      printf(" -> L%d", i->label_idx);
+      break;
+    case TAC_LABEL:
+      printf("L%d:", i->label_idx);
       break;
     }
 
