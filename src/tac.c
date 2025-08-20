@@ -4,6 +4,7 @@
 #include "driver.h"
 #include "parser.h"
 #include "vec.h"
+#include <stdint.h>
 
 void init_tacgen(tacgen *tg) {
   init_arena(&tg->taci_arena);
@@ -38,12 +39,24 @@ static taci *insert_taci(tacgen *tg, int op) {
   return i;
 }
 
+static tacv new_const(uint64_t c) {
+  tacv v;
+  v.t = TACV_CONST;
+  v.intv = c;
+  return v;
+}
+
 static tacv new_tmp() {
   static int idx = 0;
   tacv v;
   v.t = TACV_VAR;
   v.var_idx = idx++;
   return v;
+}
+
+static int new_label() {
+  static int label_idx = 0;
+  return label_idx++;
 }
 
 static tacv gen_tac_from_int_const_expr(tacgen *_, int_const ic) {
@@ -66,6 +79,9 @@ static tacv gen_tac_from_unary_expr(tacgen *tg, unary u) {
   case UNARY_COMPLEMENT:
     op = TAC_COMPLEMENT;
     break;
+  case UNARY_NOT:
+    op = TAC_NOT;
+    break;
   }
 
   taci *i = insert_taci(tg, op);
@@ -74,6 +90,60 @@ static tacv gen_tac_from_unary_expr(tacgen *tg, unary u) {
   i->src1 = inner_v;
 
   return i->dst;
+}
+
+static tacv gen_tac_from_OR_binary(tacgen *tg, binary b) {
+  tacv res = new_tmp();
+
+  tacv v1 = gen_tac_from_expr(tg, b.l);
+  taci *jnz1 = insert_taci(tg, TAC_JNZ);
+  jnz1->src1 = v1;
+  int true_label = jnz1->label_idx = new_label();
+  tacv v2 = gen_tac_from_expr(tg, b.r);
+  taci *jnz2 = insert_taci(tg, TAC_JNZ);
+  jnz2->src1 = v2;
+  jnz2->label_idx = true_label;
+  taci *cpy1 = insert_taci(tg, TAC_CPY);
+  cpy1->dst = res;
+  cpy1->src1 = new_const(0);
+  taci *jmp = insert_taci(tg, TAC_JMP);
+  int end_label = jmp->label_idx = new_label();
+  taci *true_label_i = insert_taci(tg, TAC_LABEL);
+  true_label_i->label_idx = true_label;
+  taci *cpy2 = insert_taci(tg, TAC_CPY);
+  cpy2->dst = res;
+  cpy2->src1 = new_const(1);
+  taci *end_label_i = insert_taci(tg, TAC_LABEL);
+  end_label_i->label_idx = end_label;
+
+  return res;
+}
+
+static tacv gen_tac_from_AND_binary(tacgen *tg, binary b) {
+  tacv res = new_tmp();
+
+  tacv v1 = gen_tac_from_expr(tg, b.l);
+  taci *jz1 = insert_taci(tg, TAC_JZ);
+  jz1->src1 = v1;
+  int false_label = jz1->label_idx = new_label();
+  tacv v2 = gen_tac_from_expr(tg, b.r);
+  taci *jz2 = insert_taci(tg, TAC_JZ);
+  jz2->src1 = v2;
+  jz2->label_idx = false_label;
+  taci *cpy1 = insert_taci(tg, TAC_CPY);
+  cpy1->dst = res;
+  cpy1->src1 = new_const(1);
+  taci *jmp = insert_taci(tg, TAC_JMP);
+  int end_label = jmp->label_idx = new_label();
+  taci *false_label_i = insert_taci(tg, TAC_LABEL);
+  false_label_i->label_idx = false_label;
+  taci *cpy2 = insert_taci(tg, TAC_CPY);
+  cpy2->dst = res;
+  cpy2->src1 = new_const(0);
+  taci *end_label_i = insert_taci(tg, TAC_LABEL);
+  end_label_i->label_idx = end_label;
+
+  return res;
 }
 
 static tacv gen_tac_from_binary_expr(tacgen *tg, binary b) {
@@ -95,7 +165,17 @@ static tacv gen_tac_from_binary_expr(tacgen *tg, binary b) {
     b(BINARY_XOR, TAC_XOR);
     b(BINARY_LSHIFT, TAC_LSHIFT);
     b(BINARY_RSHIFT, TAC_RSHIFT);
+    b(BINARY_EQ, TAC_EQ);
+    b(BINARY_NE, TAC_NE);
+    b(BINARY_LT, TAC_LT);
+    b(BINARY_LE, TAC_LE);
+    b(BINARY_GT, TAC_GT);
+    b(BINARY_GE, TAC_GE);
     break;
+  case BINARY_OR:
+    return gen_tac_from_OR_binary(tg, b);
+  case BINARY_AND:
+    return gen_tac_from_AND_binary(tg, b);
   }
 
   tacv v1 = gen_tac_from_expr(tg, b.l);
