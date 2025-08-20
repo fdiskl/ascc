@@ -58,10 +58,10 @@ const char *tacop_str(tacop op) {
 static void print_val(tacv *v) {
   switch (v->t) {
   case TACV_CONST:
-    printf("%llu", (unsigned long long)v->intv);
+    printf("%llu", (unsigned long long)v->v.intv);
     break;
   case TACV_VAR:
-    printf("v%d", v->var_idx);
+    printf("v%d", v->v.var_idx);
     break;
   default:
     UNREACHABLE();

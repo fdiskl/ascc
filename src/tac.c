@@ -42,7 +42,7 @@ static taci *insert_taci(tacgen *tg, int op) {
 static tacv new_const(uint64_t c) {
   tacv v;
   v.t = TACV_CONST;
-  v.intv = c;
+  v.v.intv = c;
   return v;
 }
 
@@ -50,7 +50,7 @@ static tacv new_tmp() {
   static int idx = 0;
   tacv v;
   v.t = TACV_VAR;
-  v.var_idx = idx++;
+  v.v.var_idx = idx++;
   return v;
 }
 
@@ -62,7 +62,7 @@ static int new_label() {
 static tacv gen_tac_from_int_const_expr(tacgen *_, int_const ic) {
   tacv v;
   v.t = TACV_CONST;
-  v.intv = ic.v;
+  v.v.intv = ic.v;
   return v;
 }
 

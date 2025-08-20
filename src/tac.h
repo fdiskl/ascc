@@ -56,7 +56,7 @@ struct _tac_val {
   union {
     uint64_t intv;
     int var_idx;
-  }; // todo: add name
+  } v;
 };
 
 struct _tac_instr {
