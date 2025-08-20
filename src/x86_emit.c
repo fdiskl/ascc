@@ -46,7 +46,7 @@ static void emit_x86_reg(FILE *w, x86_reg reg, int size) {
   } break;
   }
 
-  todo();
+  TODO();
 }
 
 static void emit_x86_op(FILE *w, x86_op op) {

@@ -154,7 +154,7 @@ int main(int argc, char *argv[]) {
   ADD_TO_CLEANUP_ARRAY(files_to_delete, asm_file_path);
 
   if (opts.dof == DOF_C) {
-    todo()
+    TODO();
   };
 
   // run assembler

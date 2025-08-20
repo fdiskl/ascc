@@ -1,3 +1,4 @@
+#include "common.h"
 #include "tac.h"
 #include <stdio.h>
 
@@ -29,8 +30,9 @@ const char *tacop_str(tacop op) {
     return "<<";
   case TAC_RSHIFT:
     return ">>";
-    break;
   }
+
+  UNREACHABLE();
 }
 
 static void print_val(tacv *v) {
@@ -42,7 +44,7 @@ static void print_val(tacv *v) {
     printf("v%d", v->var_idx);
     break;
   default:
-    unreachable();
+    UNREACHABLE();
   }
 }
 

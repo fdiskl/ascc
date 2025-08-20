@@ -109,7 +109,9 @@ void *arena_alloc(arena *a, size_t alignment, size_t size) {
   if (!a || size == 0)
     return NULL;
 
-  if ((alignment & (alignment - 1)) != 0 && alignment != 0) {
+  if (alignment == 0)
+    alignment = 1;
+  if ((alignment & (alignment - 1)) != 0) {
     fprintf(stderr, "arena_alloc error: alignment %zu is not power-of-two\n",
             alignment);
     return NULL;
@@ -125,8 +127,8 @@ void *arena_alloc(arena *a, size_t alignment, size_t size) {
 
   while (chunk) {
     uintptr_t base = (uintptr_t)((char *)chunk->region + chunk->index);
-    size_t offset =
-        (alignment && (base % alignment)) ? alignment - (base % alignment) : 0;
+    size_t misalign = base & (alignment - 1);
+    size_t offset = misalign ? alignment - misalign : 0;
 
     if (chunk->index + offset + size <= chunk->size) {
       void *ptr = (char *)chunk->region + chunk->index + offset;

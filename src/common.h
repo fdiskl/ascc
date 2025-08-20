@@ -31,17 +31,21 @@
 #define ASM_DONT_FIX_INSTRUCTIONS
 #undef ASM_DONT_FIX_INSTRUCTIONS
 
-#define unreachable()                                                          \
-  fprintf(stderr, "unreachable code reached (file: %s, line: %d)\n", __FILE__, \
-          __LINE__);                                                           \
-  after_error();                                                               \
-  exit(1);
+#define UNREACHABLE()                                                          \
+  do {                                                                         \
+    fprintf(stderr, "UNREACHABLE code reached (file: %s, line: %d)\n",         \
+            __FILE__, __LINE__);                                               \
+    after_error();                                                             \
+    exit(1);                                                                   \
+  } while (0)
 
-#define todo()                                                                 \
-  fprintf(stderr, "not implemented yet (file: %s, line %d)\n", __FILE__,       \
-          __LINE__);                                                           \
-  after_error();                                                               \
-  exit(1);
+#define TODO()                                                                 \
+  do {                                                                         \
+    fprintf(stderr, "not implemented yet (file: %s, line %d)\n", __FILE__,     \
+            __LINE__);                                                         \
+    after_error();                                                             \
+    exit(1);                                                                   \
+  } while (0)
 
 void after_error();
 

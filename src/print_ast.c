@@ -92,7 +92,7 @@ static void print_expr(expr *e, int indent) {
     break;
 
   default:
-    unreachable();
+    UNREACHABLE();
   }
 }
 
@@ -115,7 +115,7 @@ static void print_stmt(stmt *s, int indent) {
     break;
 
   default:
-    unreachable();
+    UNREACHABLE();
   }
 }
 
@@ -139,7 +139,7 @@ static void print_decl(decl *d, int indent) {
     break;
 
   default:
-    unreachable();
+    UNREACHABLE();
   }
 
   if (d->next)

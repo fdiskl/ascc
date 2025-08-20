@@ -72,7 +72,7 @@ static x86_op operand_from_tac_val(tacv v) {
   case TACV_VAR:
     return new_x86_pseudo(v.var_idx);
   default:
-    unreachable();
+    UNREACHABLE();
   }
 }
 
@@ -94,7 +94,7 @@ static void gen_asm_from_unary_instr(x86_asm_gen *ag, taci *i) {
     op = X86_NOT;
     break;
   default:
-    unreachable();
+    UNREACHABLE();
   }
 
   x86_instr *mov = insert_x86_instr(ag, X86_MOV);
@@ -151,7 +151,7 @@ static void gen_asm_from_binary_instr(x86_asm_gen *ag, taci *i) {
     op = X86_SAR;
     break;
   default:
-    unreachable();
+    UNREACHABLE();
   }
 
   x86_instr *mov = insert_x86_instr(ag, X86_MOV);

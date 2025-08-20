@@ -46,7 +46,7 @@ static tacv new_tmp() {
   return v;
 }
 
-static tacv gen_tac_from_int_const_expr(tacgen *tg, int_const ic) {
+static tacv gen_tac_from_int_const_expr(tacgen *_, int_const ic) {
   tacv v;
   v.t = TACV_CONST;
   v.intv = ic.v;
@@ -118,6 +118,7 @@ static tacv gen_tac_from_expr(tacgen *tg, expr *e) {
   case EXPR_BINARY:
     return gen_tac_from_binary_expr(tg, e->v.b);
   }
+  UNREACHABLE();
 }
 
 static void gen_tac_from_return_stmt(tacgen *tg, return_stmt rs) {
@@ -160,9 +161,11 @@ static tacf *gen_tac_from_decl(tacgen *tg, decl *d) {
     return gen_tac_from_func_decl(tg, d->v.func);
     break;
   case DECL_VAR:
-    todo(); // they can't be present in AST for now, so skip
+    TODO(); // they can't be present in AST for now, so skip
     break;
   }
+
+  UNREACHABLE();
 }
 
 tacf *gen_tac(tacgen *tg, program *p) {

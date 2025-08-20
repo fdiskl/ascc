@@ -45,7 +45,7 @@ static void insert_before_x86_instr(x86_asm_gen *ag, x86_instr *i,
                                     x86_instr *new) {
 
   if (i->prev == NULL)
-    unreachable(); // at least alloc_stack shoud be prev
+    UNREACHABLE(); // at least alloc_stack shoud be prev
 
   fix_instr(ag, new);
 

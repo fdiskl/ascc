@@ -96,7 +96,7 @@ static expr *parse_unary_expr(parser *p) {
     e->v.u.t = UNARY_NEGATE;
     break;
   default:
-    unreachable();
+    UNREACHABLE();
   }
 
   advance(p);
@@ -178,7 +178,7 @@ static int get_bin_op(parser *p, int t) {
     b(TOK_LSHIFT, BINARY_LSHIFT);
     b(TOK_RSHIFT, BINARY_RSHIFT);
   default:
-    unreachable(); // should be, at least :)
+    UNREACHABLE(); // should be, at least :)
   }
 }
 
@@ -263,7 +263,7 @@ static decl *parse_decl(parser *p) {
 
     return res;
   } else {
-    todo();
+    TODO();
   }
 }
 
