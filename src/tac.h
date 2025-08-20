@@ -17,6 +17,8 @@ typedef enum {
   // unary
   TAC_NEGATE,
   TAC_COMPLEMENT,
+  TAC_NOT,
+  TAC_CPY,
 
   // binary
   TAC_ADD,
@@ -29,6 +31,18 @@ typedef enum {
   TAC_XOR,
   TAC_LSHIFT,
   TAC_RSHIFT,
+  TAC_EQ,
+  TAC_NE,
+  TAC_LT,
+  TAC_LE,
+  TAC_GT,
+  TAC_GE,
+
+  // with labels
+  TAC_JMP,
+  TAC_JZ,
+  TAC_JNZ,
+  TAC_LABEL,
 } tacop;
 
 typedef enum {
@@ -42,7 +56,7 @@ struct _tac_val {
   union {
     uint64_t intv;
     int var_idx;
-  };
+  }; // todo: add name
 };
 
 struct _tac_instr {
@@ -51,6 +65,8 @@ struct _tac_instr {
   tacv dst;
   tacv src1; // used for single val instructions (like return)
   tacv src2;
+
+  int label_idx; // for jumps, labels
 
   taci *next;
 };
