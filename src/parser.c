@@ -95,6 +95,9 @@ static expr *parse_unary_expr(parser *p) {
   case TOK_MINUS:
     e->v.u.t = UNARY_NEGATE;
     break;
+  case TOK_EXCL:
+    e->v.u.t = UNARY_NOT;
+    break;
   default:
     UNREACHABLE();
   }
@@ -115,6 +118,7 @@ static expr *parse_factor(parser *p) {
     break;
   case TOK_TILDE:
   case TOK_MINUS:
+  case TOK_EXCL:
     e = parse_unary_expr(p);
     break;
   case TOK_LPAREN:
@@ -137,22 +141,34 @@ static expr *parse_factor(parser *p) {
 // returns precedence or 0 if not binary op
 static int binary_op(int t) {
   switch (t) {
+  case TOK_DOUBLE_PIPE:
+    return 8;
+  case TOK_DOUBLE_AMP:
+    return 9;
   case TOK_PIPE:
-    return 50;
+    return 10;
   case TOK_CARRET:
-    return 60;
+    return 11;
   case TOK_AMPER:
-    return 70;
+    return 12;
+  case TOK_EQ:
+  case TOK_NE:
+    return 13;
+  case TOK_LT:
+  case TOK_GT:
+  case TOK_LE:
+  case TOK_GE:
+    return 14;
   case TOK_LSHIFT:
   case TOK_RSHIFT:
-    return 80;
+    return 15;
   case TOK_PLUS:
   case TOK_MINUS:
-    return 90;
+    return 16;
   case TOK_STAR:
   case TOK_SLASH:
   case TOK_MOD:
-    return 100;
+    return 17;
 
   default:
     return 0;
@@ -177,6 +193,14 @@ static int get_bin_op(parser *p, int t) {
     b(TOK_CARRET, BINARY_XOR);
     b(TOK_LSHIFT, BINARY_LSHIFT);
     b(TOK_RSHIFT, BINARY_RSHIFT);
+    b(TOK_DOUBLE_AMP, BINARY_AND);
+    b(TOK_DOUBLE_PIPE, BINARY_OR);
+    b(TOK_EQ, BINARY_EQ);
+    b(TOK_NE, BINARY_NE);
+    b(TOK_LT, BINARY_LT);
+    b(TOK_GT, BINARY_GT);
+    b(TOK_LE, BINARY_LE);
+    b(TOK_GE, BINARY_GE);
   default:
     UNREACHABLE(); // should be, at least :)
   }
