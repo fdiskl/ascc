@@ -48,6 +48,7 @@ struct _int_const {
 typedef enum {
   UNARY_NEGATE,
   UNARY_COMPLEMENT,
+  UNARY_NOT,
 } unaryt;
 
 struct _unary {
@@ -67,6 +68,15 @@ typedef enum {
   BINARY_XOR,
   BINARY_LSHIFT,
   BINARY_RSHIFT,
+
+  BINARY_AND,
+  BINARY_OR,
+  BINARY_EQ,
+  BINARY_NE,
+  BINARY_LT,
+  BINARY_GT,
+  BINARY_LE,
+  BINARY_GE,
 } binaryt;
 
 struct _binary {

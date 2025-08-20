@@ -43,6 +43,9 @@ static void print_expr(expr *e, int indent) {
     case UNARY_COMPLEMENT:
       printf("complement");
       break;
+    case UNARY_NOT:
+      printf("not");
+      break;
     }
     printf(")");
     print_ast_pos(e->pos);
@@ -82,6 +85,30 @@ static void print_expr(expr *e, int indent) {
       break;
     case BINARY_RSHIFT:
       printf("rshift");
+      break;
+    case BINARY_AND:
+      printf("and");
+      break;
+    case BINARY_OR:
+      printf("or");
+      break;
+    case BINARY_EQ:
+      printf("eq");
+      break;
+    case BINARY_NE:
+      printf("ne");
+      break;
+    case BINARY_LT:
+      printf("lt");
+      break;
+    case BINARY_GT:
+      printf("gt");
+      break;
+    case BINARY_LE:
+      printf("le");
+      break;
+    case BINARY_GE:
+      printf("ge");
       break;
     }
     printf(")");
