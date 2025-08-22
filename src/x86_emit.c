@@ -80,6 +80,26 @@ static void emit_x86_binary(FILE *w, x86_instr *i, const char *name) {
   fprintf(w, "\n");
 }
 
+static const char *cc_code(x86_cc cc) {
+  switch (cc) {
+  case CC_E:
+    return "e";
+  case CC_NE:
+    return "ne";
+  case CC_G:
+    return "g";
+  case CC_GE:
+    return "ge";
+  case CC_L:
+    return "l";
+  case CC_LE:
+    return "le";
+    break;
+  }
+
+  UNREACHABLE();
+}
+
 static void emit_x86_instr(FILE *w, x86_instr *i) {
   switch (i->op) {
   case X86_RET:
@@ -114,6 +134,9 @@ static void emit_x86_instr(FILE *w, x86_instr *i) {
   case X86_SAR:
     emit_x86_binary(w, i, "sarl");
     break;
+  case X86_CMP:
+    emit_x86_binary(w, i, "cmp");
+    break;
   case X86_NOT:
     emit_x86_unary(w, i, "notl");
     break;
@@ -128,6 +151,20 @@ static void emit_x86_instr(FILE *w, x86_instr *i) {
     break;
   case X86_CDQ:
     fprintf(w, "\tcdq\n");
+    break;
+  case X86_JMP:
+    fprintf(w, "\tjmp .L%d\n", i->v.label);
+    break;
+  case X86_JMPCC:
+    fprintf(w, "\tj%s .L%d\n", cc_code(i->v.jmpcc.cc), i->v.jmpcc.label_idx);
+    break;
+  case X86_SETCC:
+    fprintf(w, "\tset%s ", cc_code(i->v.setcc.cc));
+    emit_x86_op(w, i->v.setcc.op);
+    fprintf(w, "\n");
+    break;
+  case X86_LABEL:
+    fprintf(w, "\t.L%d:\n", i->v.label);
     break;
   }
 }
