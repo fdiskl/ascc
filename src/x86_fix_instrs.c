@@ -115,6 +115,16 @@ static void fix_shifts(x86_asm_gen *ag, x86_instr *i) {
   }
 }
 
+static void fix_cmp(x86_asm_gen *ag, x86_instr *i) {
+  fix_both_ops_mem(ag, i);
+
+  if (i->v.binary.dst.t == X86_OP_IMM) {
+    x86_instr *mov = alloc_x86_instr(ag, X86_MOV);
+    mov->v.binary.src = i->v.binary.dst;
+    i->v.binary.dst = mov->v.binary.dst = new_r11();
+  }
+}
+
 static void fix_instr(x86_asm_gen *ag, x86_instr *i) {
   switch (i->op) {
   case X86_RET:
@@ -140,6 +150,14 @@ static void fix_instr(x86_asm_gen *ag, x86_instr *i) {
   case X86_SHL:
   case X86_SAR:
     fix_shifts(ag, i);
+    break;
+  case X86_CMP:
+    fix_cmp(ag, i);
+    break;
+  case X86_JMP:
+  case X86_JMPCC:
+  case X86_SETCC:
+  case X86_LABEL:
     break;
   }
 }
