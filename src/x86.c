@@ -68,9 +68,9 @@ static x86_op new_x86_pseudo(int idx) {
 static x86_op operand_from_tac_val(tacv v) {
   switch (v.t) {
   case TACV_CONST:
-    return new_x86_imm(v.intv);
+    return new_x86_imm(v.v.intv);
   case TACV_VAR:
-    return new_x86_pseudo(v.var_idx);
+    return new_x86_pseudo(v.v.var_idx);
   default:
     UNREACHABLE();
   }
