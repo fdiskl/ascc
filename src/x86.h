@@ -16,6 +16,15 @@ typedef struct _x86_func x86_func;
 #endif
 
 typedef enum {
+  CC_E,
+  CC_NE,
+  CC_G,
+  CC_GE,
+  CC_L,
+  CC_LE,
+} x86_cc;
+
+typedef enum {
   X86_AX,
   X86_DX,
   X86_CX,
@@ -50,9 +59,14 @@ typedef enum {
   X86_XOR,
   X86_SHL,
   X86_SAR,
+  X86_CMP,
 
   // special
   X86_ALLOC_STACK,
+  X86_JMP,
+  X86_JMPCC,
+  X86_SETCC,
+  X86_LABEL,
 } x86_t;
 
 struct _x86_op {
@@ -78,6 +92,15 @@ struct _x86_instr {
     struct {
       x86_op src;
     } unary;
+    struct {
+      x86_cc cc;
+      int label_idx;
+    } jmpcc;
+    struct {
+      x86_cc cc;
+      x86_op op;
+    } setcc;
+    int label; // label or jump
     int bytes_to_alloc;
   } v;
   x86_instr *next;

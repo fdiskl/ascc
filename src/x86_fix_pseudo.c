@@ -16,19 +16,12 @@ static void fix_pseudo_op(x86_op *op) {
     max_offset = op->v.stack_offset;
 }
 
-static void fix_pseudo_binary(x86_instr *i) {
-  fix_pseudo_op(&i->v.binary.src);
-  fix_pseudo_op(&i->v.binary.dst);
-}
-
-static void fix_pseudo_unary(x86_instr *i) { fix_pseudo_op(&i->v.unary.src); }
-
 static void fix_pseudo_for_instr(x86_instr *i) {
   switch (i->op) {
   case X86_NOT:
   case X86_NEG:
   case X86_IDIV:
-    fix_pseudo_unary(i);
+    fix_pseudo_op(&i->v.unary.src);
     break;
   case X86_MOV:
   case X86_ADD:
@@ -39,11 +32,19 @@ static void fix_pseudo_for_instr(x86_instr *i) {
   case X86_XOR:
   case X86_SHL:
   case X86_SAR:
-    fix_pseudo_binary(i);
+  case X86_CMP:
+    fix_pseudo_op(&i->v.binary.src);
+    fix_pseudo_op(&i->v.binary.dst);
+    break;
+  case X86_SETCC:
+    fix_pseudo_op(&i->v.setcc.op);
     break;
   case X86_RET:
   case X86_ALLOC_STACK:
   case X86_CDQ:
+  case X86_LABEL:
+  case X86_JMP:
+  case X86_JMPCC:
     break;
   }
 }
