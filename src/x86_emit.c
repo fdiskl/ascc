@@ -49,13 +49,13 @@ static void emit_x86_reg(FILE *w, x86_reg reg, int size) {
   TODO();
 }
 
-static void emit_x86_op(FILE *w, x86_op op) {
+static void emit_x86_op(FILE *w, x86_op op, int size) {
   switch (op.t) {
   case X86_OP_IMM:
     fprintf(w, "$%lu", op.v.imm);
     break;
   case X86_OP_REG:
-    emit_x86_reg(w, op.v.reg.t, op.v.reg.size);
+    emit_x86_reg(w, op.v.reg, size);
     break;
   case X86_OP_PSEUDO:
     fprintf(w, "PSEUDO(%d)", op.v.pseudo_idx);
@@ -68,15 +68,15 @@ static void emit_x86_op(FILE *w, x86_op op) {
 
 static void emit_x86_unary(FILE *w, x86_instr *i, const char *name) {
   fprintf(w, "\t%s ", name);
-  emit_x86_op(w, i->v.unary.src);
+  emit_x86_op(w, i->v.unary.src, 4);
   fprintf(w, "\n");
 }
 
 static void emit_x86_binary(FILE *w, x86_instr *i, const char *name) {
   fprintf(w, "\t%s ", name);
-  emit_x86_op(w, i->v.binary.src);
+  emit_x86_op(w, i->v.binary.src, 4);
   fprintf(w, ", ");
-  emit_x86_op(w, i->v.binary.dst);
+  emit_x86_op(w, i->v.binary.dst, 4);
   fprintf(w, "\n");
 }
 
@@ -135,7 +135,7 @@ static void emit_x86_instr(FILE *w, x86_instr *i) {
     emit_x86_binary(w, i, "sarl");
     break;
   case X86_CMP:
-    emit_x86_binary(w, i, "cmp");
+    emit_x86_binary(w, i, "cmpl");
     break;
   case X86_NOT:
     emit_x86_unary(w, i, "notl");
@@ -160,7 +160,7 @@ static void emit_x86_instr(FILE *w, x86_instr *i) {
     break;
   case X86_SETCC:
     fprintf(w, "\tset%s ", cc_code(i->v.setcc.cc));
-    emit_x86_op(w, i->v.setcc.op);
+    emit_x86_op(w, i->v.setcc.op, 1);
     fprintf(w, "\n");
     break;
   case X86_LABEL:

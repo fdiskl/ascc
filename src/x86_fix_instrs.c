@@ -9,32 +9,21 @@ static void fix_instr(x86_asm_gen *ag, x86_instr *i);
 static x86_op new_r10() {
   x86_op op;
   op.t = X86_OP_REG;
-  op.v.reg.t = X86_R10;
-  op.v.reg.size = 4;
+  op.v.reg = X86_R10;
   return op;
 }
 
 static x86_op new_r11() {
   x86_op op;
   op.t = X86_OP_REG;
-  op.v.reg.t = X86_R11;
-  op.v.reg.size = 4;
-  return op;
-}
-
-static x86_op new_cl() {
-  x86_op op;
-  op.t = X86_OP_REG;
-  op.v.reg.t = X86_CX;
-  op.v.reg.size = 1;
+  op.v.reg = X86_R11;
   return op;
 }
 
 static x86_op new_cx() {
   x86_op op;
   op.t = X86_OP_REG;
-  op.v.reg.t = X86_CX;
-  op.v.reg.size = 4;
+  op.v.reg = X86_CX;
   return op;
 }
 
@@ -104,13 +93,12 @@ static void fix_shifts(x86_asm_gen *ag, x86_instr *i) {
 
   // if not imm or cl
   if (i->v.binary.src.t != X86_OP_IMM &&
-      !(i->v.binary.src.t == X86_OP_REG && i->v.binary.src.v.reg.t == X86_CX &&
-        i->v.binary.src.v.reg.size == 1)) {
+      !(i->v.binary.src.t == X86_OP_REG && i->v.binary.src.v.reg == X86_CX)) {
     x86_instr *mov = alloc_x86_instr(ag, X86_MOV);
     mov->v.binary.src = i->v.binary.src;
     mov->v.binary.dst = new_cx(); // should depend on size in future, for now
                                   // it's always ints so 4 bytes
-    i->v.binary.src = new_cl();
+    i->v.binary.src = new_cx();
     insert_before_x86_instr(ag, i, mov);
   }
 }

@@ -54,8 +54,7 @@ static x86_op new_x86_imm(uint64_t v) {
 static x86_op new_x86_reg(x86_reg reg, int size) {
   x86_op op;
   op.t = X86_OP_REG;
-  op.v.reg.t = reg;
-  op.v.reg.size = size;
+  op.v.reg = reg;
   return op;
 }
 

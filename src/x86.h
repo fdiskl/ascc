@@ -75,10 +75,7 @@ struct _x86_op {
     uint64_t imm;
     int pseudo_idx;
     int stack_offset;
-    struct {
-      x86_reg t;
-      int size;
-    } reg;
+    x86_reg reg;
   } v;
 };
 
