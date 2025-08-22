@@ -3,6 +3,7 @@
 #include "arena.h"
 #include "common.h"
 #include "driver.h"
+#include "parser.h"
 #include "tac.h"
 #include <stdint.h>
 
@@ -164,6 +165,86 @@ static void gen_asm_from_binary_instr(x86_asm_gen *ag, taci *i) {
   bini->v.binary.src = operand_from_tac_val(i->src2);
 }
 
+static void gen_asm_from_not_instr(x86_asm_gen *ag, taci *i) {
+  x86_instr *cmp = insert_x86_instr(ag, X86_CMP);
+  x86_instr *mov = insert_x86_instr(ag, X86_MOV);
+  x86_instr *setcc = insert_x86_instr(ag, X86_SETCC);
+
+  cmp->v.binary.dst = operand_from_tac_val(i->src1);
+  cmp->v.binary.src = new_x86_imm(0);
+
+  mov->v.binary.src = new_x86_imm(0);
+  setcc->v.setcc.op = mov->v.binary.dst = operand_from_tac_val(i->dst);
+
+  setcc->v.setcc.cc = CC_E;
+}
+
+static void gen_asm_from_cpy_instr(x86_asm_gen *ag, taci *i) {
+  x86_instr *mov = insert_x86_instr(ag, X86_MOV);
+  mov->v.binary.src = operand_from_tac_val(i->src1);
+  mov->v.binary.dst = operand_from_tac_val(i->dst);
+}
+
+static void gen_asm_from_comparing_instr(x86_asm_gen *ag, taci *i) {
+  x86_instr *cmp = insert_x86_instr(ag, X86_CMP);
+  x86_instr *mov = insert_x86_instr(ag, X86_MOV);
+  x86_instr *setcc = insert_x86_instr(ag, X86_SETCC);
+
+  cmp->v.binary.src = operand_from_tac_val(i->src1);
+  cmp->v.binary.dst = operand_from_tac_val(i->src2);
+
+  mov->v.binary.src = new_x86_imm(0);
+
+  setcc->v.setcc.op = mov->v.binary.dst = operand_from_tac_val(i->dst);
+
+  int cc;
+  switch (i->op) {
+  case TAC_EQ:
+    cc = CC_E;
+    break;
+  case TAC_NE:
+    cc = CC_NE;
+    break;
+  case TAC_LT:
+    cc = CC_L;
+    break;
+  case TAC_LE:
+    cc = CC_LE;
+    break;
+  case TAC_GT:
+    cc = CC_G;
+    break;
+  case TAC_GE:
+    cc = CC_GE;
+    break;
+  default:
+    UNREACHABLE();
+  }
+
+  setcc->v.setcc.cc = cc;
+}
+
+static void gen_asm_from_jump_instr(x86_asm_gen *ag, taci *i) {
+  if (i->op == TAC_JMP) {
+    x86_instr *res = insert_x86_instr(ag, X86_JMP);
+    res->v.label = i->label_idx;
+    return;
+  }
+
+  x86_instr *cmp = insert_x86_instr(ag, X86_CMP);
+  x86_instr *jcc = insert_x86_instr(ag, X86_JMPCC);
+
+  cmp->v.binary.src = new_x86_imm(i->op == TAC_JZ ? 0 : 1);
+  cmp->v.binary.dst = operand_from_tac_val(i->src1);
+
+  jcc->v.jmpcc.cc = CC_E;
+  jcc->v.jmpcc.label_idx = i->label_idx;
+}
+
+static void gen_asm_from_label_instr(x86_asm_gen *ag, taci *i) {
+  insert_x86_instr(ag, X86_LABEL)->v.label = i->label_idx;
+}
+
 static void gen_asm_from_instr(x86_asm_gen *ag, taci *i) {
   switch (i->op) {
   case TAC_RET:
@@ -184,6 +265,28 @@ static void gen_asm_from_instr(x86_asm_gen *ag, taci *i) {
   case TAC_LSHIFT:
   case TAC_RSHIFT:
     gen_asm_from_binary_instr(ag, i);
+    break;
+  case TAC_NOT:
+    gen_asm_from_not_instr(ag, i);
+    break;
+  case TAC_CPY:
+    gen_asm_from_cpy_instr(ag, i);
+    break;
+  case TAC_EQ:
+  case TAC_NE:
+  case TAC_LT:
+  case TAC_LE:
+  case TAC_GT:
+  case TAC_GE:
+    gen_asm_from_comparing_instr(ag, i);
+    break;
+  case TAC_JMP:
+  case TAC_JZ:
+  case TAC_JNZ:
+    gen_asm_from_jump_instr(ag, i);
+    break;
+  case TAC_LABEL:
+    gen_asm_from_label_instr(ag, i);
     break;
   }
 }
