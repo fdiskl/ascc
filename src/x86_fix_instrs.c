@@ -2,7 +2,6 @@
 #include "common.h"
 #include "x86.h"
 #include <assert.h>
-#include <stdio.h>
 
 static void fix_instr(x86_asm_gen *ag, x86_instr *i);
 
@@ -108,6 +107,7 @@ static void fix_cmp(x86_asm_gen *ag, x86_instr *i) {
 
   if (i->v.binary.dst.t == X86_OP_IMM) {
     x86_instr *mov = alloc_x86_instr(ag, X86_MOV);
+    insert_before_x86_instr(ag, i, mov);
     mov->v.binary.src = i->v.binary.dst;
     i->v.binary.dst = mov->v.binary.dst = new_r11();
   }

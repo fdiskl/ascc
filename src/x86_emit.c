@@ -80,6 +80,18 @@ static void emit_x86_binary(FILE *w, x86_instr *i, const char *name) {
   fprintf(w, "\n");
 }
 
+static void emit_x86_shift(FILE *w, x86_instr *i, const char *name) {
+  fprintf(w, "\t%s ", name);
+  // it should be cx, so this little hack if you can call it that
+  if (i->v.binary.src.t == X86_OP_REG && i->v.binary.src.v.reg == X86_CX)
+    emit_x86_op(w, i->v.binary.src, 1);
+  else
+    emit_x86_op(w, i->v.binary.src, 1);
+  fprintf(w, ", ");
+  emit_x86_op(w, i->v.binary.dst, 4);
+  fprintf(w, "\n");
+}
+
 static const char *cc_code(x86_cc cc) {
   switch (cc) {
   case CC_E:
@@ -129,10 +141,10 @@ static void emit_x86_instr(FILE *w, x86_instr *i) {
     emit_x86_binary(w, i, "xorl");
     break;
   case X86_SHL:
-    emit_x86_binary(w, i, "shll");
+    emit_x86_shift(w, i, "shll");
     break;
   case X86_SAR:
-    emit_x86_binary(w, i, "sarl");
+    emit_x86_shift(w, i, "sarl");
     break;
   case X86_CMP:
     emit_x86_binary(w, i, "cmpl");
