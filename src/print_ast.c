@@ -117,10 +117,31 @@ static void print_expr(expr *e, int indent) {
     print_expr(e->v.b.l, indent + 1);
     print_expr(e->v.b.r, indent + 1);
     break;
-
+  case EXPR_ASSIGNMENT:
+    printf("Assignment");
+    print_ast_pos(e->pos);
+    printf("\n");
+    print_expr(e->v.assignment.l, indent + 1);
+    print_expr(e->v.assignment.r, indent + 1);
+    break;
+  case EXPR_VAR:
+    printf("Var(%s)", e->v.var.name);
+    print_ast_pos(e->pos);
+    printf("\n");
+    break;
   default:
     UNREACHABLE();
   }
+}
+
+static void print_decl(decl *d, int indent);
+static void print_stmt(stmt *s, int indent);
+
+static void print_bi(const block_item *bi, int indent) {
+  if (bi->d != NULL)
+    print_decl(bi->d, indent);
+  else
+    print_stmt(bi->s, indent);
 }
 
 static void print_stmt(stmt *s, int indent) {
@@ -132,18 +153,29 @@ static void print_stmt(stmt *s, int indent) {
     print_ast_pos(s->pos);
     printf("\n");
     print_expr(s->v.ret.e, indent + 1);
-    break;
+    return;
 
   case STMT_BLOCK:
     printf("BlockStmt");
     print_ast_pos(s->pos);
     printf("\n");
-    vec_foreach(stmt *, s->v.block.stmts, it) print_stmt(*it, indent + 1);
-    break;
-
-  default:
-    UNREACHABLE();
+    vec_foreach(block_item, s->v.block.items, it) print_bi(it, indent + 1);
+    return;
+  case STMT_EXPR:
+    printf("ExprStmt");
+    print_ast_pos(s->pos);
+    printf("\n");
+    print_expr(s->v.e, indent + 1);
+    return;
+  case STMT_NULL:
+    printf("NullStmt");
+    print_ast_pos(s->pos);
+    printf("\n");
+    print_expr(s->v.e, indent + 1);
+    return;
   }
+
+  UNREACHABLE();
 }
 
 static void print_decl(decl *d, int indent) {
@@ -156,13 +188,15 @@ static void print_decl(decl *d, int indent) {
     printf("FuncDecl (%s)", d->v.func.name);
     print_ast_pos(d->pos);
     printf("\n");
-    vec_foreach(stmt *, d->v.func.body, it) print_stmt(*it, indent + 1);
+    vec_foreach(block_item, d->v.func.body, it) print_bi(it, indent + 1);
     break;
 
   case DECL_VAR:
-    printf("VarDecl");
+    printf("VarDecl (%s)", d->v.var.name);
     print_ast_pos(d->pos);
     printf("\n");
+    if (d->v.var.init != NULL)
+      print_expr(d->v.var.init, indent + 1);
     break;
 
   default:
