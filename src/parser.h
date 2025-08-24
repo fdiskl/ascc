@@ -17,6 +17,8 @@ typedef struct _parser parser;
 typedef struct _block_stmt block_stmt;
 typedef struct _ast_pos ast_pos;
 
+typedef struct _block_item block_item;
+
 struct _ast_pos {
   string filename;
   int line_start;
@@ -34,11 +36,15 @@ struct _ast_pos {
 typedef struct _int_const int_const;
 typedef struct _unary unary;
 typedef struct _binary binary;
+typedef struct _assignment assignment;
+typedef struct _var_expr var_expr;
 
 typedef enum {
-  EXPR_INT_CONST,
-  EXPR_UNARY,
-  EXPR_BINARY,
+  EXPR_INT_CONST = 0,
+  EXPR_UNARY = 1,
+  EXPR_BINARY = 2,
+  EXPR_ASSIGNMENT = 3,
+  EXPR_VAR = 4,
 } exprt;
 
 struct _int_const {
@@ -57,7 +63,7 @@ struct _unary {
 };
 
 typedef enum {
-  BINARY_ADD,
+  BINARY_ADD = 1, // important to be > 0
   BINARY_SUB,
   BINARY_MUL,
   BINARY_DIV,
@@ -85,6 +91,15 @@ struct _binary {
   expr *r;
 };
 
+struct _assignment {
+  expr *l;
+  expr *r;
+};
+
+struct _var_expr {
+  string name;
+};
+
 struct _expr {
   exprt t;
   ast_pos pos;
@@ -92,6 +107,8 @@ struct _expr {
     int_const intc;
     unary u;
     binary b;
+    assignment assignment;
+    var_expr var;
   } v;
 };
 
@@ -103,14 +120,19 @@ struct _expr {
 
 typedef struct _return_stmt return_stmt;
 
-typedef enum { STMT_RETURN, STMT_BLOCK } stmtt;
+typedef enum {
+  STMT_RETURN,
+  STMT_BLOCK,
+  STMT_EXPR,
+  STMT_NULL,
+} stmtt;
 
 struct _return_stmt {
   expr *e;
 };
 
 struct _block_stmt {
-  VEC(stmt *) stmts;
+  VEC(block_item) items;
 };
 
 struct _stmt {
@@ -119,6 +141,7 @@ struct _stmt {
   union {
     return_stmt ret;
     block_stmt block;
+    expr *e;
   } v;
 };
 
@@ -137,12 +160,13 @@ typedef enum {
 } declt;
 
 struct _var_decl {
-  // todo
+  string name;
+  expr *init; // NULL if not present
 };
 
 struct _func_decl {
   string name;
-  VEC(stmt *) body; // TODO: vec instead of fixed size array, ok for now
+  VEC(block_item) body;
   // todo: return type, arg type
 };
 
@@ -154,6 +178,11 @@ struct _decl {
     var_decl var;
   } v;
   decl *next; // NULL if decl is not global
+};
+
+struct _block_item {
+  decl *d;
+  stmt *s;
 };
 
 /*
