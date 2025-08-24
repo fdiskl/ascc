@@ -47,9 +47,9 @@ static token *expect(parser *p, int t) {
 void init_parser(parser *p, lexer *l) {
   p->l = l;
 
-  init_arena(&p->decl_arena);
-  init_arena(&p->stmt_arena);
-  init_arena(&p->expr_arena);
+  INIT_ARENA(&p->decl_arena, decl);
+  INIT_ARENA(&p->stmt_arena, stmt);
+  INIT_ARENA(&p->expr_arena, expr);
   ADD_TO_CLEANUP_ARRAY(arenas_to_free, &p->decl_arena);
   ADD_TO_CLEANUP_ARRAY(arenas_to_free, &p->stmt_arena);
   ADD_TO_CLEANUP_ARRAY(arenas_to_free, &p->expr_arena);

@@ -7,8 +7,8 @@
 #include <stdint.h>
 
 void init_tacgen(tacgen *tg) {
-  init_arena(&tg->taci_arena);
-  init_arena(&tg->tacf_arena);
+  INIT_ARENA(&tg->taci_arena, taci);
+  INIT_ARENA(&tg->tacf_arena, tacf);
 
   ADD_TO_CLEANUP_ARRAY(arenas_to_free, &tg->taci_arena);
   ADD_TO_CLEANUP_ARRAY(arenas_to_free, &tg->tacf_arena);

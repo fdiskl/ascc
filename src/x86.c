@@ -8,8 +8,8 @@
 #include <stdint.h>
 
 void init_x86_asm_gen(x86_asm_gen *ag) {
-  init_arena(&ag->instr_arena);
-  init_arena(&ag->func_arena);
+  INIT_ARENA(&ag->instr_arena, x86_instr);
+  INIT_ARENA(&ag->func_arena, x86_func);
 
   ADD_TO_CLEANUP_ARRAY(arenas_to_free, &ag->instr_arena);
   ADD_TO_CLEANUP_ARRAY(arenas_to_free, &ag->func_arena);

@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
   clock_gettime(CLOCK_MONOTONIC, &start);
 #endif
 
-  init_arena(&str_arena);
+  INIT_ARENA(&str_arena, char);
   ADD_TO_CLEANUP_ARRAY(arenas_to_free, &str_arena);
 
   driver_options opts;

@@ -22,7 +22,7 @@ static _arena_chunk *alloc_chunk(size_t size) {
   return chunk;
 }
 
-void init_arena(arena *a) {
+void init_arena(arena *a, size_t alignment_of_element, size_t size_of_element) {
   size_t size = sysconf(_SC_PAGESIZE);
   if (size == 0)
     return;
@@ -31,13 +31,15 @@ void init_arena(arena *a) {
   a->head = chunk;
   a->curr = chunk;
   a->chunkSize = size;
+  a->el_size = size_of_element;
+  a->el_alignment = alignment_of_element;
 }
 
-arena *new_arena() {
+arena *new_arena(size_t alignment_of_element, size_t size_of_element) {
   arena *a = malloc(sizeof(arena));
   assert(a != NULL);
 
-  init_arena(a);
+  init_arena(a, alignment_of_element, size_of_element);
 
   return a;
 }
@@ -75,6 +77,9 @@ size_t copy_arena(arena *dst, const arena *src) {
   if (!dst || !src)
     return 0;
 
+  dst->el_size = src->el_size;
+  dst->el_alignment = src->el_alignment;
+
   _arena_chunk *srcChunk = src->head;
   _arena_chunk **dstLink = &dst->head;
   size_t totalCopied = 0;
@@ -105,7 +110,22 @@ size_t copy_arena(arena *dst, const arena *src) {
   return totalCopied;
 }
 
-void *arena_alloc(arena *a, size_t alignment, size_t size) {
+void *_arena_alloc(arena *a, size_t size, size_t alignment);
+
+void *arena_alloc_arr(arena *a, size_t n) {
+  size_t alignment = a->el_alignment;
+  size_t size = a->el_size;
+  return _arena_alloc(a, size * n, alignment);
+}
+
+void *arena_alloc(arena *a) {
+  size_t alignment = a->el_alignment;
+  size_t size = a->el_size;
+  return _arena_alloc(a, size, alignment);
+}
+
+void *_arena_alloc(arena *a, size_t size, size_t alignment) {
+
   if (!a || size == 0)
     return NULL;
 

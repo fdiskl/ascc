@@ -18,20 +18,22 @@ struct _arena_chunk {
 
 // Arena structure managing multiple chunks
 struct _arena {
-  _arena_chunk *head; // head chunk of the linked list
-  _arena_chunk *curr; // current chunk used for allocations
-  size_t chunkSize;   // preferred chunk size for new allocations
+  _arena_chunk *head;  // head chunk of the linked list
+  _arena_chunk *curr;  // current chunk used for allocations
+  size_t chunkSize;    // preferred chunk size for new allocations
+  size_t el_size;      // size of element
+  size_t el_alignment; // alignment of element
 };
 
 // Initializes an arena with default chunk size.
-void init_arena(arena *a);
+void init_arena(arena *a, size_t alignment_of_element, size_t size_of_element);
 
 // Initializes an arena with default chunk size.
 // Returns pointer to new arena or NULL on failure.
-arena *new_arena();
+arena *new_arena(size_t alignment_of_element, size_t size_of_element);
 
 // Expands the arena by adding a new chunk with at least newSize bytes.
-void expand_arena(arena *a, size_t newSize);
+void expand_arena(arena *a, size_t new_size);
 
 // Resets arena allocations to zero but keeps allocated memory intact.
 void clear_arena(arena *a);
@@ -47,16 +49,27 @@ void destroy_arena(arena *a);
 // Returns number of bytes copied.
 size_t copy_arena(arena *dst, const arena *src);
 
-// Allocates memory of sizeOfElement bytes aligned to alignmentOfElement from
-// arena. Returns pointer to allocated memory or NULL if allocation fails.
-void *arena_alloc(arena *a, size_t alignmentOfElement, size_t sizeOfElement);
+// Allocates memory for 1 element of size saved in arena.
+// Returns pointer to allocated memory or NULL if allocation fails.
+void *arena_alloc(arena *a);
+
+// Allocates memory for n elements of size saved in arena.
+// Returns pointer to allocated memory or NULL if allocation fails.
+void *arena_alloc_arr(arena *a, size_t n);
 
 // Convenience macros to allocate objects or arrays from arena with correct
-// alignment.
-#define ARENA_ALLOC_OBJ(arena_ptr, Type)                                       \
-  (Type *)arena_alloc((arena_ptr), alignof(Type), sizeof(Type))
+// type.
+#define ARENA_ALLOC_OBJ(arena_ptr, Type) (Type *)arena_alloc((arena_ptr))
 
 #define ARENA_ALLOC_ARRAY(arena_ptr, Type, Count)                              \
-  (Type *)arena_alloc((arena_ptr), alignof(Type), sizeof(Type) * (Count))
+  (Type *)arena_alloc_arr((arena_ptr), (Count))
+
+// Convenience macros to create arena with correct size and alignment.
+
+#define INIT_ARENA(arena_ptr, Type)                                            \
+  init_arena(arena_ptr, alignof(Type), sizeof(Type))
+
+#define NEW_ARENA(arena_ptr, Type)                                             \
+  new_arena(arena_ptr, alignof(Type), sizeof(Type))
 
 #endif
