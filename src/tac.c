@@ -210,7 +210,8 @@ static void gen_tac_from_return_stmt(tacgen *tg, return_stmt rs) {
 static void gen_tac_from_stmt(tacgen *tg, stmt *s);
 
 static void gen_tac_from_block_stmt(tacgen *tg, block_stmt bs) {
-  vec_foreach(stmt *, bs.stmts, it) gen_tac_from_stmt(tg, *it);
+  TODO();
+  // vec_foreach(stmt *, bs.stmts, it) gen_tac_from_stmt(tg, *it);
 }
 
 static void gen_tac_from_stmt(tacgen *tg, stmt *s) {
@@ -228,7 +229,9 @@ static tacf *gen_tac_from_func_decl(tacgen *tg, func_decl fd) {
   tacf *res = alloc_tacf(tg, fd.name);
 
   tg->head = tg->tail = NULL;
-  vec_foreach(stmt *, fd.body, it) gen_tac_from_stmt(tg, *it);
+
+  TODO();
+  // vec_foreach(stmt *, fd.body, it) gen_tac_from_stmt(tg, *it);
 
   res->firsti = tg->head;
 
