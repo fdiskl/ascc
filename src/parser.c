@@ -109,6 +109,12 @@ static expr *parse_unary_expr(parser *p) {
   return e;
 }
 
+static expr *parse_var_expr(parser *p) {
+  expr *e = alloc_expr(p, EXPR_VAR);
+  e->v.var.name = expect(p, TOK_IDENT)->v.ident;
+  return e;
+}
+
 static expr *parse_factor(parser *p) {
   tok_pos start = p->next.pos;
   expr *e;
@@ -126,6 +132,9 @@ static expr *parse_factor(parser *p) {
     e = parse_expr(p);
     expect(p, TOK_RPAREN);
     break;
+  case TOK_IDENT:
+    e = parse_var_expr(p);
+    break;
   default:
     fprintf(stderr, "invalid token found %s (%d:%d:%d)\n",
             token_name(p->next.token), p->next.pos.line, p->next.pos.start_pos,
@@ -141,6 +150,8 @@ static expr *parse_factor(parser *p) {
 // returns precedence or 0 if not binary op
 static int binary_op(int t) {
   switch (t) {
+  case TOK_ASSIGN:
+    return 6;
   case TOK_DOUBLE_PIPE:
     return 8;
   case TOK_DOUBLE_AMP:
@@ -175,12 +186,12 @@ static int binary_op(int t) {
   }
 }
 
-// converts token into bin op
+// converts token into bin op, 0 if not bin op
 static int get_bin_op(parser *p, int t) {
 #define b(tok, op)                                                             \
   case tok:                                                                    \
     expect(p, tok);                                                            \
-    return op;
+    return op
 
   switch (t) {
     b(TOK_PLUS, BINARY_ADD);
@@ -201,9 +212,9 @@ static int get_bin_op(parser *p, int t) {
     b(TOK_GT, BINARY_GT);
     b(TOK_LE, BINARY_LE);
     b(TOK_GE, BINARY_GE);
-  default:
-    UNREACHABLE(); // should be, at least :)
   }
+
+  return 0;
 }
 
 static expr *_parse_expr(parser *p, int min_prec) {
@@ -212,14 +223,27 @@ static expr *_parse_expr(parser *p, int min_prec) {
   int prec;
   while ((prec = binary_op(p->next.token)) != 0 && prec >= min_prec) {
     int binop = get_bin_op(p, p->next.token);
-    expr *r = _parse_expr(p, prec + 1);
 
-    expr *tmp = l;
-    l = alloc_expr(p, EXPR_BINARY);
-    l->v.b.l = tmp;
-    l->v.b.r = r;
-    l->v.b.t = binop;
-    SET_POS_FROM_NODES(l, tmp, r);
+    // binary
+    if (binop) {
+      expr *r = _parse_expr(p, prec + 1);
+
+      expr *tmp = l;
+      l = alloc_expr(p, EXPR_BINARY);
+      l->v.b.l = tmp;
+      l->v.b.r = r;
+      l->v.b.t = binop;
+      SET_POS_FROM_NODES(l, tmp, r);
+    } else { // assignment
+      expect(p, TOK_ASSIGN);
+      expr *r = _parse_expr(p, prec);
+
+      expr *tmp = l;
+      l = alloc_expr(p, EXPR_ASSIGNMENT);
+      l->v.assignment.l = tmp;
+      l->v.assignment.r = r;
+      SET_POS_FROM_NODES(l, tmp, r);
+    }
   }
 
   return l;
@@ -227,13 +251,37 @@ static expr *_parse_expr(parser *p, int min_prec) {
 
 static expr *parse_expr(parser *p) { return _parse_expr(p, MIN_PREC); }
 
+// returns true if given token is start of declaration
+static bool is_decl(int toktype) {
+  switch (toktype) {
+  case TOK_INT:
+    return true;
+  default:
+    return false;
+  }
+}
+
 static stmt *parse_stmt(parser *p);
+static decl *parse_decl(parser *p);
+
+static block_item parse_bi(parser *p) {
+  block_item res;
+  if (is_decl(p->next.token)) {
+    res.d = parse_decl(p);
+    res.s = NULL;
+  } else {
+    res.d = NULL;
+    res.s = parse_stmt(p);
+  }
+
+  return res;
+}
 
 static stmt *parse_block_stmt(parser *p) {
   stmt *s = alloc_stmt(p, STMT_BLOCK);
   expect(p, TOK_LBRACE);
   while (p->next.token != TOK_RBRACE)
-    vec_push_back(s->v.block.stmts, parse_stmt(p));
+    vec_push_back(s->v.block.items, parse_bi(p));
   expect(p, TOK_RBRACE);
 
   return s;
@@ -247,6 +295,18 @@ static stmt *parse_return_stmt(parser *p) {
   return s;
 }
 
+static stmt *parse_expr_stmt(parser *p) {
+  stmt *s = alloc_stmt(p, STMT_EXPR);
+  s->v.e = parse_expr(p);
+  expect(p, TOK_SEMI);
+  return s;
+}
+
+static stmt *parse_null_stmt(parser *p) {
+  expect(p, TOK_SEMI);
+  return alloc_stmt(p, STMT_NULL);
+}
+
 static stmt *parse_stmt(parser *p) {
   tok_pos start = p->next.pos;
   stmt *res;
@@ -257,8 +317,11 @@ static stmt *parse_stmt(parser *p) {
   case TOK_RETURN:
     res = parse_return_stmt(p);
     break;
+  case TOK_SEMI:
+    res = parse_null_stmt(p);
+    break;
   default:
-    assert(0 && "todo"); // TODO: parse expr
+    res = parse_expr_stmt(p);
   }
 
   SET_POS(res, start, p->curr.pos);
@@ -266,11 +329,14 @@ static stmt *parse_stmt(parser *p) {
 }
 
 static decl *parse_decl(parser *p) {
-  tok_pos start = expect(p, TOK_INT)->pos; // TODO: parse return type
+  tok_pos start = expect(p, TOK_INT)->pos; // TODO: parse return type of func or
+                                           // type of var, not just int
   string ident = expect(p, TOK_IDENT)->v.ident;
 
+  decl *res;
+
   if (p->next.token == TOK_LPAREN) {
-    decl *res = alloc_decl(p, DECL_FUNC);
+    res = alloc_decl(p, DECL_FUNC);
     res->v.func.name = ident;
 
     expect(p, TOK_LPAREN);
@@ -279,16 +345,26 @@ static decl *parse_decl(parser *p) {
 
     expect(p, TOK_LBRACE);
     while (p->next.token != TOK_RBRACE) {
-      vec_push_back(res->v.func.body, parse_stmt(p));
+      vec_push_back(res->v.func.body, parse_bi(p));
     }
 
     tok_pos end = expect(p, TOK_RBRACE)->pos;
     SET_POS(res, start, end);
 
-    return res;
   } else {
-    TODO();
+    res = alloc_decl(p, DECL_VAR);
+    res->v.var.name = ident;
+    if (p->next.token == TOK_ASSIGN) {
+      expect(p, TOK_ASSIGN);
+      res->v.var.init = parse_expr(p);
+    } else
+      res->v.var.init = NULL;
+
+    tok_pos end = expect(p, TOK_SEMI)->pos;
+    SET_POS(res, start, end);
   }
+
+  return res;
 }
 
 program *parse(parser *p) {
