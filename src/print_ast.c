@@ -159,7 +159,8 @@ static void print_stmt(stmt *s, int indent) {
     printf("BlockStmt");
     print_ast_pos(s->pos);
     printf("\n");
-    vec_foreach(block_item, s->v.block.items, it) print_bi(it, indent + 1);
+    for (int i = 0; i < s->v.block.items_len; ++i)
+      print_bi(&s->v.block.items[i], indent + 1);
     return;
   case STMT_EXPR:
     printf("ExprStmt");
@@ -188,7 +189,8 @@ static void print_decl(decl *d, int indent) {
     printf("FuncDecl (%s)", d->v.func.name);
     print_ast_pos(d->pos);
     printf("\n");
-    vec_foreach(block_item, d->v.func.body, it) print_bi(it, indent + 1);
+    for (int i = 0; i < d->v.func.body_len; ++i)
+      print_bi(&d->v.func.body[i], indent + 1);
     break;
 
   case DECL_VAR:
