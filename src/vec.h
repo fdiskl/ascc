@@ -86,3 +86,10 @@
 
 #define vec_foreach(type, v, it)                                               \
   for (type *it = (v).data; it != (v).data + (v).size; ++it)
+
+// move items from vector into array on arena
+#define vec_move_into_arena(arena_ptr, v, type, arr)                           \
+  do {                                                                         \
+    arr = ARENA_ALLOC_ARRAY(arena_ptr, type, v.size);                          \
+    memcpy(arr, v.data, sizeof(type) * v.size);                                \
+  } while (0)
