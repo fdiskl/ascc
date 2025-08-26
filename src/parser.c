@@ -3,10 +3,12 @@
 #include "common.h"
 #include "driver.h"
 #include "scan.h"
+#include "table.h"
 #include "vec.h"
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 // binary_op returns 0 on non-bin op, so MIN_PREC should be <= -1 so when
 // comparing with >= it still would work
@@ -50,9 +52,17 @@ void init_parser(parser *p, lexer *l) {
   INIT_ARENA(&p->decl_arena, decl);
   INIT_ARENA(&p->stmt_arena, stmt);
   INIT_ARENA(&p->expr_arena, expr);
+  INIT_ARENA(&p->idente_arena, idente);
+  INIT_ARENA(&p->bi_arena, idente);
+
+  p->identht = ht_create();
+
   ADD_TO_CLEANUP_ARRAY(arenas_to_free, &p->decl_arena);
   ADD_TO_CLEANUP_ARRAY(arenas_to_free, &p->stmt_arena);
   ADD_TO_CLEANUP_ARRAY(arenas_to_free, &p->expr_arena);
+  ADD_TO_CLEANUP_ARRAY(arenas_to_free, &p->idente_arena);
+  ADD_TO_CLEANUP_ARRAY(arenas_to_free, &p->bi_arena);
+  ADD_TO_CLEANUP_ARRAY(tables_to_destroy, p->identht);
 
   advance(p);
 }
@@ -82,6 +92,7 @@ static expr *parse_int_const_expr(parser *p) {
   return e;
 }
 
+void resolve_expr(parser *p, expr *e) {}
 static expr *parse_expr(parser *p);
 
 static expr *parse_factor(parser *p);
@@ -249,7 +260,11 @@ static expr *_parse_expr(parser *p, int min_prec) {
   return l;
 }
 
-static expr *parse_expr(parser *p) { return _parse_expr(p, MIN_PREC); }
+static expr *parse_expr(parser *p) {
+  expr *e = _parse_expr(p, MIN_PREC);
+  resolve_expr(p, e);
+  return e;
+}
 
 // returns true if given token is start of declaration
 static bool is_decl(int toktype) {
@@ -277,12 +292,27 @@ static block_item parse_bi(parser *p) {
   return res;
 }
 
+void resolve_block_stmt(parser *p, stmt *s);
+
 static stmt *parse_block_stmt(parser *p) {
   stmt *s = alloc_stmt(p, STMT_BLOCK);
   expect(p, TOK_LBRACE);
+
+  // not ideal with all this tmp vec, but ok for now
+  VEC(block_item) items_tmp;
+  vec_init(items_tmp);
+
   while (p->next.token != TOK_RBRACE)
-    vec_push_back(s->v.block.items, parse_bi(p));
+    vec_push_back(items_tmp, parse_bi(p));
+
+  s->v.block.items_len = items_tmp.size;
+  vec_move_into_arena(&p->bi_arena, items_tmp, block_item, s->v.block.items);
+
+  vec_free(items_tmp);
+
   expect(p, TOK_RBRACE);
+
+  resolve_block_stmt(p, s);
 
   return s;
 }
@@ -328,6 +358,8 @@ static stmt *parse_stmt(parser *p) {
   return res;
 }
 
+void resolve_decl(parser *p, decl *d);
+
 static decl *parse_decl(parser *p) {
   tok_pos start = expect(p, TOK_INT)->pos; // TODO: parse return type of func or
                                            // type of var, not just int
@@ -344,9 +376,18 @@ static decl *parse_decl(parser *p) {
     expect(p, TOK_RPAREN);
 
     expect(p, TOK_LBRACE);
+
+    VEC(block_item) items_tmp;
+    vec_init(items_tmp);
+
     while (p->next.token != TOK_RBRACE) {
-      vec_push_back(res->v.func.body, parse_bi(p));
+      vec_push_back(items_tmp, parse_bi(p));
     }
+
+    res->v.func.body_len = items_tmp.size;
+    vec_move_into_arena(&p->bi_arena, items_tmp, block_item, res->v.func.body);
+
+    vec_free(items_tmp);
 
     tok_pos end = expect(p, TOK_RBRACE)->pos;
     SET_POS(res, start, end);
@@ -363,6 +404,8 @@ static decl *parse_decl(parser *p) {
     tok_pos end = expect(p, TOK_SEMI)->pos;
     SET_POS(res, start, end);
   }
+
+  resolve_decl(p, res);
 
   return res;
 }
