@@ -3,6 +3,7 @@
 
 #include "arena.h"
 #include "common.h"
+#include "table.h"
 
 typedef struct _driver_options driver_options;
 
@@ -50,8 +51,8 @@ files_to_delete, arenas_to_free, arenas_to_destroy) are initialized with NULL's
 in 'parse_driver_options' function, because i dont want separate func for it
  */
 
-// len for next 4 arrays (files_to_close, files_to_delete, arenas_to_free,
-// arenas_to_destroy)
+// len for next 5 arrays (files_to_close, files_to_delete, arenas_to_free,
+// arenas_to_destroy, tables_to_destroy)
 #define ARRAY_FOR_CLEANUP_LEN 32
 
 // files to close before exiting (NULL for empty 'slots')
@@ -62,6 +63,10 @@ extern char *files_to_delete[ARRAY_FOR_CLEANUP_LEN];
 extern arena *arenas_to_free[ARRAY_FOR_CLEANUP_LEN];
 // arenas to destroy (NULL for empty 'slots')
 extern arena *arenas_to_destroy[ARRAY_FOR_CLEANUP_LEN];
+// tables to destroy (NULL for empty 'slots')
+extern ht *tables_to_destroy[ARRAY_FOR_CLEANUP_LEN];
+
+// TODO: move to vecs
 
 #define ADD_TO_CLEANUP_ARRAY(arr, new_element)                                 \
   for (int i = 0; i < ARRAY_FOR_CLEANUP_LEN; ++i)                              \

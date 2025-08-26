@@ -1,6 +1,7 @@
 #include "driver.h"
 #include "arena.h"
 #include "common.h"
+#include "table.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -193,6 +194,10 @@ void after_success() {
   for (int i = 0; i < ARRAY_FOR_CLEANUP_LEN; ++i)
     if (arenas_to_destroy[i] != NULL)
       destroy_arena(arenas_to_destroy[i]);
+
+  for (int i = 0; i < ARRAY_FOR_CLEANUP_LEN; ++i)
+    if (tables_to_destroy[i] != NULL)
+      ht_destroy(tables_to_destroy[i]);
 }
 
 void after_error() {
@@ -204,3 +209,4 @@ FILE *files_to_close[ARRAY_FOR_CLEANUP_LEN];
 char *files_to_delete[ARRAY_FOR_CLEANUP_LEN];
 arena *arenas_to_free[ARRAY_FOR_CLEANUP_LEN];
 arena *arenas_to_destroy[ARRAY_FOR_CLEANUP_LEN];
+ht *tables_to_destroy[ARRAY_FOR_CLEANUP_LEN];
