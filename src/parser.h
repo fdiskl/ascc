@@ -1,8 +1,10 @@
 #ifndef _ASCC_PARSER_H
 #define _ASCC_PARSER_H
 
+#include "arena.h"
 #include "scan.h"
 #include "strings.h"
+#include "table.h"
 #include "vec.h"
 #include <stdint.h>
 
@@ -97,7 +99,8 @@ struct _assignment {
 };
 
 struct _var_expr {
-  string name;
+  string name;  // name in src
+  int name_idx; // idx representing name
 };
 
 struct _expr {
@@ -132,7 +135,8 @@ struct _return_stmt {
 };
 
 struct _block_stmt {
-  VEC(block_item) items;
+  block_item *items;
+  size_t items_len;
 };
 
 struct _stmt {
@@ -160,13 +164,15 @@ typedef enum {
 } declt;
 
 struct _var_decl {
-  string name;
-  expr *init; // NULL if not present
+  string name;  // name in src
+  int name_idx; // unique idx representing name
+  expr *init;   // NULL if not present
 };
 
 struct _func_decl {
   string name;
-  VEC(block_item) body;
+  block_item *body;
+  size_t body_len;
   // todo: return type, arg type
 };
 
@@ -200,7 +206,21 @@ struct _parser {
   arena decl_arena;
   arena stmt_arena;
   arena expr_arena;
+  arena bi_arena;
+  arena idente_arena;
+
+  ht *identht;
 };
+
+// for resolve.c
+typedef struct _idente idente;
+
+struct _idente {
+  int scope;
+  int nameidx;
+};
+
+// interface
 
 void init_parser(parser *p, lexer *l);
 program *parse(parser *p);
