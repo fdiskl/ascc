@@ -17,7 +17,7 @@ ht *ht_create(void);
 void ht_destroy(ht *t);
 
 // Get item with given NULL-terminated key from hash table.
-// Return pointer to value
+// Returns pointer to value or NULL if not found
 void *ht_get(ht *table, const char *key);
 
 // Set item with given key to given value. Key would be reallocated in area.
