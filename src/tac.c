@@ -10,8 +10,8 @@ void init_tacgen(tacgen *tg) {
   INIT_ARENA(&tg->taci_arena, taci);
   INIT_ARENA(&tg->tacf_arena, tacf);
 
-  ADD_TO_CLEANUP_ARRAY(arenas_to_free, &tg->taci_arena);
-  ADD_TO_CLEANUP_ARRAY(arenas_to_free, &tg->tacf_arena);
+  vec_push_back(arenas_to_free, &tg->taci_arena);
+  vec_push_back(arenas_to_free, &tg->tacf_arena);
 }
 
 static tacf *alloc_tacf(tacgen *tg, string name) {

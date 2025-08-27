@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   INIT_ARENA(&str_arena, char);
-  ADD_TO_CLEANUP_ARRAY(arenas_to_free, &str_arena);
+  vec_push_back(arenas_to_free, &str_arena);
 
   driver_options opts;
   parse_driver_options(&opts, argc, argv);
@@ -83,8 +83,8 @@ int main(int argc, char *argv[]) {
 
   FILE *in_file = fopen(preprocessor_file_path, "r");
 
-  ADD_TO_CLEANUP_ARRAY(files_to_close, in_file);
-  ADD_TO_CLEANUP_ARRAY(files_to_delete, preprocessor_file_path);
+  vec_push_back(files_to_close, in_file);
+  vec_push_back(files_to_delete, preprocessor_file_path);
 
   lexer l;
   init_lexer(&l, in_file);
@@ -151,7 +151,7 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
-  ADD_TO_CLEANUP_ARRAY(files_to_delete, asm_file_path);
+  vec_push_back(files_to_delete, asm_file_path);
 
   if (opts.dof == DOF_C) {
     TODO();

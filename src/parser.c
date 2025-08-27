@@ -55,14 +55,11 @@ void init_parser(parser *p, lexer *l) {
   INIT_ARENA(&p->idente_arena, idente);
   INIT_ARENA(&p->bi_arena, idente);
 
-  p->identht = ht_create();
-
-  ADD_TO_CLEANUP_ARRAY(arenas_to_free, &p->decl_arena);
-  ADD_TO_CLEANUP_ARRAY(arenas_to_free, &p->stmt_arena);
-  ADD_TO_CLEANUP_ARRAY(arenas_to_free, &p->expr_arena);
-  ADD_TO_CLEANUP_ARRAY(arenas_to_free, &p->idente_arena);
-  ADD_TO_CLEANUP_ARRAY(arenas_to_free, &p->bi_arena);
-  ADD_TO_CLEANUP_ARRAY(tables_to_destroy, p->identht);
+  vec_push_back(arenas_to_free, &p->decl_arena);
+  vec_push_back(arenas_to_free, &p->stmt_arena);
+  vec_push_back(arenas_to_free, &p->expr_arena);
+  vec_push_back(arenas_to_free, &p->idente_arena);
+  vec_push_back(arenas_to_free, &p->bi_arena);
 
   advance(p);
 }

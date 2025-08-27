@@ -11,8 +11,8 @@ void init_x86_asm_gen(x86_asm_gen *ag) {
   INIT_ARENA(&ag->instr_arena, x86_instr);
   INIT_ARENA(&ag->func_arena, x86_func);
 
-  ADD_TO_CLEANUP_ARRAY(arenas_to_free, &ag->instr_arena);
-  ADD_TO_CLEANUP_ARRAY(arenas_to_free, &ag->func_arena);
+  vec_push_back(arenas_to_free, &ag->instr_arena);
+  vec_push_back(arenas_to_free, &ag->func_arena);
 }
 
 x86_instr *alloc_x86_instr(x86_asm_gen *ag, int op) {
