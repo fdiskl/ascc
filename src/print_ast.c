@@ -29,7 +29,7 @@ static void print_expr(expr *e, int indent) {
   print_indent(indent);
   switch (e->t) {
   case EXPR_INT_CONST:
-    printf("IntConst %llu", (unsigned long long)e->v.intc.v);
+    printf("IntConst (%llu)", (unsigned long long)e->v.intc.v);
     print_ast_pos(e->pos);
     printf("\n");
     break;

@@ -13,6 +13,8 @@ typedef struct _hti hti;
 typedef size_t *hash_fn(const ht *t, const void *key);
 typedef int *eq_fn(const void *a, const void *b);
 
+// TODO: swap for uintptr_t
+
 ht *ht_create(void);
 void ht_destroy(ht *t);
 

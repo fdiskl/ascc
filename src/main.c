@@ -105,7 +105,8 @@ int main(int argc, char *argv[]) {
 
   program *parsed_ast = parse(&p);
 
-  if (opts.dof == DOF_PARSE) {
+  if (opts.dof == DOF_PARSE ||
+      opts.dof == DOF_VALIDATE) { // for now validate lives here
     print_program(parsed_ast);
     after_success();
     return 0;
