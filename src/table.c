@@ -17,7 +17,7 @@ struct ht {
   size_t size;
 };
 
-ht *table_create(void) {
+ht *ht_create(void) {
   ht *t = (ht *)malloc(sizeof(ht));
 
   assert(t);
@@ -31,7 +31,7 @@ ht *table_create(void) {
 }
 
 void ht_destroy(ht *t) {
-  for (int i = 0; i < t->cap; ++i)
+  for (size_t i = 0; i < t->cap; ++i)
     free((void *)t->entries[i].key);
 
   free(t->entries);
@@ -109,7 +109,7 @@ static bool ht_expand(ht *t) {
   hte *new_entries = calloc(newcap, sizeof(hte));
   assert(new_entries);
 
-  for (int i = 0; i < t->cap; ++i) {
+  for (size_t i = 0; i < t->cap; ++i) {
     hte e = t->entries[i];
     if (e.key != NULL)
       ht_set_entry(new_entries, newcap, e.key, e.val, NULL);

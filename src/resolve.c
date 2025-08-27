@@ -32,7 +32,7 @@ static void resolve_stmt(parser *p, stmt *s) {}
 void resolve_block_stmt(parser *p, stmt *s) {
   ++curr_scope;
 
-  for (int i = 0; i < s->v.block.items_len; ++i) {
+  for (size_t i = 0; i < s->v.block.items_len; ++i) {
     block_item it = s->v.block.items[i];
     if (it.d != NULL)
       resolve_decl(p, it.d);

@@ -92,7 +92,7 @@ static expr *parse_int_const_expr(parser *p) {
   return e;
 }
 
-void resolve_expr(parser *p, expr *e) {}
+void resolve_expr(parser *p, expr *e);
 static expr *parse_expr(parser *p);
 
 static expr *parse_factor(parser *p);
