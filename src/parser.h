@@ -207,20 +207,9 @@ struct _parser {
   arena stmt_arena;
   arena expr_arena;
   arena bi_arena;
-  arena idente_arena;
 
   ht *ident_ht_list_head;
 };
-
-// for resolve.c
-typedef struct _idente idente;
-
-struct _idente {
-  int scope;
-  int nameidx;
-};
-
-// interface
 
 void init_parser(parser *p, lexer *l);
 program *parse(parser *p);

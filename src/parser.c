@@ -51,13 +51,11 @@ void init_parser(parser *p, lexer *l) {
   INIT_ARENA(&p->decl_arena, decl);
   INIT_ARENA(&p->stmt_arena, stmt);
   INIT_ARENA(&p->expr_arena, expr);
-  INIT_ARENA(&p->idente_arena, idente);
-  INIT_ARENA(&p->bi_arena, idente);
+  INIT_ARENA(&p->bi_arena, block_item);
 
   vec_push_back(arenas_to_free, &p->decl_arena);
   vec_push_back(arenas_to_free, &p->stmt_arena);
   vec_push_back(arenas_to_free, &p->expr_arena);
-  vec_push_back(arenas_to_free, &p->idente_arena);
   vec_push_back(arenas_to_free, &p->bi_arena);
 
   p->ident_ht_list_head = NULL;
@@ -381,6 +379,8 @@ static decl *parse_decl(parser *p) {
     VEC(block_item) items_tmp;
     vec_init(items_tmp);
 
+    resolve_decl(p, res);
+
     enter_scope(p);
 
     while (p->next.token != TOK_RBRACE) {
@@ -400,6 +400,9 @@ static decl *parse_decl(parser *p) {
   } else {
     res = alloc_decl(p, DECL_VAR);
     res->v.var.name = ident;
+
+    resolve_decl(p, res); // it's important to resolve before init expr
+
     if (p->next.token == TOK_ASSIGN) {
       expect(p, TOK_ASSIGN);
       res->v.var.init = parse_expr(p);
@@ -409,8 +412,6 @@ static decl *parse_decl(parser *p) {
     tok_pos end = expect(p, TOK_SEMI)->pos;
     SET_POS(res, start, end);
   }
-
-  resolve_decl(p, res);
 
   return res;
 }

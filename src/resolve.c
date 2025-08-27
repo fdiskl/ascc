@@ -1,24 +1,21 @@
 // all functions related to resolving identifiers
 // (part of parser)
 
-#include "arena.h"
 #include "common.h"
 #include "driver.h"
 #include "parser.h"
 #include "table.h"
 #include "vec.h"
 #include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
 
-static int curr_scope = 0;
+// NOTE: unique names (int's) stored in hash table are not saved on heap but
+// casted to ptr's. Be careful :)
 
-idente *alloc_new_entry(parser *p) {
+int get_name() {
   static int counter = 0;
-  idente *newe = ARENA_ALLOC_OBJ(&p->idente_arena, idente);
-  newe->scope = curr_scope;
-  newe->nameidx = ++counter;
-
-  return newe;
+  return ++counter;
 }
 
 static bool is_lvalue(expr *e) {
@@ -28,8 +25,6 @@ static bool is_lvalue(expr *e) {
 void resolve_decl(parser *p, decl *d);
 
 void enter_scope(parser *p) {
-  ++curr_scope;
-
   // set as first in linked list
   ht *t = ht_create();
   ht_set_next_table(t, p->ident_ht_list_head);
@@ -39,8 +34,6 @@ void enter_scope(parser *p) {
 }
 
 void exit_scope(parser *p) {
-  --curr_scope;
-
   ht *tmp = p->ident_ht_list_head;
   p->ident_ht_list_head = ht_get_next_table(tmp);
 
@@ -49,6 +42,19 @@ void exit_scope(parser *p) {
                                    // indexes and free's by them
 
   ht_destroy(tmp);
+}
+
+void *find_entry(parser *p, string name) {
+  void *entry;
+  for (ht *curr = p->ident_ht_list_head; curr != NULL;
+       curr = ht_get_next_table(curr)) {
+
+    entry = ht_get(curr, (char *)name);
+    if (entry != NULL)
+      break;
+  }
+
+  return entry;
 }
 
 void resolve_expr(parser *p, expr *e) {
@@ -74,14 +80,14 @@ void resolve_expr(parser *p, expr *e) {
 
     break;
   case EXPR_VAR: {
-    idente *entry = ht_get(p->ident_ht_list_head, e->v.var.name);
+    void *entry = find_entry(p, e->v.var.name);
     if (entry == NULL) {
       fprintf(stderr, "undefined var %s (%d:%d-%d:%d)\n", e->v.var.name,
               e->pos.line_start, e->pos.pos_start, e->pos.line_end,
               e->pos.pos_end);
       after_error();
     } else {
-      e->v.var.name_idx = entry->nameidx;
+      e->v.var.name_idx = (intptr_t)entry;
     }
 
     break;
@@ -90,22 +96,20 @@ void resolve_expr(parser *p, expr *e) {
 }
 
 void resolve_decl(parser *p, decl *d) {
-  idente *e = ht_get(p->ident_ht_list_head, d->v.var.name);
+  if (d->t == DECL_FUNC)
+    return; // skip for now
+
+  void *e = ht_get(p->ident_ht_list_head, d->v.var.name);
   if (e != NULL) {
-    if (e->scope == curr_scope) {
-      fprintf(stderr,
-              "duplicate variable declaration with name %s (%d:%d-%d:%d)",
-              d->v.var.name, d->pos.line_start, d->pos.pos_start,
-              d->pos.line_end, d->pos.pos_end);
-      after_error();
-    }
+    fprintf(stderr, "duplicate variable declaration with name %s (%d:%d-%d:%d)",
+            d->v.var.name, d->pos.line_start, d->pos.pos_start, d->pos.line_end,
+            d->pos.pos_end);
+    after_error();
   }
-  idente *newe = alloc_new_entry(p);
-  d->v.var.name_idx = newe->nameidx;
+  int new_name = get_name();
+  d->v.var.name_idx = new_name;
 
-  const char *new_name = ht_set(p->ident_ht_list_head, d->v.var.name, newe);
-  assert(new_name);
-
-  if (d->v.var.init != NULL)
-    resolve_expr(p, d->v.var.init);
+  const char *new_key = ht_set(p->ident_ht_list_head, d->v.var.name,
+                               (void *)((intptr_t)new_name));
+  assert(new_key);
 }
