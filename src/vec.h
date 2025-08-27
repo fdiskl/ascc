@@ -9,6 +9,13 @@
     size_t cap;                                                                \
   }
 
+#define VEC_T(name, type)                                                      \
+  typedef struct {                                                             \
+    type *data;                                                                \
+    size_t size;                                                               \
+    size_t cap;                                                                \
+  } name
+
 #define vec_init(v)                                                            \
   do {                                                                         \
     (v).data = NULL;                                                           \

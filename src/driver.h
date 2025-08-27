@@ -4,6 +4,7 @@
 #include "arena.h"
 #include "common.h"
 #include "table.h"
+#include "vec.h"
 
 typedef struct _driver_options driver_options;
 
@@ -35,45 +36,24 @@ void parse_driver_options(driver_options *d, int argc, char *argv[]);
  *
  */
 
-// TODO: it still is a good idea to free arenas where they are not needed. Add
-// REMOVE_FROM_CLEANUP_ARRAY macro
+// TODO: its still is a good idea to free arenas where they are not needed.
 
-/* NOTE 1:
-* we could add last element indexes for 4 arrays below (files_to_close,
-files_to_delete, arenas_to_free, arenas_to_destroy), but because this arrs are
-really small (<100 elements) - it is just easier to go through and find first
-NULL element
-*/
+// vectors below are initialized in parse_driver_options func
 
-/* NOTE 2:
-* 4 arrays below (files_to_close,
-files_to_delete, arenas_to_free, arenas_to_destroy) are initialized with NULL's
-in 'parse_driver_options' function, because i dont want separate func for it
- */
+VEC_T(files_to_close_t, FILE *);
+extern files_to_close_t files_to_close;
 
-// len for next 5 arrays (files_to_close, files_to_delete, arenas_to_free,
-// arenas_to_destroy, tables_to_destroy)
-#define ARRAY_FOR_CLEANUP_LEN 32
+VEC_T(files_to_delete_t, char *);
+extern files_to_delete_t files_to_delete;
 
-// files to close before exiting (NULL for empty 'slots')
-extern FILE *files_to_close[ARRAY_FOR_CLEANUP_LEN];
-// files to delete before exiting (NULL for empty 'slots')
-extern char *files_to_delete[ARRAY_FOR_CLEANUP_LEN];
-// arenas to free (NULL for empty 'slots')
-extern arena *arenas_to_free[ARRAY_FOR_CLEANUP_LEN];
-// arenas to destroy (NULL for empty 'slots')
-extern arena *arenas_to_destroy[ARRAY_FOR_CLEANUP_LEN];
-// tables to destroy (NULL for empty 'slots')
-extern ht *tables_to_destroy[ARRAY_FOR_CLEANUP_LEN];
+VEC_T(arenas_to_free_t, arena *);
+extern arenas_to_free_t arenas_to_free;
 
-// TODO: move to vecs
+VEC_T(arenas_to_destroy_t, arena *);
+extern arenas_to_destroy_t arenas_to_destroy;
 
-#define ADD_TO_CLEANUP_ARRAY(arr, new_element)                                 \
-  for (int i = 0; i < ARRAY_FOR_CLEANUP_LEN; ++i)                              \
-    if (arr[i] == NULL) {                                                      \
-      arr[i] = new_element;                                                    \
-      break;                                                                   \
-    }
+VEC_T(tables_to_destroy_t, ht *);
+extern tables_to_destroy_t tables_to_destroy;
 
 // function that should be invoked after any fatal error
 // to free arenas, close/delete files etc

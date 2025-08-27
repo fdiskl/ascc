@@ -41,20 +41,11 @@ void parse_driver_options(driver_options *d, int argc, char *argv[]) {
   d->output = NULL;
   d->input = NULL;
 
-  // -- init arrays for cleanup (see NOTE 2 in driver.h)
-  for (int i = 0; i < ARRAY_FOR_CLEANUP_LEN; ++i)
-    files_to_close[i] = NULL;
-
-  for (int i = 0; i < ARRAY_FOR_CLEANUP_LEN; ++i)
-    files_to_delete[i] = NULL;
-
-  for (int i = 0; i < ARRAY_FOR_CLEANUP_LEN; ++i)
-    arenas_to_free[i] = NULL;
-
-  for (int i = 0; i < ARRAY_FOR_CLEANUP_LEN; ++i)
-    arenas_to_destroy[i] = NULL;
-
-  // --
+  vec_init(files_to_close);
+  vec_init(files_to_delete);
+  vec_init(arenas_to_free);
+  vec_init(arenas_to_destroy);
+  vec_init(tables_to_destroy);
 
   // i=0 for program name :)
   for (int i = 1; i < argc; ++i) {
@@ -179,25 +170,17 @@ static void print_driver_options(const driver_options *d) {
 }
 
 void after_success() {
-  for (int i = 0; i < ARRAY_FOR_CLEANUP_LEN; ++i)
-    if (files_to_close[i] != NULL)
-      fclose(files_to_close[i]);
+  vec_foreach(FILE *, files_to_close, it) fclose(*it);
+  vec_foreach(char *, files_to_delete, it) remove(*it);
+  vec_foreach(arena *, arenas_to_free, it) free_arena(*it);
+  vec_foreach(arena *, arenas_to_destroy, it) destroy_arena(*it);
+  vec_foreach(ht *, tables_to_destroy, it) ht_destroy(*it);
 
-  for (int i = 0; i < ARRAY_FOR_CLEANUP_LEN; ++i)
-    if (files_to_delete[i] != NULL)
-      remove(files_to_delete[i]);
-
-  for (int i = 0; i < ARRAY_FOR_CLEANUP_LEN; ++i)
-    if (arenas_to_free[i] != NULL)
-      free_arena(arenas_to_free[i]);
-
-  for (int i = 0; i < ARRAY_FOR_CLEANUP_LEN; ++i)
-    if (arenas_to_destroy[i] != NULL)
-      destroy_arena(arenas_to_destroy[i]);
-
-  for (int i = 0; i < ARRAY_FOR_CLEANUP_LEN; ++i)
-    if (tables_to_destroy[i] != NULL)
-      ht_destroy(tables_to_destroy[i]);
+  vec_free(files_to_close);
+  vec_free(files_to_delete);
+  vec_free(arenas_to_free);
+  vec_free(arenas_to_destroy);
+  vec_free(tables_to_destroy);
 }
 
 void after_error() {
@@ -205,8 +188,8 @@ void after_error() {
   exit(1);
 }
 
-FILE *files_to_close[ARRAY_FOR_CLEANUP_LEN];
-char *files_to_delete[ARRAY_FOR_CLEANUP_LEN];
-arena *arenas_to_free[ARRAY_FOR_CLEANUP_LEN];
-arena *arenas_to_destroy[ARRAY_FOR_CLEANUP_LEN];
-ht *tables_to_destroy[ARRAY_FOR_CLEANUP_LEN];
+files_to_close_t files_to_close;
+files_to_delete_t files_to_delete;
+arenas_to_free_t arenas_to_free;
+arenas_to_destroy_t arenas_to_destroy;
+tables_to_destroy_t tables_to_destroy;
