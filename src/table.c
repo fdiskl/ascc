@@ -15,6 +15,7 @@ struct ht {
   hte *entries;
   size_t cap;
   size_t size;
+  ht *next;
 };
 
 ht *ht_create(void) {
@@ -24,11 +25,16 @@ ht *ht_create(void) {
   t->size = 0;
   t->cap = HT_INITIAL_CAPACITY;
 
+  t->next = NULL;
+
   t->entries = calloc(t->cap, sizeof(hte));
   assert(t->entries);
 
   return t;
 }
+
+ht *ht_get_next_table(ht *t) { return t->next; }
+void ht_set_next_table(ht *t, ht *next) { t->next = next; }
 
 void ht_destroy(ht *t) {
   for (size_t i = 0; i < t->cap; ++i)

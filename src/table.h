@@ -16,6 +16,10 @@ typedef int *eq_fn(const void *a, const void *b);
 ht *ht_create(void);
 void ht_destroy(ht *t);
 
+// ht has ability to work as linked list
+ht *ht_get_next_table(ht *t);
+void ht_set_next_table(ht *t, ht *next);
+
 // Get item with given NULL-terminated key from hash table.
 // Returns pointer to value or NULL if not found
 void *ht_get(ht *table, const char *key);
