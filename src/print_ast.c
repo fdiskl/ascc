@@ -125,7 +125,7 @@ static void print_expr(expr *e, int indent) {
     print_expr(e->v.assignment.r, indent + 1);
     break;
   case EXPR_VAR:
-    printf("Var(%s)", e->v.var.name);
+    printf("Var(%s, %d)", e->v.var.name, e->v.var.name_idx);
     print_ast_pos(e->pos);
     printf("\n");
     break;
@@ -194,7 +194,7 @@ static void print_decl(decl *d, int indent) {
     break;
 
   case DECL_VAR:
-    printf("VarDecl (%s)", d->v.var.name);
+    printf("VarDecl (%s, %d)", d->v.var.name, d->v.var.name_idx);
     print_ast_pos(d->pos);
     printf("\n");
     if (d->v.var.init != NULL)
