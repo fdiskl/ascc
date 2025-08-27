@@ -3,6 +3,7 @@
 
 #include "arena.h"
 #include "common.h"
+#include "driver.h"
 #include "parser.h"
 #include "table.h"
 #include "vec.h"
@@ -24,25 +25,30 @@ static bool is_lvalue(expr *e) {
   return e->t == EXPR_VAR; // for now
 }
 
-void resolve_block_stmt(parser *p, stmt *s);
-
 void resolve_decl(parser *p, decl *d);
-static void resolve_stmt(parser *p, stmt *s) {}
 
-void resolve_block_stmt(parser *p, stmt *s) {
+void enter_scope(parser *p) {
   ++curr_scope;
 
-  for (size_t i = 0; i < s->v.block.items_len; ++i) {
-    block_item it = s->v.block.items[i];
-    if (it.d != NULL)
-      resolve_decl(p, it.d);
-    else
-      resolve_stmt(p, it.s);
-  }
+  // set as first in linked list
+  ht *t = ht_create();
+  ht_set_next_table(t, p->ident_ht_list_head);
+  p->ident_ht_list_head = t;
 
-  TODO();
+  vec_push_back(tables_to_destroy, t);
+}
 
+void exit_scope(parser *p) {
   --curr_scope;
+
+  ht *tmp = p->ident_ht_list_head;
+  p->ident_ht_list_head = ht_get_next_table(tmp);
+
+  vec_pop_back(tables_to_destroy); // FIXME, will work for now, but isn't a good
+                                   // idea, in future make so parser stores
+                                   // indexes and free's by them
+
+  ht_destroy(tmp);
 }
 
 void resolve_expr(parser *p, expr *e) {
@@ -68,7 +74,7 @@ void resolve_expr(parser *p, expr *e) {
 
     break;
   case EXPR_VAR: {
-    idente *entry = ht_get(p->identht, e->v.var.name);
+    idente *entry = ht_get(p->ident_ht_list_head, e->v.var.name);
     if (entry == NULL) {
       fprintf(stderr, "undefined var %s (%d:%d-%d:%d)\n", e->v.var.name,
               e->pos.line_start, e->pos.pos_start, e->pos.line_end,
@@ -84,10 +90,7 @@ void resolve_expr(parser *p, expr *e) {
 }
 
 void resolve_decl(parser *p, decl *d) {
-  if (d->t == DECL_FUNC)
-    return; // skip for now, TODO
-
-  idente *e = ht_get(p->identht, d->v.var.name);
+  idente *e = ht_get(p->ident_ht_list_head, d->v.var.name);
   if (e != NULL) {
     if (e->scope == curr_scope) {
       fprintf(stderr,
@@ -100,7 +103,7 @@ void resolve_decl(parser *p, decl *d) {
   idente *newe = alloc_new_entry(p);
   d->v.var.name_idx = newe->nameidx;
 
-  const char *new_name = ht_set(p->identht, d->v.var.name, newe);
+  const char *new_name = ht_set(p->ident_ht_list_head, d->v.var.name, newe);
   assert(new_name);
 
   if (d->v.var.init != NULL)

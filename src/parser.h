@@ -209,7 +209,7 @@ struct _parser {
   arena bi_arena;
   arena idente_arena;
 
-  ht *identht;
+  ht *ident_ht_list_head;
 };
 
 // for resolve.c

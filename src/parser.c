@@ -3,7 +3,6 @@
 #include "common.h"
 #include "driver.h"
 #include "scan.h"
-#include "table.h"
 #include "vec.h"
 #include <assert.h>
 #include <stdint.h>
@@ -60,6 +59,8 @@ void init_parser(parser *p, lexer *l) {
   vec_push_back(arenas_to_free, &p->expr_arena);
   vec_push_back(arenas_to_free, &p->idente_arena);
   vec_push_back(arenas_to_free, &p->bi_arena);
+
+  p->ident_ht_list_head = NULL;
 
   advance(p);
 }
@@ -289,7 +290,8 @@ static block_item parse_bi(parser *p) {
   return res;
 }
 
-void resolve_block_stmt(parser *p, stmt *s);
+void enter_scope(parser *p);
+void exit_scope(parser *p);
 
 static stmt *parse_block_stmt(parser *p) {
   stmt *s = alloc_stmt(p, STMT_BLOCK);
@@ -299,8 +301,12 @@ static stmt *parse_block_stmt(parser *p) {
   VEC(block_item) items_tmp;
   vec_init(items_tmp);
 
+  enter_scope(p);
+
   while (p->next.token != TOK_RBRACE)
     vec_push_back(items_tmp, parse_bi(p));
+
+  exit_scope(p);
 
   s->v.block.items_len = items_tmp.size;
   vec_move_into_arena(&p->bi_arena, items_tmp, block_item, s->v.block.items);
@@ -308,8 +314,6 @@ static stmt *parse_block_stmt(parser *p) {
   vec_free(items_tmp);
 
   expect(p, TOK_RBRACE);
-
-  resolve_block_stmt(p, s);
 
   return s;
 }
@@ -377,9 +381,13 @@ static decl *parse_decl(parser *p) {
     VEC(block_item) items_tmp;
     vec_init(items_tmp);
 
+    enter_scope(p);
+
     while (p->next.token != TOK_RBRACE) {
       vec_push_back(items_tmp, parse_bi(p));
     }
+
+    exit_scope(p);
 
     res->v.func.body_len = items_tmp.size;
     vec_move_into_arena(&p->bi_arena, items_tmp, block_item, res->v.func.body);
