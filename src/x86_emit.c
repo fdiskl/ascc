@@ -1,4 +1,5 @@
 #include "common.h"
+#include "tac.h"
 #include "x86.h"
 #include <stdio.h>
 
@@ -49,6 +50,15 @@ static void emit_x86_reg(FILE *w, x86_reg reg, int size) {
   TODO();
 }
 
+static void emit_origin(FILE *w, x86_instr *i) {
+  fprintf(w, "\t");
+#ifdef PRINT_TAC_ORIGIN_X86
+  if (i->origin != NULL)
+    fprint_taci(w, i->origin);
+#endif
+  fprintf(w, "\n");
+}
+
 static void emit_x86_op(FILE *w, x86_op op, int size) {
   switch (op.t) {
   case X86_OP_IMM:
@@ -69,7 +79,7 @@ static void emit_x86_op(FILE *w, x86_op op, int size) {
 static void emit_x86_unary(FILE *w, x86_instr *i, const char *name) {
   fprintf(w, "\t%s ", name);
   emit_x86_op(w, i->v.unary.src, 4);
-  fprintf(w, "\n");
+  emit_origin(w, i);
 }
 
 static void emit_x86_binary(FILE *w, x86_instr *i, const char *name) {
@@ -77,7 +87,7 @@ static void emit_x86_binary(FILE *w, x86_instr *i, const char *name) {
   emit_x86_op(w, i->v.binary.src, 4);
   fprintf(w, ", ");
   emit_x86_op(w, i->v.binary.dst, 4);
-  fprintf(w, "\n");
+  emit_origin(w, i);
 }
 
 static void emit_x86_shift(FILE *w, x86_instr *i, const char *name) {
@@ -89,7 +99,7 @@ static void emit_x86_shift(FILE *w, x86_instr *i, const char *name) {
     emit_x86_op(w, i->v.binary.src, 1);
   fprintf(w, ", ");
   emit_x86_op(w, i->v.binary.dst, 4);
-  fprintf(w, "\n");
+  emit_origin(w, i);
 }
 
 static const char *cc_code(x86_cc cc) {
@@ -115,6 +125,7 @@ static const char *cc_code(x86_cc cc) {
 static void emit_x86_instr(FILE *w, x86_instr *i) {
   switch (i->op) {
   case X86_RET:
+    fprintf(w, "\t# function epilogue\n");
     fprintf(w, "\tmovq %%rbp, %%rsp\n");
     fprintf(w, "\tpopq %%rbp\n");
     fprintf(w, "\tret\n");
@@ -159,24 +170,29 @@ static void emit_x86_instr(FILE *w, x86_instr *i) {
     emit_x86_unary(w, i, "idivl");
     break;
   case X86_ALLOC_STACK:
-    fprintf(w, "\tsubq $%d, %%rsp\n", i->v.bytes_to_alloc);
+    fprintf(w, "\tsubq $%d, %%rsp", i->v.bytes_to_alloc);
+    emit_origin(w, i);
     break;
   case X86_CDQ:
-    fprintf(w, "\tcdq\n");
+    fprintf(w, "\tcdq");
+    emit_origin(w, i);
     break;
   case X86_JMP:
-    fprintf(w, "\tjmp .L%d\n", i->v.label);
+    fprintf(w, "\tjmp .L%d", i->v.label);
+    emit_origin(w, i);
     break;
   case X86_JMPCC:
-    fprintf(w, "\tj%s .L%d\n", cc_code(i->v.jmpcc.cc), i->v.jmpcc.label_idx);
+    fprintf(w, "\tj%s .L%d", cc_code(i->v.jmpcc.cc), i->v.jmpcc.label_idx);
+    emit_origin(w, i);
     break;
   case X86_SETCC:
     fprintf(w, "\tset%s ", cc_code(i->v.setcc.cc));
     emit_x86_op(w, i->v.setcc.op, 1);
-    fprintf(w, "\n");
+    emit_origin(w, i);
     break;
   case X86_LABEL:
-    fprintf(w, "\t.L%d:\n", i->v.label);
+    fprintf(w, "\t.L%d:", i->v.label);
+    emit_origin(w, i);
     break;
   }
 }
