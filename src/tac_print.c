@@ -70,7 +70,7 @@ static void print_val(tacv *v) {
 
 static void print_unary(tacv *dst, tacv *src, const char *ops) {
   print_val(dst);
-  printf(" = %s", ops);
+  printf(" = %s ", ops);
   print_val(src);
 }
 
@@ -95,6 +95,7 @@ void print_tac_func(tacf *f) {
       break;
     case TAC_COMPLEMENT:
     case TAC_NEGATE:
+    case TAC_NOT:
       print_unary(&i->dst, &i->src1, tacop_str(i->op));
       break;
     case TAC_ADD:
@@ -107,7 +108,6 @@ void print_tac_func(tacf *f) {
     case TAC_XOR:
     case TAC_LSHIFT:
     case TAC_RSHIFT:
-    case TAC_NOT:
     case TAC_EQ:
     case TAC_NE:
     case TAC_LT:

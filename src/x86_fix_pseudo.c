@@ -10,7 +10,7 @@ static void fix_pseudo_op(x86_op *op) {
 
   op->t = X86_OP_STACK;
   op->v.stack_offset =
-      (op->v.pseudo_idx + 1) * 4; // will do for now, hash table later mb
+      (op->v.pseudo_idx) * 4; // will do for now, hash table later mb
 
   if (op->v.stack_offset > max_offset)
     max_offset = op->v.stack_offset;

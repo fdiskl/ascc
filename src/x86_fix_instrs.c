@@ -2,6 +2,7 @@
 #include "common.h"
 #include "x86.h"
 #include <assert.h>
+#include <stdio.h>
 
 static void fix_instr(x86_asm_gen *ag, x86_instr *i);
 
@@ -37,15 +38,23 @@ static void insert_before_x86_instr(x86_asm_gen *ag, x86_instr *i,
 
   fix_instr(ag, new);
 
+  new->prev = i->prev;
   new->next = i;
+
   i->prev->next = new;
+  i->prev = new;
 }
 
 static void insert_after_x86_instr(x86_asm_gen *ag, x86_instr *i,
                                    x86_instr *new) {
   fix_instr(ag, new);
 
+  new->prev = i;
   new->next = i->next;
+
+  if (i->next)
+    i->next->prev = new;
+
   i->next = new;
 }
 

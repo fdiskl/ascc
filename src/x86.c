@@ -3,9 +3,9 @@
 #include "arena.h"
 #include "common.h"
 #include "driver.h"
-#include "parser.h"
 #include "tac.h"
 #include <stdint.h>
+#include <stdio.h>
 
 void init_x86_asm_gen(x86_asm_gen *ag) {
   INIT_ARENA(&ag->instr_arena, x86_instr);
@@ -16,7 +16,7 @@ void init_x86_asm_gen(x86_asm_gen *ag) {
 }
 
 x86_instr *alloc_x86_instr(x86_asm_gen *ag, int op) {
-  x86_instr *res = ARENA_ALLOC_OBJ(&ag->func_arena, x86_instr);
+  x86_instr *res = ARENA_ALLOC_OBJ(&ag->instr_arena, x86_instr);
   res->next = NULL;
   res->prev = NULL;
   res->op = op;
@@ -71,9 +71,8 @@ static x86_op operand_from_tac_val(tacv v) {
     return new_x86_imm(v.v.intv);
   case TACV_VAR:
     return new_x86_pseudo(v.v.var_idx);
-  default:
-    UNREACHABLE();
   }
+  UNREACHABLE();
 }
 
 static void gen_asm_from_ret_instr(x86_asm_gen *ag, taci *i) {
@@ -296,6 +295,7 @@ static x86_func *gen_asm_from_func(x86_asm_gen *ag, tacf *f) {
   ag->tail = NULL;
   for (taci *i = f->firsti; i != NULL; i = i->next)
     gen_asm_from_instr(ag, i);
+
   func->first = ag->head;
   return func;
 }
