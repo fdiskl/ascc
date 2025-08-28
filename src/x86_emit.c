@@ -50,11 +50,23 @@ static void emit_x86_reg(FILE *w, x86_reg reg, int size) {
   TODO();
 }
 
+static taci *last_origin = NULL;
+
 static void emit_origin(FILE *w, x86_instr *i) {
   fprintf(w, "\t");
 #ifdef PRINT_TAC_ORIGIN_X86
-  if (i->origin != NULL)
+  if (i->origin != NULL) {
+#ifdef PRINT_TAC_ORIGIN_X86_ONE_TIME
+    if (i->origin != last_origin) {
+      fprintf(w, "\n");
+      fprintf(w, "\n\t# ");
+      fprint_taci(w, i->origin);
+      last_origin = i->origin;
+    }
+#else
     fprint_taci(w, i->origin);
+#endif
+  }
 #endif
   fprintf(w, "\n");
 }
@@ -125,7 +137,6 @@ static const char *cc_code(x86_cc cc) {
 static void emit_x86_instr(FILE *w, x86_instr *i) {
   switch (i->op) {
   case X86_RET:
-    fprintf(w, "\t# function epilogue\n");
     fprintf(w, "\tmovq %%rbp, %%rsp\n");
     fprintf(w, "\tpopq %%rbp\n");
     fprintf(w, "\tret\n");

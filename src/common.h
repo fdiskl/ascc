@@ -31,9 +31,14 @@
 #define ASM_DONT_FIX_INSTRUCTIONS
 #undef ASM_DONT_FIX_INSTRUCTIONS
 
-// IF "PRINT_TAC_ORIGIN_X86" if defined each x86 line will have it's tac origin
+// If "PRINT_TAC_ORIGIN_X86" if defined each x86 line will have it's tac origin
 // printed in final assembly
 #define PRINT_TAC_ORIGIN_X86
+
+// If "PRINT_TAC_ORIGIN_X86_ONE_TIME" is defined tac origin will be printend
+// before block of x86 not after each instr, requires "PRINT_TAC_ORIGIN_X86" to
+// be enabled
+#define PRINT_TAC_ORIGIN_X86_ONE_TIME
 
 #define UNREACHABLE()                                                          \
   do {                                                                         \
