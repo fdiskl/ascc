@@ -11,4 +11,7 @@ typedef char *string;
 // creates new string from C-like string given
 string new_string(const char *s);
 
+// like sprintf
+string string_sprintf(const char *fmt, ...);
+
 #endif
