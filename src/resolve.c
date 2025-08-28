@@ -13,10 +13,9 @@
 // NOTE: unique names (int's) stored in hash table are not saved on heap but
 // casted to ptr's. Be careful :)
 
-int get_name() {
-  static int counter = 0;
-  return ++counter;
-}
+int var_name_idx_counter = 0;
+
+int get_name() { return ++var_name_idx_counter; }
 
 static bool is_lvalue(expr *e) {
   return e->t == EXPR_VAR; // for now

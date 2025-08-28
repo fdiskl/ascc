@@ -6,6 +6,8 @@
 #include "vec.h"
 #include <stdint.h>
 
+// TODO: make so with DEBUG_INFO flags we save var names for debugging
+
 void init_tacgen(tacgen *tg) {
   INIT_ARENA(&tg->taci_arena, taci);
   INIT_ARENA(&tg->tacf_arena, tacf);
@@ -46,11 +48,19 @@ static tacv new_const(uint64_t c) {
   return v;
 }
 
+extern int var_name_idx_counter; // defined in resolve.c
+
 static tacv new_tmp() {
-  static int idx = 0;
   tacv v;
   v.t = TACV_VAR;
-  v.v.var_idx = idx++;
+  v.v.var_idx = ++var_name_idx_counter;
+  return v;
+}
+
+static tacv new_var(int idx) {
+  tacv v;
+  v.t = TACV_VAR;
+  v.v.var_idx = idx;
   return v;
 }
 
@@ -189,6 +199,17 @@ static tacv gen_tac_from_binary_expr(tacgen *tg, binary b) {
   return i->dst;
 }
 
+static tacv gen_tac_from_assignment_expr(tacgen *tg, assignment a) {
+  tacv dst = gen_tac_from_expr(tg, a.l);
+  tacv src = gen_tac_from_expr(tg, a.r);
+
+  taci *cpy = insert_taci(tg, TAC_CPY);
+  cpy->dst = dst;
+  cpy->src1 = src;
+
+  return dst;
+}
+
 static tacv gen_tac_from_expr(tacgen *tg, expr *e) {
   switch (e->t) {
   case EXPR_INT_CONST:
@@ -197,6 +218,12 @@ static tacv gen_tac_from_expr(tacgen *tg, expr *e) {
     return gen_tac_from_unary_expr(tg, e->v.u);
   case EXPR_BINARY:
     return gen_tac_from_binary_expr(tg, e->v.b);
+  case EXPR_ASSIGNMENT:
+    return gen_tac_from_assignment_expr(tg, e->v.assignment);
+    break;
+  case EXPR_VAR:
+    return new_var(e->v.var.name_idx);
+    break;
   }
   UNREACHABLE();
 }
@@ -208,10 +235,18 @@ static void gen_tac_from_return_stmt(tacgen *tg, return_stmt rs) {
 }
 
 static void gen_tac_from_stmt(tacgen *tg, stmt *s);
+static void gen_tac_from_decl(tacgen *tg, decl *d);
+
+static void gen_tac_from_block_item(tacgen *tg, block_item bi) {
+  if (bi.d != NULL)
+    gen_tac_from_decl(tg, bi.d);
+  else
+    gen_tac_from_stmt(tg, bi.s);
+}
 
 static void gen_tac_from_block_stmt(tacgen *tg, block_stmt bs) {
-  TODO();
-  // vec_foreach(stmt *, bs.stmts, it) gen_tac_from_stmt(tg, *it);
+  for (int i = 0; i < bs.items_len; ++i)
+    gen_tac_from_block_item(tg, bs.items[i]);
 }
 
 static void gen_tac_from_stmt(tacgen *tg, stmt *s) {
@@ -222,6 +257,11 @@ static void gen_tac_from_stmt(tacgen *tg, stmt *s) {
   case STMT_BLOCK:
     gen_tac_from_block_stmt(tg, s->v.block);
     break;
+  case STMT_EXPR:
+    gen_tac_from_expr(tg, s->v.e);
+    break;
+  case STMT_NULL:
+    break;
   }
 }
 
@@ -230,25 +270,37 @@ static tacf *gen_tac_from_func_decl(tacgen *tg, func_decl fd) {
 
   tg->head = tg->tail = NULL;
 
-  TODO();
-  // vec_foreach(stmt *, fd.body, it) gen_tac_from_stmt(tg, *it);
+  for (int i = 0; i < fd.body_len; ++i)
+    gen_tac_from_block_item(tg, fd.body[i]);
+
+  taci *ret_at_end = insert_taci(tg, TAC_RET);
+  ret_at_end->src1 = new_const(0);
 
   res->firsti = tg->head;
 
   return res;
 }
 
-static tacf *gen_tac_from_decl(tacgen *tg, decl *d) {
+static void gen_tac_from_var_decl(tacgen *tg, var_decl vd) {
+  if (vd.init != NULL) {
+    tacv dst = new_var(vd.name_idx);
+    tacv src = gen_tac_from_expr(tg, vd.init);
+
+    taci *cpy = insert_taci(tg, TAC_CPY);
+    cpy->dst = dst;
+    cpy->src1 = src;
+  }
+}
+
+static void gen_tac_from_decl(tacgen *tg, decl *d) {
   switch (d->t) {
   case DECL_FUNC:
-    return gen_tac_from_func_decl(tg, d->v.func);
+    gen_tac_from_func_decl(tg, d->v.func);
     break;
   case DECL_VAR:
-    TODO(); // they can't be present in AST for now, so skip
+    gen_tac_from_var_decl(tg, d->v.var);
     break;
   }
-
-  UNREACHABLE();
 }
 
 tacf *gen_tac(tacgen *tg, program *p) {
@@ -256,7 +308,9 @@ tacf *gen_tac(tacgen *tg, program *p) {
   tacf *tail = NULL;
   decl *d;
   for (d = p; d != NULL; d = d->next) {
-    tacf *f = gen_tac_from_decl(tg, d);
+    if (d->t != DECL_FUNC)
+      continue;
+    tacf *f = gen_tac_from_func_decl(tg, d->v.func);
     if (head == NULL)
       head = f;
     else
@@ -266,3 +320,5 @@ tacf *gen_tac(tacgen *tg, program *p) {
 
   return head;
 }
+
+// TODO: add return 0 at end of func
