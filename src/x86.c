@@ -20,10 +20,13 @@ x86_instr *alloc_x86_instr(x86_asm_gen *ag, int op) {
   res->next = NULL;
   res->prev = NULL;
   res->op = op;
+  res->comment = NULL;
+  res->origin = NULL;
   return res;
 }
 
-static x86_instr *insert_x86_instr(x86_asm_gen *ag, int op) {
+static x86_instr *insert_x86_instr_with_comment(x86_asm_gen *ag, int op,
+                                                taci *origin, string comment) {
   x86_instr *i = alloc_x86_instr(ag, op);
   if (ag->head == NULL)
     ag->head = i;
@@ -33,7 +36,14 @@ static x86_instr *insert_x86_instr(x86_asm_gen *ag, int op) {
   }
   ag->tail = i;
 
+  i->origin = origin;
+  i->comment = comment;
+
   return i;
+}
+
+static x86_instr *insert_x86_instr(x86_asm_gen *ag, int op, taci *origin) {
+  return insert_x86_instr_with_comment(ag, op, origin, NULL);
 }
 
 static x86_func *alloc_x86_func(x86_asm_gen *ag, string name) {
@@ -76,8 +86,8 @@ static x86_op operand_from_tac_val(tacv v) {
 }
 
 static void gen_asm_from_ret_instr(x86_asm_gen *ag, taci *i) {
-  x86_instr *mov = insert_x86_instr(ag, X86_MOV);
-  insert_x86_instr(ag, X86_RET);
+  x86_instr *mov = insert_x86_instr(ag, X86_MOV, i);
+  insert_x86_instr(ag, X86_RET, i);
 
   mov->v.binary.dst = new_x86_reg(X86_AX);
   mov->v.binary.src = operand_from_tac_val(i->src1);
@@ -96,21 +106,21 @@ static void gen_asm_from_unary_instr(x86_asm_gen *ag, taci *i) {
     UNREACHABLE();
   }
 
-  x86_instr *mov = insert_x86_instr(ag, X86_MOV);
+  x86_instr *mov = insert_x86_instr(ag, X86_MOV, i);
 
   mov->v.binary.dst = operand_from_tac_val(i->dst);
   mov->v.binary.src = operand_from_tac_val(i->src1);
 
-  x86_instr *u = insert_x86_instr(ag, op);
+  x86_instr *u = insert_x86_instr(ag, op, i);
   u->v.unary.src = operand_from_tac_val(i->dst);
 }
 
 static void gen_asm_from_binary_instr(x86_asm_gen *ag, taci *i) {
   if (i->op == TAC_DIV || i->op == TAC_MOD) {
-    x86_instr *mov1 = insert_x86_instr(ag, X86_MOV);
-    insert_x86_instr(ag, X86_CDQ);
-    x86_instr *idiv = insert_x86_instr(ag, X86_IDIV);
-    x86_instr *mov2 = insert_x86_instr(ag, X86_MOV);
+    x86_instr *mov1 = insert_x86_instr(ag, X86_MOV, i);
+    insert_x86_instr(ag, X86_CDQ, i);
+    x86_instr *idiv = insert_x86_instr(ag, X86_IDIV, i);
+    x86_instr *mov2 = insert_x86_instr(ag, X86_MOV, i);
 
     mov1->v.binary.dst = new_x86_reg(X86_AX);
     mov1->v.binary.src = operand_from_tac_val(i->src1);
@@ -153,8 +163,8 @@ static void gen_asm_from_binary_instr(x86_asm_gen *ag, taci *i) {
     UNREACHABLE();
   }
 
-  x86_instr *mov = insert_x86_instr(ag, X86_MOV);
-  x86_instr *bini = insert_x86_instr(ag, op);
+  x86_instr *mov = insert_x86_instr(ag, X86_MOV, i);
+  x86_instr *bini = insert_x86_instr(ag, op, i);
 
   mov->v.binary.dst = operand_from_tac_val(i->dst);
   mov->v.binary.src = operand_from_tac_val(i->src1);
@@ -164,9 +174,9 @@ static void gen_asm_from_binary_instr(x86_asm_gen *ag, taci *i) {
 }
 
 static void gen_asm_from_not_instr(x86_asm_gen *ag, taci *i) {
-  x86_instr *cmp = insert_x86_instr(ag, X86_CMP);
-  x86_instr *mov = insert_x86_instr(ag, X86_MOV);
-  x86_instr *sete = insert_x86_instr(ag, X86_SETCC);
+  x86_instr *cmp = insert_x86_instr(ag, X86_CMP, i);
+  x86_instr *mov = insert_x86_instr(ag, X86_MOV, i);
+  x86_instr *sete = insert_x86_instr(ag, X86_SETCC, i);
 
   cmp->v.binary.dst = operand_from_tac_val(i->src1);
   cmp->v.binary.src = new_x86_imm(0);
@@ -178,15 +188,15 @@ static void gen_asm_from_not_instr(x86_asm_gen *ag, taci *i) {
 }
 
 static void gen_asm_from_cpy_instr(x86_asm_gen *ag, taci *i) {
-  x86_instr *mov = insert_x86_instr(ag, X86_MOV);
+  x86_instr *mov = insert_x86_instr(ag, X86_MOV, i);
   mov->v.binary.src = operand_from_tac_val(i->src1);
   mov->v.binary.dst = operand_from_tac_val(i->dst);
 }
 
 static void gen_asm_from_comparing_instr(x86_asm_gen *ag, taci *i) {
-  x86_instr *cmp = insert_x86_instr(ag, X86_CMP);
-  x86_instr *mov = insert_x86_instr(ag, X86_MOV);
-  x86_instr *setcc = insert_x86_instr(ag, X86_SETCC);
+  x86_instr *cmp = insert_x86_instr(ag, X86_CMP, i);
+  x86_instr *mov = insert_x86_instr(ag, X86_MOV, i);
+  x86_instr *setcc = insert_x86_instr(ag, X86_SETCC, i);
 
   cmp->v.binary.dst = operand_from_tac_val(i->src1);
   cmp->v.binary.src = operand_from_tac_val(i->src2);
@@ -224,13 +234,13 @@ static void gen_asm_from_comparing_instr(x86_asm_gen *ag, taci *i) {
 
 static void gen_asm_from_jump_instr(x86_asm_gen *ag, taci *i) {
   if (i->op == TAC_JMP) {
-    x86_instr *res = insert_x86_instr(ag, X86_JMP);
+    x86_instr *res = insert_x86_instr(ag, X86_JMP, i);
     res->v.label = i->label_idx;
     return;
   }
 
-  x86_instr *cmp = insert_x86_instr(ag, X86_CMP);
-  x86_instr *jcc = insert_x86_instr(ag, X86_JMPCC);
+  x86_instr *cmp = insert_x86_instr(ag, X86_CMP, i);
+  x86_instr *jcc = insert_x86_instr(ag, X86_JMPCC, i);
 
   cmp->v.binary.src = new_x86_imm(0);
   cmp->v.binary.dst = operand_from_tac_val(i->src1);
@@ -240,7 +250,7 @@ static void gen_asm_from_jump_instr(x86_asm_gen *ag, taci *i) {
 }
 
 static void gen_asm_from_label_instr(x86_asm_gen *ag, taci *i) {
-  insert_x86_instr(ag, X86_LABEL)->v.label = i->label_idx;
+  insert_x86_instr(ag, X86_LABEL, i)->v.label = i->label_idx;
 }
 
 static void gen_asm_from_instr(x86_asm_gen *ag, taci *i) {

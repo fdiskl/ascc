@@ -36,6 +36,8 @@ static void insert_before_x86_instr(x86_asm_gen *ag, x86_instr *i,
   if (i->prev == NULL)
     UNREACHABLE(); // at least alloc_stack shoud be prev
 
+  new->origin = i->origin;
+
   fix_instr(ag, new);
 
   new->prev = i->prev;
@@ -47,6 +49,8 @@ static void insert_before_x86_instr(x86_asm_gen *ag, x86_instr *i,
 
 static void insert_after_x86_instr(x86_asm_gen *ag, x86_instr *i,
                                    x86_instr *new) {
+
+  new->origin = i->origin;
   fix_instr(ag, new);
 
   new->prev = i;

@@ -102,6 +102,8 @@ struct _x86_instr {
   } v;
   x86_instr *next;
   x86_instr *prev;
+  string comment; // NULL if not present
+  taci *origin;   // NULL if not present
 };
 
 struct _x86_func {
