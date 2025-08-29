@@ -246,6 +246,55 @@ static void gen_asm_from_label_instr(x86_asm_gen *ag, taci *i) {
   insert_x86_instr(ag, X86_LABEL, i)->v.label = i->label_idx;
 }
 
+static void gen_asm_from_inc_dec(x86_asm_gen *ag, taci *i) {
+  x86_instr *instr =
+      insert_x86_instr(ag, i->op == TAC_INC ? X86_INC : X86_DEC, i);
+
+  instr->v.unary.src = operand_from_tac_val(i->src1);
+}
+
+static void gen_asm_from_assign(x86_asm_gen *ag, taci *i) {
+  if (i->op == TAC_ASDIV || i->op == TAC_ASMOD) {
+    TODO();
+  }
+
+  int op;
+
+  switch (i->op) {
+  case TAC_ASADD:
+    op = X86_ADD;
+    break;
+  case TAC_ASSUB:
+    op = X86_SUB;
+    break;
+  case TAC_ASMUL:
+    op = X86_MULT;
+    break;
+  case TAC_ASAND:
+    op = X86_AND;
+    break;
+  case TAC_ASOR:
+    op = X86_OR;
+    break;
+  case TAC_ASXOR:
+    op = X86_XOR;
+    break;
+  case TAC_ASLSHIFT:
+    op = X86_SHL;
+    break;
+  case TAC_ASRSHIFT:
+    op = X86_SAR;
+    break;
+  default:
+    UNREACHABLE();
+  }
+
+  x86_instr *instr = insert_x86_instr(ag, op, i);
+
+  instr->v.binary.dst = operand_from_tac_val(i->dst);
+  instr->v.binary.src = operand_from_tac_val(i->src1);
+}
+
 static void gen_asm_from_instr(x86_asm_gen *ag, taci *i) {
   switch (i->op) {
   case TAC_RET:
@@ -288,6 +337,22 @@ static void gen_asm_from_instr(x86_asm_gen *ag, taci *i) {
     break;
   case TAC_LABEL:
     gen_asm_from_label_instr(ag, i);
+    break;
+  case TAC_INC:
+  case TAC_DEC:
+    gen_asm_from_inc_dec(ag, i);
+    break;
+  case TAC_ASADD:
+  case TAC_ASSUB:
+  case TAC_ASMUL:
+  case TAC_ASDIV:
+  case TAC_ASMOD:
+  case TAC_ASAND:
+  case TAC_ASOR:
+  case TAC_ASXOR:
+  case TAC_ASLSHIFT:
+  case TAC_ASRSHIFT:
+    gen_asm_from_assign(ag, i);
     break;
   }
 }
