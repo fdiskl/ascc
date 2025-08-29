@@ -5,6 +5,7 @@
 #include "parser.h"
 #include "vec.h"
 #include <stdint.h>
+#include <stdio.h>
 
 // TODO: make so with DEBUG_INFO flags we save var names for debugging
 
@@ -78,6 +79,21 @@ static tacv gen_tac_from_int_const_expr(tacgen *_, int_const ic) {
 
 static tacv gen_tac_from_expr(tacgen *tg, expr *e);
 
+static tacv gen_inc_dec_prefix(tacgen *tg, unary u, tacv inner_v) {
+  taci *inc_dec = insert_taci(tg, u.t == UNARY_PREFIX_INC ? TAC_INC : TAC_DEC);
+  inc_dec->src1 = inner_v;
+  return inner_v;
+}
+
+static tacv gen_inc_dec_postfix(tacgen *tg, unary u, tacv inner_v) {
+  taci *cpy = insert_taci(tg, TAC_CPY);
+  cpy->dst = new_tmp();
+  cpy->src1 = inner_v;
+  taci *inc_dec = insert_taci(tg, u.t == UNARY_POSTFIX_INC ? TAC_INC : TAC_DEC);
+  inc_dec->src1 = inner_v;
+  return cpy->dst;
+}
+
 static tacv gen_tac_from_unary_expr(tacgen *tg, unary u) {
   tacv inner_v = gen_tac_from_expr(tg, u.e);
 
@@ -92,6 +108,12 @@ static tacv gen_tac_from_unary_expr(tacgen *tg, unary u) {
   case UNARY_NOT:
     op = TAC_NOT;
     break;
+  case UNARY_PREFIX_INC:
+  case UNARY_PREFIX_DEC:
+    return gen_inc_dec_prefix(tg, u, inner_v);
+  case UNARY_POSTFIX_INC:
+  case UNARY_POSTFIX_DEC:
+    return gen_inc_dec_postfix(tg, u, inner_v);
   }
 
   taci *i = insert_taci(tg, op);
@@ -200,12 +222,50 @@ static tacv gen_tac_from_binary_expr(tacgen *tg, binary b) {
 }
 
 static tacv gen_tac_from_assignment_expr(tacgen *tg, assignment a) {
+  int op;
+
+  switch (a.t) {
+  case ASSIGN:
+    op = TAC_CPY;
+    break;
+  case ASSIGN_ADD:
+    op = TAC_ASADD;
+    break;
+  case ASSIGN_SUB:
+    op = TAC_ASSUB;
+    break;
+  case ASSIGN_MUL:
+    op = TAC_ASMUL;
+    break;
+  case ASSIGN_DIV:
+    op = TAC_ASDIV;
+    break;
+  case ASSIGN_MOD:
+    op = TAC_ASMOD;
+    break;
+  case ASSIGN_AND:
+    op = TAC_ASAND;
+    break;
+  case ASSIGN_OR:
+    op = TAC_ASOR;
+    break;
+  case ASSIGN_XOR:
+    op = TAC_ASXOR;
+    break;
+  case ASSIGN_LSHIFT:
+    op = TAC_ASLSHIFT;
+    break;
+  case ASSIGN_RSHIFT:
+    op = TAC_ASRSHIFT;
+    break;
+  }
+
   tacv dst = gen_tac_from_expr(tg, a.l);
   tacv src = gen_tac_from_expr(tg, a.r);
 
-  taci *cpy = insert_taci(tg, TAC_CPY);
-  cpy->dst = dst;
-  cpy->src1 = src;
+  taci *instr = insert_taci(tg, op);
+  instr->dst = dst;
+  instr->src1 = src;
 
   return dst;
 }
