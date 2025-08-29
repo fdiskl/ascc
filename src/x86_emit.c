@@ -3,6 +3,22 @@
 #include "x86.h"
 #include <stdio.h>
 
+#ifdef PRINT_TAC_ORIGIN_X86_ONE_TIME
+#define SMART_EMIT_ORIGIN(code)                                                \
+  do {                                                                         \
+    emit_origin(w, i);                                                         \
+    code;                                                                      \
+  } while (0)
+#endif
+
+#ifndef PRINT_TAC_ORIGIN_X86_ONE_TIME
+#define SMART_EMIT_ORIGIN(code)                                                \
+  do {                                                                         \
+    emit_origin(w, i);                                                         \
+    code;                                                                      \
+  } while (0)
+#endif
+
 static void emit_x86_reg(FILE *w, x86_reg reg, int size) {
 
   switch (size) {
@@ -55,16 +71,21 @@ static taci *last_origin = NULL;
 static void emit_origin(FILE *w, x86_instr *i) {
   fprintf(w, "\t");
 #ifdef PRINT_TAC_ORIGIN_X86
-  if (i->origin != NULL) {
+  {
 #ifdef PRINT_TAC_ORIGIN_X86_ONE_TIME
-    if (i->origin != last_origin) {
-      fprintf(w, "\n");
-      fprintf(w, "\n\t# ");
-      fprint_taci(w, i->origin);
-      last_origin = i->origin;
+    if (i->origin != NULL) {
+      if (i->origin != last_origin) {
+        fprintf(w, "\n");
+        fprintf(w, "\n\t# ");
+        fprint_taci(w, i->origin);
+        last_origin = i->origin;
+      }
     }
 #else
-    fprint_taci(w, i->origin);
+    if (i->origin != NULL) {
+      fprintf(w, "# ");
+      fprint_taci(w, i->origin);
+    }
 #endif
   }
 #endif
@@ -89,29 +110,33 @@ static void emit_x86_op(FILE *w, x86_op op, int size) {
 }
 
 static void emit_x86_unary(FILE *w, x86_instr *i, const char *name) {
-  fprintf(w, "\t%s ", name);
-  emit_x86_op(w, i->v.unary.src, 4);
-  emit_origin(w, i);
+  SMART_EMIT_ORIGIN({
+    fprintf(w, "\t%s ", name);
+    emit_x86_op(w, i->v.unary.src, 4);
+    emit_origin(w, i);
+  });
 }
 
 static void emit_x86_binary(FILE *w, x86_instr *i, const char *name) {
-  fprintf(w, "\t%s ", name);
-  emit_x86_op(w, i->v.binary.src, 4);
-  fprintf(w, ", ");
-  emit_x86_op(w, i->v.binary.dst, 4);
-  emit_origin(w, i);
+  SMART_EMIT_ORIGIN({
+    fprintf(w, "\t%s ", name);
+    emit_x86_op(w, i->v.binary.src, 4);
+    fprintf(w, ", ");
+    emit_x86_op(w, i->v.binary.dst, 4);
+    emit_origin(w, i);
+  });
 }
 
 static void emit_x86_shift(FILE *w, x86_instr *i, const char *name) {
-  fprintf(w, "\t%s ", name);
-  // it should be cx, so this little hack if you can call it that
-  if (i->v.binary.src.t == X86_OP_REG && i->v.binary.src.v.reg == X86_CX)
-    emit_x86_op(w, i->v.binary.src, 1);
-  else
-    emit_x86_op(w, i->v.binary.src, 1);
-  fprintf(w, ", ");
-  emit_x86_op(w, i->v.binary.dst, 4);
-  emit_origin(w, i);
+  SMART_EMIT_ORIGIN({
+    fprintf(w, "\t%s ", name);
+    if (i->v.binary.src.t == X86_OP_REG && i->v.binary.src.v.reg == X86_CX)
+      emit_x86_op(w, i->v.binary.src, 1);
+    else
+      emit_x86_op(w, i->v.binary.src, 1);
+    fprintf(w, ", ");
+    emit_x86_op(w, i->v.binary.dst, 4);
+  });
 }
 
 static const char *cc_code(x86_cc cc) {
@@ -128,7 +153,6 @@ static const char *cc_code(x86_cc cc) {
     return "l";
   case CC_LE:
     return "le";
-    break;
   }
 
   UNREACHABLE();
@@ -182,28 +206,23 @@ static void emit_x86_instr(FILE *w, x86_instr *i) {
     break;
   case X86_ALLOC_STACK:
     fprintf(w, "\tsubq $%d, %%rsp", i->v.bytes_to_alloc);
-    emit_origin(w, i);
     break;
   case X86_CDQ:
-    fprintf(w, "\tcdq");
-    emit_origin(w, i);
+    SMART_EMIT_ORIGIN(fprintf(w, "\tcdq"););
     break;
   case X86_JMP:
-    fprintf(w, "\tjmp .L%d", i->v.label);
-    emit_origin(w, i);
+    SMART_EMIT_ORIGIN(fprintf(w, "\tjmp .L%d", i->v.label));
     break;
   case X86_JMPCC:
-    fprintf(w, "\tj%s .L%d", cc_code(i->v.jmpcc.cc), i->v.jmpcc.label_idx);
-    emit_origin(w, i);
+    SMART_EMIT_ORIGIN(fprintf(w, "\tj%s .L%d", cc_code(i->v.jmpcc.cc),
+                              i->v.jmpcc.label_idx););
     break;
   case X86_SETCC:
-    fprintf(w, "\tset%s ", cc_code(i->v.setcc.cc));
-    emit_x86_op(w, i->v.setcc.op, 1);
-    emit_origin(w, i);
+    SMART_EMIT_ORIGIN(fprintf(w, "\tset%s ", cc_code(i->v.setcc.cc));
+                      emit_x86_op(w, i->v.setcc.op, 1););
     break;
   case X86_LABEL:
-    fprintf(w, "\t.L%d:", i->v.label);
-    emit_origin(w, i);
+    SMART_EMIT_ORIGIN(fprintf(w, "\t.L%d:", i->v.label););
     break;
   case X86_COMMENT:
     fprintf(w, "\t#%s\n", i->v.comment);
