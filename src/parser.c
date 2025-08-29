@@ -132,7 +132,7 @@ static expr *parse_postfix(parser *p, expr *e) {
   switch (p->next.token) {
   case TOK_DOUBLE_PLUS:
   case TOK_DOUBLE_MINUS: {
-    int t = p->curr.token == TOK_DOUBLE_PLUS ? UNARY_POSTFIX_INC
+    int t = p->next.token == TOK_DOUBLE_PLUS ? UNARY_POSTFIX_INC
                                              : UNARY_POSTFIX_DEC;
 
     tok_pos pos = advance(p)->pos; // eat op
