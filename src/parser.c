@@ -105,6 +105,12 @@ static expr *parse_unary_expr(parser *p) {
   case TOK_EXCL:
     e->v.u.t = UNARY_NOT;
     break;
+  case TOK_DOUBLE_PLUS:
+    e->v.u.t = UNARY_PREFIX_INC;
+    break;
+  case TOK_DOUBLE_MINUS:
+    e->v.u.t = UNARY_PREFIX_DEC;
+    break;
   default:
     UNREACHABLE();
   }
@@ -122,6 +128,32 @@ static expr *parse_var_expr(parser *p) {
   return e;
 }
 
+static expr *parse_postfix(parser *p, expr *e) {
+  switch (p->next.token) {
+  case TOK_DOUBLE_PLUS:
+  case TOK_DOUBLE_MINUS: {
+    int t = p->curr.token == TOK_DOUBLE_PLUS ? UNARY_POSTFIX_INC
+                                             : UNARY_POSTFIX_DEC;
+
+    tok_pos pos = advance(p)->pos; // eat op
+
+    expr *outer = alloc_expr(p, EXPR_UNARY);
+    outer->v.u.t = t;
+    outer->v.u.e = e;
+
+    outer->pos.filename = e->pos.filename;
+    outer->pos.line_start = e->pos.line_start;
+    outer->pos.pos_start = e->pos.pos_start;
+    outer->pos.line_end = pos.line;
+    outer->pos.pos_end = pos.end_pos;
+
+    return outer;
+  }
+  default:
+    return e;
+  }
+}
+
 static expr *parse_factor(parser *p) {
   tok_pos start = p->next.pos;
   expr *e;
@@ -132,6 +164,8 @@ static expr *parse_factor(parser *p) {
   case TOK_TILDE:
   case TOK_MINUS:
   case TOK_EXCL:
+  case TOK_DOUBLE_PLUS:
+  case TOK_DOUBLE_MINUS:
     e = parse_unary_expr(p);
     break;
   case TOK_LPAREN:
@@ -151,13 +185,23 @@ static expr *parse_factor(parser *p) {
   }
 
   SET_POS(e, start, p->curr.pos);
-  return e;
+  return parse_postfix(p, e);
 }
 
 // returns precedence or 0 if not binary op
 static int binary_op(int t) {
   switch (t) {
   case TOK_ASSIGN:
+  case TOK_ASPLUS:
+  case TOK_ASMINUS:
+  case TOK_ASSTAR:
+  case TOK_ASSLASH:
+  case TOK_ASPERCENT:
+  case TOK_ASLSHIFT:
+  case TOK_ASRSHIFT:
+  case TOK_ASAMP:
+  case TOK_ASCARET:
+  case TOK_ASPIPE:
     return 6;
   case TOK_DOUBLE_PIPE:
     return 8;
@@ -193,32 +237,51 @@ static int binary_op(int t) {
   }
 }
 
-// converts token into bin op, 0 if not bin op
-static int get_bin_op(parser *p, int t) {
-#define b(tok, op)                                                             \
+#define TOK_INTO_OP(tok, op)                                                   \
   case tok:                                                                    \
     expect(p, tok);                                                            \
     return op
 
+// converts token into bin op, 0 if not bin op
+static int get_bin_op(parser *p, int t) {
   switch (t) {
-    b(TOK_PLUS, BINARY_ADD);
-    b(TOK_MINUS, BINARY_SUB);
-    b(TOK_STAR, BINARY_MUL);
-    b(TOK_SLASH, BINARY_DIV);
-    b(TOK_MOD, BINARY_MOD);
-    b(TOK_AMPER, BINARY_BITWISE_AND);
-    b(TOK_PIPE, BINARY_BITWISE_OR);
-    b(TOK_CARRET, BINARY_XOR);
-    b(TOK_LSHIFT, BINARY_LSHIFT);
-    b(TOK_RSHIFT, BINARY_RSHIFT);
-    b(TOK_DOUBLE_AMP, BINARY_AND);
-    b(TOK_DOUBLE_PIPE, BINARY_OR);
-    b(TOK_EQ, BINARY_EQ);
-    b(TOK_NE, BINARY_NE);
-    b(TOK_LT, BINARY_LT);
-    b(TOK_GT, BINARY_GT);
-    b(TOK_LE, BINARY_LE);
-    b(TOK_GE, BINARY_GE);
+    TOK_INTO_OP(TOK_PLUS, BINARY_ADD);
+    TOK_INTO_OP(TOK_MINUS, BINARY_SUB);
+    TOK_INTO_OP(TOK_STAR, BINARY_MUL);
+    TOK_INTO_OP(TOK_SLASH, BINARY_DIV);
+    TOK_INTO_OP(TOK_MOD, BINARY_MOD);
+    TOK_INTO_OP(TOK_AMPER, BINARY_BITWISE_AND);
+    TOK_INTO_OP(TOK_PIPE, BINARY_BITWISE_OR);
+    TOK_INTO_OP(TOK_CARRET, BINARY_XOR);
+    TOK_INTO_OP(TOK_LSHIFT, BINARY_LSHIFT);
+    TOK_INTO_OP(TOK_RSHIFT, BINARY_RSHIFT);
+    TOK_INTO_OP(TOK_DOUBLE_AMP, BINARY_AND);
+    TOK_INTO_OP(TOK_DOUBLE_PIPE, BINARY_OR);
+    TOK_INTO_OP(TOK_EQ, BINARY_EQ);
+    TOK_INTO_OP(TOK_NE, BINARY_NE);
+    TOK_INTO_OP(TOK_LT, BINARY_LT);
+    TOK_INTO_OP(TOK_GT, BINARY_GT);
+    TOK_INTO_OP(TOK_LE, BINARY_LE);
+    TOK_INTO_OP(TOK_GE, BINARY_GE);
+  }
+
+  return 0;
+}
+
+// converts token into assignment op, 0 if not bin op
+static int get_assignment_op(parser *p, int t) {
+  switch (t) {
+    TOK_INTO_OP(TOK_ASSIGN, ASSIGN);
+    TOK_INTO_OP(TOK_ASPLUS, ASSIGN_ADD);
+    TOK_INTO_OP(TOK_ASMINUS, ASSIGN_SUB);
+    TOK_INTO_OP(TOK_ASSTAR, ASSIGN_MUL);
+    TOK_INTO_OP(TOK_ASSLASH, ASSIGN_DIV);
+    TOK_INTO_OP(TOK_ASPERCENT, ASSIGN_MOD);
+    TOK_INTO_OP(TOK_ASLSHIFT, ASSIGN_LSHIFT);
+    TOK_INTO_OP(TOK_ASRSHIFT, ASSIGN_RSHIFT);
+    TOK_INTO_OP(TOK_ASAMP, ASSIGN_AND);
+    TOK_INTO_OP(TOK_ASCARET, ASSIGN_OR);
+    TOK_INTO_OP(TOK_ASPIPE, ASSIGN_XOR);
   }
 
   return 0;
@@ -241,16 +304,29 @@ static expr *_parse_expr(parser *p, int min_prec) {
       l->v.b.r = r;
       l->v.b.t = binop;
       SET_POS_FROM_NODES(l, tmp, r);
-    } else { // assignment
-      expect(p, TOK_ASSIGN);
+      continue;
+    }
+
+    int assignop = get_assignment_op(p, p->next.token);
+
+    // assignment
+    if (assignop) {
       expr *r = _parse_expr(p, prec);
 
       expr *tmp = l;
       l = alloc_expr(p, EXPR_ASSIGNMENT);
       l->v.assignment.l = tmp;
       l->v.assignment.r = r;
+      l->v.assignment.t = assignop;
+
       SET_POS_FROM_NODES(l, tmp, r);
+
+      continue;
     }
+
+    // ternary will be here
+
+    UNREACHABLE();
   }
 
   return l;

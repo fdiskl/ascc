@@ -42,11 +42,11 @@ typedef struct _assignment assignment;
 typedef struct _var_expr var_expr;
 
 typedef enum {
-  EXPR_INT_CONST = 0,
-  EXPR_UNARY = 1,
-  EXPR_BINARY = 2,
-  EXPR_ASSIGNMENT = 3,
-  EXPR_VAR = 4,
+  EXPR_INT_CONST,
+  EXPR_UNARY,
+  EXPR_BINARY,
+  EXPR_ASSIGNMENT,
+  EXPR_VAR
 } exprt;
 
 struct _int_const {
@@ -57,6 +57,10 @@ typedef enum {
   UNARY_NEGATE,
   UNARY_COMPLEMENT,
   UNARY_NOT,
+  UNARY_PREFIX_INC,
+  UNARY_PREFIX_DEC,
+  UNARY_POSTFIX_INC,
+  UNARY_POSTFIX_DEC,
 } unaryt;
 
 struct _unary {
@@ -87,13 +91,31 @@ typedef enum {
   BINARY_GE,
 } binaryt;
 
+typedef enum {
+  ASSIGN = 1, // important to be > 0
+
+  ASSIGN_ADD,
+  ASSIGN_SUB,
+  ASSIGN_MUL,
+  ASSIGN_DIV,
+  ASSIGN_MOD,
+  ASSIGN_AND,
+  ASSIGN_OR,
+  ASSIGN_XOR,
+  ASSIGN_LSHIFT,
+  ASSIGN_RSHIFT,
+} assignment_t;
+
 struct _binary {
   binaryt t;
   expr *l;
   expr *r;
 };
 
+// in theory could be merged with binary expr, but as separatr struct provides
+// more clarity
 struct _assignment {
+  assignment_t t;
   expr *l;
   expr *r;
 };
