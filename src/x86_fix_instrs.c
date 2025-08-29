@@ -160,6 +160,8 @@ static void fix_instr(x86_asm_gen *ag, x86_instr *i) {
   case X86_SETCC:
   case X86_LABEL:
   case X86_COMMENT:
+  case X86_INC:
+  case X86_DEC:
     break;
   }
 }

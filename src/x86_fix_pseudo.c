@@ -59,6 +59,8 @@ static void fix_pseudo_for_instr(x86_instr *i) {
   case X86_NOT:
   case X86_NEG:
   case X86_IDIV:
+  case X86_INC:
+  case X86_DEC:
     fix_pseudo_op(&i->v.unary.src);
     break;
   case X86_MOV:

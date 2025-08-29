@@ -157,7 +157,7 @@ static const char *cc_code(x86_cc cc) {
 static void emit_x86_instr(FILE *w, x86_instr *i) {
   switch (i->op) {
   case X86_RET:
-    fprintf(w, "\tmovq %%rbp, %%rsp\n");
+    fprintf(w, "\n\tmovq %%rbp, %%rsp\n");
     fprintf(w, "\tpopq %%rbp\n");
     fprintf(w, "\tret\n");
     break;
@@ -199,6 +199,12 @@ static void emit_x86_instr(FILE *w, x86_instr *i) {
     break;
   case X86_IDIV:
     emit_x86_unary(w, i, "idivl");
+    break;
+  case X86_INC:
+    emit_x86_unary(w, i, "incl");
+    break;
+  case X86_DEC:
+    emit_x86_unary(w, i, "decl");
     break;
   case X86_ALLOC_STACK:
     fprintf(w, "\tsubq $%d, %%rsp\n", i->v.bytes_to_alloc);
