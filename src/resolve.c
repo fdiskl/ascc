@@ -61,6 +61,13 @@ void resolve_expr(parser *p, expr *e) {
   case EXPR_INT_CONST:
     break;
   case EXPR_UNARY:
+    if ((e->v.u.t == UNARY_POSTFIX_DEC || e->v.u.t == UNARY_POSTFIX_INC ||
+         e->v.u.t == UNARY_PREFIX_DEC || e->v.u.t == UNARY_PREFIX_INC) &&
+        (!is_lvalue(e->v.u.e))) {
+      fprintf(stderr, "invalid lvalue (%d:%d-%d:%d)\n", e->pos.line_start,
+              e->pos.pos_start, e->pos.line_end, e->pos.pos_end);
+      after_error();
+    }
     resolve_expr(p, e->v.u.e);
     break;
   case EXPR_BINARY:
