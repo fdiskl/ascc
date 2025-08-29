@@ -134,8 +134,10 @@ int fix_pseudo_for_func(x86_asm_gen *ag, x86_func *f) {
   x86_instr *line1 = alloc_x86_instr(ag, X86_COMMENT);
   x86_instr *line2 = alloc_x86_instr(ag, X86_COMMENT);
 
-  line1->v.comment = string_sprintf("\n\t#--- local var locations ---");
-  line2->v.comment = string_sprintf("---------------------------\n\t#");
+  line1->v.comment = string_sprintf(
+      " ---------------------------\n\t# --- local var locations ---");
+  line2->v.comment = string_sprintf(
+      " ---------------------------\n\t# ---------------------------\n");
 
   line1->prev = NULL;
   line1->next = NULL;
@@ -147,7 +149,7 @@ int fix_pseudo_for_func(x86_asm_gen *ag, x86_func *f) {
 
   for (size_t j = 0; j < count; j++) {
     x86_instr *i = alloc_x86_instr(ag, X86_COMMENT);
-    i->v.comment = string_sprintf("%s: -%d(%%rbp)", arr[j].key,
+    i->v.comment = string_sprintf(" %s: -%d(%%rbp)", arr[j].key,
                                   (int)((intptr_t)arr[j].value));
 
     i->next = NULL;

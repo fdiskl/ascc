@@ -212,14 +212,18 @@ static void emit_x86_instr(FILE *w, x86_instr *i) {
 }
 
 static void emit_x86_func(FILE *w, x86_func *f) {
+  fprintf(w, "# Start of function %s\n", f->name);
   fprintf(w, "\t.globl %s\n", f->name);
   fprintf(w, "%s:\n", f->name);
+  fprintf(w, "\t# func prologue \n");
   fprintf(w, "\tpushq %%rbp\n");
-  fprintf(w, "\tmovq %%rsp, %%rbp\n");
+  fprintf(w, "\tmovq %%rsp, %%rbp\n\n");
 
   for (x86_instr *i = f->first; i != NULL; i = i->next) {
     emit_x86_instr(w, i);
   }
+
+  fprintf(w, "# End of function %s\n\n", f->name);
 }
 
 void emit_x86(FILE *w, x86_func *f) {
