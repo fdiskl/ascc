@@ -67,6 +67,8 @@ typedef enum {
   X86_JMPCC,
   X86_SETCC,
   X86_LABEL,
+
+  X86_COMMENT,
 } x86_t;
 
 struct _x86_op {
@@ -99,11 +101,11 @@ struct _x86_instr {
     } setcc;
     int label; // label or jump
     int bytes_to_alloc;
+    string comment; // for comment instr
   } v;
   x86_instr *next;
   x86_instr *prev;
-  string comment; // NULL if not present
-  taci *origin;   // NULL if not present
+  taci *origin; // NULL if not present
 };
 
 struct _x86_func {
@@ -125,8 +127,8 @@ void init_x86_asm_gen(x86_asm_gen *ag);
 x86_func *gen_asm(x86_asm_gen *ag, tacf *tac_first_f);
 
 // replaces pseudo instructions, is called by gen_asm
-// returns amount of bytes to be allocated
-int fix_pseudo_for_func(x86_func *f);
+// returns amount of bytes to be allocated for locals
+int fix_pseudo_for_func(x86_asm_gen *ag, x86_func *f);
 
 // fixes invalid instructions, is called by gen_asm
 void fix_instructions_for_func(x86_asm_gen *ag, x86_func *f);

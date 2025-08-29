@@ -40,6 +40,10 @@
 // be enabled
 #define PRINT_TAC_ORIGIN_X86_ONE_TIME
 
+// If "PRINT_VARS_LAYOUT_X86" is defined table of tac var names to mem layouts
+// will be emitted
+#define PRINT_VARS_LAYOUT_X86
+
 #define UNREACHABLE()                                                          \
   do {                                                                         \
     fprintf(stderr, "UNREACHABLE code reached (file: %s, line: %d)\n",         \

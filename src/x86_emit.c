@@ -205,6 +205,9 @@ static void emit_x86_instr(FILE *w, x86_instr *i) {
     fprintf(w, "\t.L%d:", i->v.label);
     emit_origin(w, i);
     break;
+  case X86_COMMENT:
+    fprintf(w, "\t#%s\n", i->v.comment);
+    break;
   }
 }
 

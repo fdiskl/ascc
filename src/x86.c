@@ -20,13 +20,11 @@ x86_instr *alloc_x86_instr(x86_asm_gen *ag, int op) {
   res->next = NULL;
   res->prev = NULL;
   res->op = op;
-  res->comment = NULL;
   res->origin = NULL;
   return res;
 }
 
-static x86_instr *insert_x86_instr_with_comment(x86_asm_gen *ag, int op,
-                                                taci *origin, string comment) {
+static x86_instr *insert_x86_instr(x86_asm_gen *ag, int op, taci *origin) {
   x86_instr *i = alloc_x86_instr(ag, op);
   if (ag->head == NULL)
     ag->head = i;
@@ -37,13 +35,8 @@ static x86_instr *insert_x86_instr_with_comment(x86_asm_gen *ag, int op,
   ag->tail = i;
 
   i->origin = origin;
-  i->comment = comment;
 
   return i;
-}
-
-static x86_instr *insert_x86_instr(x86_asm_gen *ag, int op, taci *origin) {
-  return insert_x86_instr_with_comment(ag, op, origin, NULL);
 }
 
 static x86_func *alloc_x86_func(x86_asm_gen *ag, string name) {
@@ -319,11 +312,12 @@ x86_func *gen_asm(x86_asm_gen *ag, tacf *tac_first_f) {
 // 2 step fix
 #ifndef ASM_DONT_FIX_PSEUDO
     x86_instr *i = alloc_x86_instr(ag, X86_ALLOC_STACK);
-    i->v.bytes_to_alloc = fix_pseudo_for_func(res);
 
     i->next = res->first;
     res->first = i;
     i->next->prev = i;
+
+    i->v.bytes_to_alloc = fix_pseudo_for_func(ag, res);
 #endif
 
 #ifndef ASM_DONT_FIX_INSTRUCTIONS
