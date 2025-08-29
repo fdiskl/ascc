@@ -44,6 +44,30 @@ const char *tacop_str(tacop op) {
     return "gt";
   case TAC_GE:
     return "ge";
+  case TAC_INC:
+    return "inc";
+  case TAC_DEC:
+    return "dec";
+  case TAC_ASADD:
+    return "+=";
+  case TAC_ASSUB:
+    return "-=";
+  case TAC_ASMUL:
+    return "*=";
+  case TAC_ASDIV:
+    return "/=";
+  case TAC_ASMOD:
+    return "%=";
+  case TAC_ASAND:
+    return "&=";
+  case TAC_ASOR:
+    return "|=";
+  case TAC_ASXOR:
+    return "^=";
+  case TAC_ASLSHIFT:
+    return "<<=";
+  case TAC_ASRSHIFT:
+    return ">>=";
   case TAC_CPY:
   case TAC_JMP:
   case TAC_JZ:
@@ -68,6 +92,12 @@ static void fprint_val(FILE *f, tacv *v) {
   }
 }
 
+static void fprint_assignment(FILE *f, tacv *dst, tacv *src, const char *ops) {
+  fprint_val(f, dst);
+  fprintf(f, " %s ", ops);
+  fprint_val(f, src);
+}
+
 static void fprint_unary(FILE *f, tacv *dst, tacv *src, const char *ops) {
   fprint_val(f, dst);
   fprintf(f, " = %s ", ops);
@@ -83,16 +113,34 @@ static void fprint_binary(FILE *f, tacv *dst, tacv *src1, tacv *src2,
   fprint_val(f, src2);
 }
 
+static void fprint_single_val(FILE *f, tacv *src, const char *ops) {
+  fprintf(f, "%s ", ops);
+  fprint_val(f, src);
+}
+
 void fprint_taci(FILE *f, taci *i) {
   switch (i->op) {
   case TAC_RET:
-    fprintf(f, "%s ", tacop_str(i->op));
-    fprint_val(f, &i->src1);
+  case TAC_INC:
+  case TAC_DEC:
+    fprint_single_val(f, &i->src1, tacop_str(i->op));
     break;
   case TAC_COMPLEMENT:
   case TAC_NEGATE:
   case TAC_NOT:
     fprint_unary(f, &i->dst, &i->src1, tacop_str(i->op));
+    break;
+  case TAC_ASADD:
+  case TAC_ASSUB:
+  case TAC_ASMUL:
+  case TAC_ASDIV:
+  case TAC_ASMOD:
+  case TAC_ASAND:
+  case TAC_ASOR:
+  case TAC_ASXOR:
+  case TAC_ASLSHIFT:
+  case TAC_ASRSHIFT:
+    fprint_assignment(f, &i->dst, &i->src1, tacop_str(i->op));
     break;
   case TAC_ADD:
   case TAC_SUB:
