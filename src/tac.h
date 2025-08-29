@@ -12,37 +12,49 @@ typedef struct _tacgen tacgen;
 
 typedef enum {
   // singe val
-  TAC_RET,
+  TAC_RET, // return
+  TAC_INC, // ++
+  TAC_DEC, // --
 
   // unary
-  TAC_NEGATE,
-  TAC_COMPLEMENT,
-  TAC_NOT,
-  TAC_CPY,
+  TAC_NEGATE,     // -
+  TAC_COMPLEMENT, // ~
+  TAC_NOT,        // !
+  TAC_CPY,        // a = b
+  TAC_ASADD,      // +=
+  TAC_ASSUB,      // -=
+  TAC_ASMUL,      // *=
+  TAC_ASDIV,      // /=
+  TAC_ASMOD,      // %=
+  TAC_ASAND,      // &=
+  TAC_ASOR,       // |=
+  TAC_ASXOR,      // ^=
+  TAC_ASLSHIFT,   // >>=
+  TAC_ASRSHIFT,   // <<=
 
   // binary
-  TAC_ADD,
-  TAC_SUB,
-  TAC_MUL,
-  TAC_DIV,
-  TAC_MOD,
-  TAC_AND,
-  TAC_OR,
-  TAC_XOR,
-  TAC_LSHIFT,
-  TAC_RSHIFT,
-  TAC_EQ,
-  TAC_NE,
-  TAC_LT,
-  TAC_LE,
-  TAC_GT,
-  TAC_GE,
+  TAC_ADD,    // +
+  TAC_SUB,    // -
+  TAC_MUL,    // *
+  TAC_DIV,    // /
+  TAC_MOD,    // %
+  TAC_AND,    // &
+  TAC_OR,     // |
+  TAC_XOR,    // ^
+  TAC_LSHIFT, // <<
+  TAC_RSHIFT, // >>
+  TAC_EQ,     // ==
+  TAC_NE,     // !=
+  TAC_LT,     // <
+  TAC_LE,     // <=
+  TAC_GT,     // >
+  TAC_GE,     // >=
 
   // with labels
-  TAC_JMP,
-  TAC_JZ,
-  TAC_JNZ,
-  TAC_LABEL,
+  TAC_JMP,   // jmp
+  TAC_JZ,    // jmp if not zero
+  TAC_JNZ,   // jmp if zero
+  TAC_LABEL, // label:
 } tacop;
 
 typedef enum {
