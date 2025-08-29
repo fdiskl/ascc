@@ -14,8 +14,8 @@
 #ifndef PRINT_TAC_ORIGIN_X86_ONE_TIME
 #define SMART_EMIT_ORIGIN(code)                                                \
   do {                                                                         \
-    emit_origin(w, i);                                                         \
     code;                                                                      \
+    emit_origin(w, i);                                                         \
   } while (0)
 #endif
 
@@ -69,25 +69,23 @@ static void emit_x86_reg(FILE *w, x86_reg reg, int size) {
 static taci *last_origin = NULL;
 
 static void emit_origin(FILE *w, x86_instr *i) {
+  if (i->origin == NULL) {
+    fprintf(w, "\n");
+    return;
+  }
   fprintf(w, "\t");
 #ifdef PRINT_TAC_ORIGIN_X86
-  {
 #ifdef PRINT_TAC_ORIGIN_X86_ONE_TIME
-    if (i->origin != NULL) {
-      if (i->origin != last_origin) {
-        fprintf(w, "\n");
-        fprintf(w, "\n\t# ");
-        fprint_taci(w, i->origin);
-        last_origin = i->origin;
-      }
-    }
-#else
-    if (i->origin != NULL) {
-      fprintf(w, "# ");
-      fprint_taci(w, i->origin);
-    }
-#endif
+  if (i->origin != last_origin) {
+    fprintf(w, "\n");
+    fprintf(w, "\n\t# ");
+    fprint_taci(w, i->origin);
+    last_origin = i->origin;
   }
+#else
+  fprintf(w, "# ");
+  fprint_taci(w, i->origin);
+#endif
 #endif
   fprintf(w, "\n");
 }
@@ -113,7 +111,6 @@ static void emit_x86_unary(FILE *w, x86_instr *i, const char *name) {
   SMART_EMIT_ORIGIN({
     fprintf(w, "\t%s ", name);
     emit_x86_op(w, i->v.unary.src, 4);
-    emit_origin(w, i);
   });
 }
 
@@ -123,7 +120,6 @@ static void emit_x86_binary(FILE *w, x86_instr *i, const char *name) {
     emit_x86_op(w, i->v.binary.src, 4);
     fprintf(w, ", ");
     emit_x86_op(w, i->v.binary.dst, 4);
-    emit_origin(w, i);
   });
 }
 
@@ -205,7 +201,7 @@ static void emit_x86_instr(FILE *w, x86_instr *i) {
     emit_x86_unary(w, i, "idivl");
     break;
   case X86_ALLOC_STACK:
-    fprintf(w, "\tsubq $%d, %%rsp", i->v.bytes_to_alloc);
+    fprintf(w, "\tsubq $%d, %%rsp\n", i->v.bytes_to_alloc);
     break;
   case X86_CDQ:
     SMART_EMIT_ORIGIN(fprintf(w, "\tcdq"););
