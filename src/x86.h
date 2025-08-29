@@ -15,6 +15,12 @@ typedef struct _x86_func x86_func;
 #define ASM_DONT_FIX_INSTRUCTIONS
 #endif
 
+#ifndef PRINT_TAC_ORIGIN_X86
+#ifdef PRINT_TAC_ORIGIN_X86_ONE_TIME
+#undef PRINT_TAC_ORIGIN_X86_ONE_TIME
+#endif
+#endif
+
 typedef enum {
   CC_E,
   CC_NE,
@@ -48,6 +54,8 @@ typedef enum {
   X86_NOT,
   X86_NEG,
   X86_IDIV,
+  X86_INC,
+  X86_DEC,
 
   // binary
   X86_MOV,
