@@ -46,6 +46,18 @@ static void print_expr(expr *e, int indent) {
     case UNARY_NOT:
       printf("not");
       break;
+    case UNARY_PREFIX_INC:
+      printf("prefix inc");
+      break;
+    case UNARY_PREFIX_DEC:
+      printf("prefix dec");
+      break;
+    case UNARY_POSTFIX_INC:
+      printf("postfix inc");
+      break;
+    case UNARY_POSTFIX_DEC:
+      printf("postfix dec");
+      break;
     }
     printf(")");
     print_ast_pos(e->pos);
@@ -118,7 +130,43 @@ static void print_expr(expr *e, int indent) {
     print_expr(e->v.b.r, indent + 1);
     break;
   case EXPR_ASSIGNMENT:
-    printf("Assignment");
+    printf("Assignment (");
+    switch (e->v.assignment.t) {
+    case ASSIGN:
+      printf("assign");
+      break;
+    case ASSIGN_ADD:
+      printf("add");
+      break;
+    case ASSIGN_SUB:
+      printf("sub");
+      break;
+    case ASSIGN_MUL:
+      printf("mul");
+      break;
+    case ASSIGN_DIV:
+      printf("div");
+      break;
+    case ASSIGN_MOD:
+      printf("mod");
+      break;
+    case ASSIGN_AND:
+      printf("and");
+      break;
+    case ASSIGN_OR:
+      printf("or");
+      break;
+    case ASSIGN_XOR:
+      printf("xor");
+      break;
+    case ASSIGN_LSHIFT:
+      printf("lshift");
+      break;
+    case ASSIGN_RSHIFT:
+      printf("rshift");
+      break;
+    }
+    printf(")");
     print_ast_pos(e->pos);
     printf("\n");
     print_expr(e->v.assignment.l, indent + 1);
