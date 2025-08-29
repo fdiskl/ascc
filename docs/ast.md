@@ -1,15 +1,21 @@
 # AST definition
 
-```
+```asdl
 program = Program(decl*)
 block_item = D(decl) | S(statement)
 decl = Var(identifier name, expr? init) | Func(identifier name, block_item* body)
 statement = Return(expr) | Block(block_item*) | Expr(expr) | Null
-expr = Constant(int) | Var(identifier) | Unary(unop, expr) | Binary(binop, expr) | Assignment(exp, exp)
+expr = Constant(int) | Var(identifier) | Unary(unop, expr)
+     | Binary(binop, expr) | Assignment(assignment_op, exp, exp)
 unop = Complement | Negate | Not
+     | PrefixInc | PrefixDec | PostifxInc | PostfixDec
 binop = Add | Sub | Mul | Div | Mod
       | BitwiseAnd | BitwiseOr | BitwiseXor | Lshift | Rshift
       | And | Or | Eq | NotEq | Lt | Gt | LtEq| GtEq
+assignment_op =  Assign | AddAssign | SubAssign | MulAssign
+               | DivAssign | ModAssign
+               | BitwiseAndAssgin | BitwiseOrAssign
+               | XorAssign | LshiftAssign | RshiftAssign
 ```
 
 # Formal grammar
@@ -22,11 +28,16 @@ binop = Add | Sub | Mul | Div | Mod
 <func_decl> ::= "int" <identifier> "(" "void" ")" "{" {<block_item>} "}"
 <statement> ::= "return" <expr> | "{" {<block_item>} "}" | <expr> ";" | ";"
 <expr> ::= <factor> | <expr> <binop> <expr>
-<factor> ::= <int> | <identifier> | <unop> <factor> | "(" <expr> ")"
+<factor> ::= <int> | <identifier> | <unary> | "(" <expr> ")"
+<unary> ::= <prefix-unary> | <postfix-unary>
+<prefix-unary> ::= <prefix-unop> <factor>
+<postfix-unary> ::= <factor> <postfix-unop>
 <binop> ::= "+" | "-" | "*" | "/" | "%"
         | "&" | "|" | "^" | "<<" | ">>"
-        | "&&" | "||" | "==" | "!=" | "<" | ">" | "<=" | ">=" | "="
-<unop> ::= "-" | "~" | "!"
+        | "&&" | "||" | "==" | "!=" | "<" | ">" | "<=" | ">="
+        | "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^=" | "<<=" ">>="
+<prefix-unop> ::= "-" | "~" | "!" | "++" | "--"
+<postfix-unop> ::= "++" | "--"
 <identifier> ::= ? ident token ?
 <int> ::= ? int literal token ?
 ```
