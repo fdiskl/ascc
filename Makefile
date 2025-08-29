@@ -1,4 +1,4 @@
-CC := gcc
+CC := clang
 BUILD ?= debug
 CFLAGS_COMMON := -Wall -Wextra
 LDFLAGS :=
@@ -28,18 +28,18 @@ release:
 
 $(BIN): $(OBJ)
 	@mkdir -p $(dir $@)
-	$(CC) $(OBJ) -o $@ $(LDFLAGS)
+	@$(CC) $(OBJ) -o $@ $(LDFLAGS)
 
 $(OBJDIR)/%.o: src/%.c
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+	@echo Building $<
+	@$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -rf build
+	@rm -rf build
 
 count:
-	find ./src -type f \( -name "*.c" -o -name "*.h" \) -exec wc -l {} +
+	@find ./src -type f \( -name "*.c" -o -name "*.h" \) -exec wc -l {} +
 
-# optional: run debug build in gdb
 gdb: debug
-	gdb $(BINDIR)/ascc
+	@gdb $(BINDIR)/ascc
