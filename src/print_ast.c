@@ -236,7 +236,7 @@ static void print_stmt(stmt *s, int indent) {
     print_expr(s->v.if_stmt.cond, indent + 1);
     print_stmt(s->v.if_stmt.then, indent + 1);
     if (s->v.if_stmt.elze != NULL)
-      print_stmt(s->v.if_stmt.then, indent + 1);
+      print_stmt(s->v.if_stmt.elze, indent + 1);
     return;
   }
 
