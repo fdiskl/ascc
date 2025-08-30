@@ -242,6 +242,7 @@ struct _parser {
 
   token curr;
   token next;
+  token after_next;
 
   arena decl_arena;
   arena stmt_arena;

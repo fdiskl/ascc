@@ -31,7 +31,8 @@
 
 static token *advance(parser *p) {
   p->curr = p->next;
-  next(p->l, &p->next);
+  p->next = p->after_next;
+  next(p->l, &p->after_next);
   return &p->curr;
 }
 
@@ -60,7 +61,8 @@ void init_parser(parser *p, lexer *l) {
 
   p->ident_ht_list_head = NULL;
 
-  advance(p);
+  advance(p); // for after_next
+  advance(p); // for next
 }
 
 static expr *alloc_expr(parser *p, int t) {
