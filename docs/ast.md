@@ -4,7 +4,9 @@
 program = Program(decl*)
 block_item = D(decl) | S(statement)
 decl = Var(identifier name, expr? init) | Func(identifier name, block_item* body)
-statement = Return(expr) | Block(block_item*) | Expr(expr) | Null | If(exp cond, statement then, statement? else`)
+statement = Return(expr) | Block(block_item*) | Expr(expr)
+          | Null | If(exp cond, statement then, statement? else)
+          | Label(identifier, statement) | Goto(identifier)
 expr = Constant(int) | Var(identifier) | Unary(unop, expr)
      | Binary(binop, expr) | Assignment(assignment_op, exp, exp)
      | Conditional(expr condition, expr then, expr else)
@@ -29,6 +31,7 @@ assignment_op =  Assign | AddAssign | SubAssign | MulAssign
 <func_decl> ::= "int" <identifier> "(" "void" ")" "{" {<block_item>} "}"
 <statement> ::= "return" <expr> | "{" {<block_item>} "}" | <expr> ";" | ";"
             | "if" "(" <expr> ")" <statement> [ "else" <statement> ]
+            | <identifier> ":" <statement> | "goto" <identifier> ";"
 <expr> ::= <factor> | <expr> <binop> <expr> | <expr> "?" <expr> ":" <expr>
 <factor> ::= <int> | <identifier> | <unary> | "(" <expr> ")"
 <unary> ::= <prefix-unary> | <postfix-unary>
