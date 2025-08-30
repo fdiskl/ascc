@@ -298,6 +298,7 @@ static void print_stmt(stmt *s, int indent) {
       print_indent(indent + 1);
       printf("(no post)\n");
     }
+    print_stmt(s->v.for_stmt.s, indent + 1);
     return;
   case STMT_BREAK:
     printf("BreakStmt (%d)", s->v.break_stmt.idx);
