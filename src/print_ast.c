@@ -237,6 +237,10 @@ static void print_stmt(stmt *s, int indent) {
     print_stmt(s->v.if_stmt.then, indent + 1);
     if (s->v.if_stmt.elze != NULL)
       print_stmt(s->v.if_stmt.elze, indent + 1);
+    else {
+      print_indent(indent + 1);
+      printf("(no else stmt\n)");
+    }
     return;
   case STMT_GOTO:
     printf("GotoStmt (%s, %d)", s->v.goto_stmt.label, s->v.goto_stmt.label_idx);
@@ -249,8 +253,48 @@ static void print_stmt(stmt *s, int indent) {
     printf("\n");
     print_stmt(s->v.label.s, indent + 1);
     return;
+  case STMT_WHILE:
+    printf("WhileStmt");
+    print_ast_pos(s->pos);
+    printf("\n");
+    if (s->v.while_stmt.cond != NULL)
+      print_expr(s->v.while_stmt.cond, indent + 1);
+    print_stmt(s->v.while_stmt.s, indent + 1);
+    return;
+  case STMT_DOWHILE:
+    printf("DoWhileStmt");
+    print_ast_pos(s->pos);
+    printf("\n");
+    print_stmt(s->v.dowhile_stmt.s, indent + 1);
+    if (s->v.dowhile_stmt.cond != NULL)
+      print_expr(s->v.dowhile_stmt.cond, indent + 1);
+    return;
+  case STMT_FOR:
+    printf("ForStmt");
+    print_ast_pos(s->pos);
+    printf("\n");
+    if (s->v.for_stmt.init_d != NULL)
+      print_decl(s->v.for_stmt.init_d, indent + 1);
+    else if (s->v.for_stmt.init_e != NULL)
+      print_expr(s->v.for_stmt.init_e, indent + 1);
+    else {
+      print_indent(indent + 1);
+      printf("(no init)\n");
+    }
+    if (s->v.for_stmt.cond)
+      print_expr(s->v.for_stmt.cond, indent + 1);
+    else {
+      print_indent(indent + 1);
+      printf("(no cond)\n");
+    }
+    if (s->v.for_stmt.post)
+      print_expr(s->v.for_stmt.post, indent + 1);
+    else {
+      print_indent(indent + 1);
+      printf("(no post)\n");
+    }
+    return;
   }
-
   UNREACHABLE();
 }
 
