@@ -31,6 +31,8 @@ assignment_op =  Assign | AddAssign | SubAssign | MulAssign
                | XorAssign | LshiftAssign | RshiftAssign
 ```
 
+(For now `constant_expr = Constant(int)` because it requires expr eval which will be implemented after types are added)
+
 # Formal grammar
 
 ```ebnf
