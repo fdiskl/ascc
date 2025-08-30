@@ -169,11 +169,13 @@ typedef enum {
 
 struct _goto_stmt {
   string label;
+  int label_idx;
 };
 
 struct _label_stmt {
   string label;
   stmt *s;
+  int label_idx;
 };
 
 struct _if_stmt {

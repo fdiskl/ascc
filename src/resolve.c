@@ -10,15 +10,15 @@
 #include <stdint.h>
 #include <stdio.h>
 
-// NOTE: unique names (int's) stored in hash table are not saved on heap but
-// casted to ptr's. Be careful :)
-//
-// labels_ht and gotos_to_check_ht
-// stores 1 casted as void* if true, NULL if false
+// unique var names (in ident hash tables) are stored as ints casted as void*
+// labels_ht stores label idx casted as void*
+// gotos_to_check_ht stores pointer to goto node
 
 int var_name_idx_counter = 0;
+int label_idx_counter = 0;
 
-int get_name() { return ++var_name_idx_counter; }
+static int get_label() { return ++label_idx_counter; }
+static int get_name() { return ++var_name_idx_counter; }
 
 static bool is_lvalue(expr *e) {
   return e->t == EXPR_VAR; // for now
@@ -31,11 +31,13 @@ void resolve_label_stmt(parser *p, stmt *s) {
             s->pos.pos_end);
     after_error();
   }
-  ht_set(p->labels_ht, s->v.label.label, (void *)((intptr_t)1));
+
+  ht_set(p->labels_ht, s->v.label.label,
+         (void *)((intptr_t)(s->v.label.label_idx = get_label())));
 }
 
 void resolve_goto_stmt(parser *p, stmt *s) {
-  ht_set(p->gotos_to_check_ht, s->v.goto_stmt.label, (void *)((intptr_t)1));
+  ht_set(p->gotos_to_check_ht, s->v.goto_stmt.label, (void *)s);
 }
 
 void resolve_decl(parser *p, decl *d);
@@ -132,17 +134,17 @@ void enter_func(parser *p, decl *f) {
 void exit_func(parser *p, decl *f) {
   hti it = ht_iterator(p->gotos_to_check_ht);
   while (ht_next(&it)) {
-    if (((int)((intptr_t)it.value)) != 1)
-      continue; // shouldn't happen, but idk
-
     void *e = ht_get(p->labels_ht, it.key);
-    if (e == NULL || ((int)((intptr_t)e)) != 1) {
+    if (e == NULL) {
       fprintf(stderr, "goto to undeclared label '%s'\n",
-              it.key); // would be nice to add
-      // location info, but i am
-      // too lazy. TODO ig
+              it.key); // would be nice to add location info, but i am too lazy.
+                       // TODO ig
       after_error();
     }
+
+    stmt *s = (stmt *)it.value;
+    assert(s->t == STMT_GOTO);
+    s->v.goto_stmt.label_idx = ((int)((intptr_t)e));
   }
 
   exit_scope(p);

@@ -239,12 +239,12 @@ static void print_stmt(stmt *s, int indent) {
       print_stmt(s->v.if_stmt.elze, indent + 1);
     return;
   case STMT_GOTO:
-    printf("GotoStmt (%s)", s->v.goto_stmt.label);
+    printf("GotoStmt (%s, %d)", s->v.goto_stmt.label, s->v.goto_stmt.label_idx);
     print_ast_pos(s->pos);
     printf("\n");
     return;
   case STMT_LABEL:
-    printf("LabelStmt (%s)", s->v.label.label);
+    printf("LabelStmt (%s, %d)", s->v.label.label, s->v.label.label_idx);
     print_ast_pos(s->pos);
     printf("\n");
     print_stmt(s->v.label.s, indent + 1);
