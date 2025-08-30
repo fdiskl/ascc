@@ -264,7 +264,10 @@ struct _parser {
   arena expr_arena;
   arena bi_arena;
 
+  // for resolve.c
   ht *ident_ht_list_head;
+  ht *labels_ht;
+  ht *gotos_to_check_ht;
 };
 
 void init_parser(parser *p, lexer *l);

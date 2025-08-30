@@ -440,11 +440,17 @@ static stmt *parse_if_stmt(parser *p) {
   return s;
 }
 
+void resolve_label_stmt(parser *p, stmt *s);
+void resolve_goto_stmt(parser *p, stmt *s);
+
 static stmt *parse_label_stmt(parser *p) {
   stmt *s = alloc_stmt(p, STMT_LABEL);
   s->v.label.label = expect(p, TOK_IDENT)->v.ident;
   expect(p, TOK_COLON);
   s->v.label.s = parse_stmt(p);
+
+  resolve_label_stmt(p, s);
+
   return s;
 }
 
@@ -453,6 +459,9 @@ static stmt *parse_goto_stmt(parser *p) {
   expect(p, TOK_GOTO);
   s->v.goto_stmt.label = expect(p, TOK_IDENT)->v.ident;
   expect(p, TOK_SEMI);
+
+  resolve_goto_stmt(p, s);
+
   return s;
 }
 
@@ -493,6 +502,9 @@ static stmt *parse_stmt(parser *p) {
 
 void resolve_decl(parser *p, decl *d);
 
+void enter_func(parser *p, decl *f);
+void exit_func(parser *p, decl *f);
+
 static decl *parse_decl(parser *p) {
   tok_pos start = expect(p, TOK_INT)->pos; // TODO: parse return type of func or
                                            // type of var, not just int
@@ -515,13 +527,13 @@ static decl *parse_decl(parser *p) {
 
     resolve_decl(p, res);
 
-    enter_scope(p);
+    enter_func(p, res);
 
     while (p->next.token != TOK_RBRACE) {
       vec_push_back(items_tmp, parse_bi(p));
     }
 
-    exit_scope(p);
+    exit_func(p, res);
 
     res->v.func.body_len = items_tmp.size;
     vec_move_into_arena(&p->bi_arena, items_tmp, block_item, res->v.func.body);

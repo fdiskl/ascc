@@ -12,6 +12,9 @@
 
 // NOTE: unique names (int's) stored in hash table are not saved on heap but
 // casted to ptr's. Be careful :)
+//
+// labels_ht and gotos_to_check_ht
+// stores 1 casted as void* if true, NULL if false
 
 int var_name_idx_counter = 0;
 
@@ -19,6 +22,20 @@ int get_name() { return ++var_name_idx_counter; }
 
 static bool is_lvalue(expr *e) {
   return e->t == EXPR_VAR; // for now
+}
+
+void resolve_label_stmt(parser *p, stmt *s) {
+  if (ht_get(p->labels_ht, s->v.label.label) != NULL) {
+    fprintf(stderr, "duplicate label %s (%d:%d-%d:%d)\n", s->v.label.label,
+            s->pos.line_start, s->pos.pos_start, s->pos.line_end,
+            s->pos.pos_end);
+    after_error();
+  }
+  ht_set(p->labels_ht, s->v.label.label, (void *)((intptr_t)1));
+}
+
+void resolve_goto_stmt(parser *p, stmt *s) {
+  ht_set(p->gotos_to_check_ht, s->v.goto_stmt.label, (void *)((intptr_t)1));
 }
 
 void resolve_decl(parser *p, decl *d);
@@ -104,6 +121,33 @@ void resolve_expr(parser *p, expr *e) {
     resolve_expr(p, e->v.ternary.elze);
     break;
   }
+}
+
+void enter_func(parser *p, decl *f) {
+  enter_scope(p);
+  p->labels_ht = ht_create();
+  p->gotos_to_check_ht = ht_create();
+}
+
+void exit_func(parser *p, decl *f) {
+  hti it = ht_iterator(p->gotos_to_check_ht);
+  while (ht_next(&it)) {
+    if (((int)((intptr_t)it.value)) != 1)
+      continue; // shouldn't happen, but idk
+
+    void *e = ht_get(p->labels_ht, it.key);
+    if (e == NULL || ((int)((intptr_t)e)) != 1) {
+      fprintf(stderr, "goto to undeclared label '%s'\n",
+              it.key); // would be nice to add
+      // location info, but i am
+      // too lazy. TODO ig
+      after_error();
+    }
+  }
+
+  exit_scope(p);
+  ht_destroy(p->labels_ht);
+  ht_destroy(p->gotos_to_check_ht);
 }
 
 void resolve_decl(parser *p, decl *d) {
