@@ -238,6 +238,17 @@ static void print_stmt(stmt *s, int indent) {
     if (s->v.if_stmt.elze != NULL)
       print_stmt(s->v.if_stmt.elze, indent + 1);
     return;
+  case STMT_GOTO:
+    printf("GotoStmt (%s)", s->v.goto_stmt.label);
+    print_ast_pos(s->pos);
+    printf("\n");
+    return;
+  case STMT_LABEL:
+    printf("LabelStmt (%s)", s->v.label.label);
+    print_ast_pos(s->pos);
+    printf("\n");
+    print_stmt(s->v.label.s, indent + 1);
+    return;
   }
 
   UNREACHABLE();
