@@ -136,6 +136,8 @@ const char *token_name(int token) {
     return "const";
   case TOK_GOTO:
     return "goto";
+  case TOK_DO:
+    return "do";
 
   // literals
   case TOK_INTLIT:

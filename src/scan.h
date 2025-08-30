@@ -119,6 +119,7 @@ enum {
   TOK_STATIC,
   TOK_CONST,
   TOK_GOTO,
+  TOK_DO,
 
   // literals
   TOK_INTLIT,
