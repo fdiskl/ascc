@@ -98,6 +98,11 @@ void resolve_expr(parser *p, expr *e) {
 
     break;
   }
+  case EXPR_TERNARY:
+    resolve_expr(p, e->v.ternary.cond);
+    resolve_expr(p, e->v.ternary.then);
+    resolve_expr(p, e->v.ternary.elze);
+    break;
   }
 }
 

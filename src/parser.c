@@ -203,6 +203,8 @@ static int binary_op(int t) {
   case TOK_ASCARET:
   case TOK_ASPIPE:
     return 6;
+  case TOK_QUESTION:
+    return 7;
   case TOK_DOUBLE_PIPE:
     return 8;
   case TOK_DOUBLE_AMP:
@@ -324,9 +326,18 @@ static expr *_parse_expr(parser *p, int min_prec) {
       continue;
     }
 
-    // ternary will be here
+    // ternary
+    expect(p, TOK_QUESTION);
+    expr *mid = parse_expr(p);
+    expect(p, TOK_COLON);
+    expr *right = _parse_expr(p, prec);
+    expr *tmp = l;
+    l = alloc_expr(p, EXPR_TERNARY);
+    l->v.ternary.cond = tmp;
+    l->v.ternary.then = mid;
+    l->v.ternary.elze = right;
 
-    UNREACHABLE();
+    SET_POS_FROM_NODES(l, tmp, right);
   }
 
   return l;
@@ -412,6 +423,21 @@ static stmt *parse_null_stmt(parser *p) {
   return alloc_stmt(p, STMT_NULL);
 }
 
+static stmt *parse_if_stmt(parser *p) {
+  stmt *s = alloc_stmt(p, STMT_IF);
+  expect(p, TOK_IF);
+  expect(p, TOK_LPAREN);
+  s->v.if_stmt.cond = parse_expr(p);
+  expect(p, TOK_RPAREN);
+  s->v.if_stmt.then = parse_stmt(p);
+  if (p->next.token == TOK_ELSE) {
+    expect(p, TOK_ELSE);
+    s->v.if_stmt.elze = parse_stmt(p);
+  } else
+    s->v.if_stmt.elze = NULL;
+  return s;
+}
+
 static stmt *parse_stmt(parser *p) {
   tok_pos start = p->next.pos;
   stmt *res;
@@ -424,6 +450,9 @@ static stmt *parse_stmt(parser *p) {
     break;
   case TOK_SEMI:
     res = parse_null_stmt(p);
+    break;
+  case TOK_IF:
+    res = parse_if_stmt(p);
     break;
   default:
     res = parse_expr_stmt(p);
