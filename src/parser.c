@@ -525,6 +525,20 @@ after_semi:
   return s;
 }
 
+static stmt *parse_break_stmt(parser *p) {
+  stmt *s = alloc_stmt(p, STMT_BREAK);
+  expect(p, TOK_BREAK);
+  expect(p, TOK_SEMI);
+  return s;
+}
+
+static stmt *parse_continue_stmt(parser *p) {
+  stmt *s = alloc_stmt(p, STMT_CONTINUE);
+  expect(p, TOK_CONTINUE);
+  expect(p, TOK_SEMI);
+  return s;
+}
+
 static stmt *parse_stmt(parser *p) {
   tok_pos start = p->next.pos;
   stmt *res;
@@ -559,6 +573,12 @@ static stmt *parse_stmt(parser *p) {
     break;
   case TOK_FOR:
     res = parse_for_stmt(p);
+    break;
+  case TOK_BREAK:
+    res = parse_break_stmt(p);
+    break;
+  case TOK_CONTINUE:
+    res = parse_continue_stmt(p);
     break;
   default:
   _default:
