@@ -3,10 +3,15 @@
 ```asdl
 program = Program(decl*)
 block_item = D(decl) | S(statement)
-decl = Var(identifier name, expr? init) | Func(identifier name, block_item* body)
+decl = var_decl | func_decl
+var_decl = Var(identifier name, expr? init)
+func_decl = Func(identifier name, block_item* body)
+for_init = var_decl | expr
 statement = Return(expr) | Block(block_item*) | Expr(expr)
-          | Null | If(exp cond, statement then, statement? else)
+          | Null | If(expr cond, statement then, statement? else)
           | Label(identifier, statement) | Goto(identifier)
+          | While(expr cond, statement body) | DoWhile(statement body, expr cond)
+          | For(for_init? init, expr? cond, expr? post, statement body)
 expr = Constant(int) | Var(identifier) | Unary(unop, expr)
      | Binary(binop, expr) | Assignment(assignment_op, exp, exp)
      | Conditional(expr condition, expr then, expr else)
@@ -29,9 +34,13 @@ assignment_op =  Assign | AddAssign | SubAssign | MulAssign
 <decl> ::= <var_decl> | <func_decl>
 <var_decl> ::= "int" <identifier> [ "=" <expr> ] ";"
 <func_decl> ::= "int" <identifier> "(" "void" ")" "{" {<block_item>} "}"
+<for-init> ::= <var_decl> | <func_decl>
 <statement> ::= "return" <expr> | "{" {<block_item>} "}" | <expr> ";" | ";"
             | "if" "(" <expr> ")" <statement> [ "else" <statement> ]
             | <identifier> ":" <statement> | "goto" <identifier> ";"
+            | "while" "(" <expr> ")" <statement>
+            | "do" <statement> "while" "(" <expr> ")" ";"
+            | "for" "(" [<for-init>] ";" [<expr>] ";" [<expr>] ) <statement>
 <expr> ::= <factor> | <expr> <binop> <expr> | <expr> "?" <expr> ":" <expr>
 <factor> ::= <int> | <identifier> | <unary> | "(" <expr> ")"
 <unary> ::= <prefix-unary> | <postfix-unary>
