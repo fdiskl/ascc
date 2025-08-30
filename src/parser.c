@@ -440,6 +440,22 @@ static stmt *parse_if_stmt(parser *p) {
   return s;
 }
 
+static stmt *parse_label_stmt(parser *p) {
+  stmt *s = alloc_stmt(p, STMT_LABEL);
+  s->v.label.label = expect(p, TOK_IDENT)->v.ident;
+  expect(p, TOK_COLON);
+  s->v.label.s = parse_stmt(p);
+  return s;
+}
+
+static stmt *parse_goto_stmt(parser *p) {
+  stmt *s = alloc_stmt(p, STMT_GOTO);
+  expect(p, TOK_GOTO);
+  s->v.goto_stmt.label = expect(p, TOK_IDENT)->v.ident;
+  expect(p, TOK_SEMI);
+  return s;
+}
+
 static stmt *parse_stmt(parser *p) {
   tok_pos start = p->next.pos;
   stmt *res;
@@ -456,7 +472,18 @@ static stmt *parse_stmt(parser *p) {
   case TOK_IF:
     res = parse_if_stmt(p);
     break;
+  case TOK_IDENT:
+    if (p->after_next.token == TOK_COLON) {
+      res = parse_label_stmt(p);
+      break;
+    }
+    goto _default;
+    break;
+  case TOK_GOTO:
+    res = parse_goto_stmt(p);
+    break;
   default:
+  _default:
     res = parse_expr_stmt(p);
   }
 

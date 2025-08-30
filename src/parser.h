@@ -154,6 +154,8 @@ struct _expr {
 
 typedef struct _return_stmt return_stmt;
 typedef struct _if_stmt if_stmt;
+typedef struct _goto_stmt goto_stmt;
+typedef struct _label_stmt label_stmt;
 
 typedef enum {
   STMT_RETURN,
@@ -161,7 +163,18 @@ typedef enum {
   STMT_EXPR,
   STMT_NULL,
   STMT_IF,
+  STMT_GOTO,
+  STMT_LABEL,
 } stmtt;
+
+struct _goto_stmt {
+  string label;
+};
+
+struct _label_stmt {
+  string label;
+  stmt *s;
+};
 
 struct _if_stmt {
   expr *cond;
@@ -186,6 +199,8 @@ struct _stmt {
     block_stmt block;
     expr *e;
     if_stmt if_stmt;
+    label_stmt label;
+    goto_stmt goto_stmt;
   } v;
 };
 
