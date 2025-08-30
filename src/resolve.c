@@ -14,11 +14,6 @@
 
 extern arena ptr_arena; // (main.c)
 
-// TODO: use this to check if in loop/switch
-static int last_loop_idx = 0;
-static int last_switch_idx = 0;
-static char was_loop_last = 0;
-
 // unique var names (in ident hash tables) are stored as ints casted as void*
 // labels_ht stores label idx casted as void*
 // gotos_to_check_ht stores pointer to goto node
@@ -148,6 +143,28 @@ void resolve_expr(parser *p, expr *e) {
   }
 }
 
+// try to find last switch in stack_loop_resolve_info, -1 if not found, idx
+// otherwise
+static int find_last_switch(parser *p) {
+  for (int i = p->stack_loop_resolve_info.size - 1; i >= 0; --i) {
+    if (p->stack_loop_resolve_info.data[i].t == LOOP_RESOLVE_SWITCH)
+      return i;
+  }
+
+  return -1;
+}
+
+// try to find last loop in stack_loop_resolve_info, -1 if not found, idx
+// otherwise
+static int find_last_loop(parser *p) {
+  for (int i = p->stack_loop_resolve_info.size - 1; i >= 0; --i) {
+    if (p->stack_loop_resolve_info.data[i].t == LOOP_RESOLVE_LOOP)
+      return i;
+  }
+
+  return -1;
+}
+
 void resolve_break_stmt(parser *p, stmt *s) {
   if (p->stack_loop_resolve_info.size <= 0) {
     fprintf(stderr, "can't use break outside of loop or switch (%d:%d-%d:%d)\n",
@@ -171,11 +188,10 @@ void resolve_break_stmt(parser *p, stmt *s) {
 }
 
 void resolve_continue_stmt(parser *p, stmt *s) {
-  loop_resolve_info *i;
-  if (p->stack_loop_resolve_info.size <= 0 ||
-      (i = &p->stack_loop_resolve_info
-                .data[p->stack_loop_resolve_info.size - 1])
-              ->t != LOOP_RESOLVE_LOOP) {
+
+  int loop_idx = find_last_loop(p);
+
+  if (p->stack_loop_resolve_info.size <= 0 || loop_idx == -1) {
     fprintf(stderr, "can't use continue outside of loop (%d:%d-%d:%d)\n",
             s->pos.line_start, s->pos.pos_start, s->pos.line_end,
             s->pos.pos_end);
@@ -183,21 +199,24 @@ void resolve_continue_stmt(parser *p, stmt *s) {
     after_error();
   }
 
+  loop_resolve_info *i = &p->stack_loop_resolve_info.data[loop_idx];
+
   s->v.continue_stmt.idx = i->v.l.continue_idx;
 }
 
 void resolve_case_stmt(parser *p, stmt *s) {
-  loop_resolve_info *i;
-  if (p->stack_loop_resolve_info.size <= 0 ||
-      (i = &p->stack_loop_resolve_info
-                .data[p->stack_loop_resolve_info.size - 1])
-              ->t != LOOP_RESOLVE_SWITCH) {
+
+  int switch_idx = find_last_switch(p);
+
+  if (p->stack_loop_resolve_info.size <= 0 || switch_idx == -1) {
     fprintf(stderr, "can't use case outside of switch (%d:%d-%d:%d)\n",
             s->pos.line_start, s->pos.pos_start, s->pos.line_end,
             s->pos.pos_end);
 
     after_error();
   }
+
+  loop_resolve_info *i = &p->stack_loop_resolve_info.data[switch_idx];
 
   string key = hash_for_constant_expr(p, s->v.case_stmt.e);
   stmt *old = (stmt *)ht_get(i->v.s.cases, key);
@@ -218,17 +237,16 @@ void resolve_case_stmt(parser *p, stmt *s) {
 }
 
 void resolve_default_stmt(parser *p, stmt *s) {
-  loop_resolve_info *i;
-  if (p->stack_loop_resolve_info.size <= 0 ||
-      (i = &p->stack_loop_resolve_info
-                .data[p->stack_loop_resolve_info.size - 1])
-              ->t != LOOP_RESOLVE_SWITCH) {
+  int switch_idx = find_last_switch(p);
+  if (p->stack_loop_resolve_info.size <= 0 || switch_idx == -1) {
     fprintf(stderr, "can't use default outside of switch (%d:%d-%d:%d)\n",
             s->pos.line_start, s->pos.pos_start, s->pos.line_end,
             s->pos.pos_end);
 
     after_error();
   }
+
+  loop_resolve_info *i = &p->stack_loop_resolve_info.data[switch_idx];
 
   i->v.s.default_stmt = s;
   s->v.default_stmt.label_idx = get_label();
