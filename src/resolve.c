@@ -24,6 +24,14 @@ static bool is_lvalue(expr *e) {
   return e->t == EXPR_VAR; // for now
 }
 
+void check_for_constant_expr(parser *p, expr *e) {
+  if (e->t != EXPR_INT_CONST) {
+    fprintf(stderr, "expected constant expr (%d:%d-%d:%d)\n", e->pos.line_start,
+            e->pos.pos_start, e->pos.line_end, e->pos.pos_end);
+    after_error();
+  } // TODO: add more const exprs
+}
+
 void resolve_label_stmt(parser *p, stmt *s) {
   if (ht_get(p->labels_ht, s->v.label.label) != NULL) {
     fprintf(stderr, "duplicate label %s (%d:%d-%d:%d)\n", s->v.label.label,

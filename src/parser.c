@@ -351,6 +351,13 @@ static expr *parse_expr(parser *p) {
   return e;
 }
 
+void check_for_constant_expr(parser *p, expr *e);
+static expr *parse_constant_expr(parser *p) {
+  expr *e = _parse_expr(p, MIN_PREC);
+  check_for_constant_expr(p, e);
+  return e;
+}
+
 // returns true if given token is start of declaration
 static bool is_decl(int toktype) {
   switch (toktype) {
@@ -539,6 +546,33 @@ static stmt *parse_continue_stmt(parser *p) {
   return s;
 }
 
+static stmt *parse_case_stmt(parser *p) {
+  stmt *s = alloc_stmt(p, STMT_CASE);
+  expect(p, TOK_CASE);
+  s->v.case_stmt.e = parse_constant_expr(p);
+  expect(p, TOK_COLON);
+  s->v.case_stmt.s = parse_stmt(p);
+  return s;
+}
+
+static stmt *parse_default_stmt(parser *p) {
+  stmt *s = alloc_stmt(p, STMT_DEFAULT);
+  expect(p, TOK_DEFAULT);
+  expect(p, TOK_COLON);
+  s->v.default_stmt.s = parse_stmt(p);
+  return s;
+}
+
+static stmt *parse_switch_stmt(parser *p) {
+  stmt *s = alloc_stmt(p, STMT_SWITCH);
+  expect(p, TOK_SWITCH);
+  expect(p, TOK_LPAREN);
+  s->v.switch_stmt.e = parse_expr(p);
+  expect(p, TOK_RPAREN);
+  s->v.switch_stmt.s = parse_stmt(p);
+  return s;
+}
+
 static stmt *parse_stmt(parser *p) {
   tok_pos start = p->next.pos;
   stmt *res;
@@ -579,6 +613,15 @@ static stmt *parse_stmt(parser *p) {
     break;
   case TOK_CONTINUE:
     res = parse_continue_stmt(p);
+    break;
+  case TOK_CASE:
+    res = parse_case_stmt(p);
+    break;
+  case TOK_DEFAULT:
+    res = parse_default_stmt(p);
+    break;
+  case TOK_SWITCH:
+    res = parse_switch_stmt(p);
     break;
   default:
   _default:
