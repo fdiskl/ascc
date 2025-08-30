@@ -118,6 +118,7 @@ enum {
   TOK_SIZEOF,
   TOK_STATIC,
   TOK_CONST,
+  TOK_GOTO,
 
   // literals
   TOK_INTLIT,

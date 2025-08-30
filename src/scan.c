@@ -257,6 +257,8 @@ int is_keyword(lexer *l) {
     break;
   case 'd':
     check_kw("default", TOK_DEFAULT);
+  case 'g':
+    check_kw("goto", TOK_GOTO);
   }
 
   return 0;
