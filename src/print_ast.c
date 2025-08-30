@@ -294,6 +294,15 @@ static void print_stmt(stmt *s, int indent) {
       printf("(no post)\n");
     }
     return;
+  case STMT_BREAK:
+    printf("BreakStmt");
+    print_ast_pos(s->pos);
+    printf("\n");
+  case STMT_CONTINUE:
+    printf("ContinueStmt");
+    print_ast_pos(s->pos);
+    printf("\n");
+    break;
   }
   UNREACHABLE();
 }
