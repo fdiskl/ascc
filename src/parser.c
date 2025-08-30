@@ -465,6 +465,66 @@ static stmt *parse_goto_stmt(parser *p) {
   return s;
 }
 
+static stmt *parse_while_stmt(parser *p) {
+  stmt *s = alloc_stmt(p, STMT_WHILE);
+  expect(p, TOK_WHILE);
+  expect(p, TOK_LPAREN);
+  s->v.while_stmt.cond = parse_expr(p);
+  expect(p, TOK_RPAREN);
+  s->v.while_stmt.s = parse_stmt(p);
+  return s;
+}
+
+static stmt *parse_do_while_stmt(parser *p) {
+  stmt *s = alloc_stmt(p, STMT_DOWHILE);
+  s->v.dowhile_stmt.s = parse_stmt(p);
+  expect(p, TOK_LPAREN);
+  s->v.dowhile_stmt.cond = parse_expr(p);
+  expect(p, TOK_RPAREN);
+  expect(p, TOK_SEMI);
+  return s;
+}
+
+static stmt *parse_for_stmt(parser *p) {
+  stmt *s = alloc_stmt(p, STMT_FOR);
+
+  s->v.for_stmt.init_e = NULL;
+  s->v.for_stmt.init_d = NULL;
+  s->v.for_stmt.cond = NULL;
+  s->v.for_stmt.post = NULL;
+
+  expect(p, TOK_FOR);
+  expect(p, TOK_LPAREN);
+
+  // init
+  if (p->next.token != TOK_SEMI) {
+    if (is_decl(p->next.token)) {
+      s->v.for_stmt.init_d = parse_decl(p);
+      goto after_semi;
+    } else
+      s->v.for_stmt.init_e = parse_expr(p);
+  }
+
+  expect(p, TOK_SEMI);
+after_semi:
+
+  // cond
+  if (p->next.token != TOK_SEMI)
+    s->v.for_stmt.cond = parse_expr(p);
+
+  expect(p, TOK_SEMI);
+
+  // post
+  if (p->next.token != TOK_RPAREN)
+    s->v.for_stmt.post = parse_expr(p);
+
+  expect(p, TOK_RPAREN);
+
+  s->v.for_stmt.s = parse_stmt(p);
+
+  return s;
+}
+
 static stmt *parse_stmt(parser *p) {
   tok_pos start = p->next.pos;
   stmt *res;
@@ -490,6 +550,15 @@ static stmt *parse_stmt(parser *p) {
     break;
   case TOK_GOTO:
     res = parse_goto_stmt(p);
+    break;
+  case TOK_WHILE:
+    res = parse_while_stmt(p);
+    break;
+  case TOK_DO:
+    res = parse_do_while_stmt(p);
+    break;
+  case TOK_FOR:
+    res = parse_for_stmt(p);
     break;
   default:
   _default:
