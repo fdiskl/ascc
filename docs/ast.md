@@ -13,6 +13,10 @@ statement = Return(expr) | Block(block_item*) | Expr(expr)
           | While(expr cond, statement body) | DoWhile(statement body, expr cond)
           | For(for_init? init, expr? cond, expr? post, statement body)
           | Break | Continue
+          | Case(constant_expr, statement) | Default(statement)
+          | Switch(expr cond, statement body)
+constant_expr = Constant(int) | Unary(unop, constant_expr)
+              | Binary(binop constant_expr) | Conditional(constant_expr condition, expr then, expr else)
 expr = Constant(int) | Var(identifier) | Unary(unop, expr)
      | Binary(binop, expr) | Assignment(assignment_op, exp, exp)
      | Conditional(expr condition, expr then, expr else)
@@ -43,6 +47,8 @@ assignment_op =  Assign | AddAssign | SubAssign | MulAssign
             | "do" <statement> "while" "(" <expr> ")" ";"
             | "for" "(" [<for-init>] ";" [<expr>] ";" [<expr>] ) <statement>
             | "break" ";" | "continue" ";"
+            | "case" <expr> ":" <statement> | "default" ":" <statement>
+            | "switch" "(" <expr> ")" <statement>
 <expr> ::= <factor> | <expr> <binop> <expr> | <expr> "?" <expr> ":" <expr>
 <factor> ::= <int> | <identifier> | <unary> | "(" <expr> ")"
 <unary> ::= <prefix-unary> | <postfix-unary>
