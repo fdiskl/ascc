@@ -65,10 +65,8 @@ static tacv new_var(int idx) {
   return v;
 }
 
-static int new_label() {
-  static int label_idx = 0;
-  return label_idx++;
-}
+extern int label_idx_counter; // defined in resolve.c
+static int new_label() { return ++label_idx_counter; }
 
 static tacv gen_tac_from_int_const_expr(tacgen *_, int_const ic) {
   tacv v;
@@ -354,6 +352,15 @@ static void gen_tac_from_if_stmt(tacgen *tg, if_stmt is) {
   insert_taci(tg, TAC_LABEL)->label_idx = end_label;
 }
 
+static void gen_tac_from_goto_stmt(tacgen *tg, goto_stmt gs) {
+  insert_taci(tg, TAC_JMP)->label_idx = gs.label_idx;
+}
+
+static void gen_tac_from_label_stmt(tacgen *tg, label_stmt ls) {
+  insert_taci(tg, TAC_LABEL)->label_idx = ls.label_idx;
+  gen_tac_from_stmt(tg, ls.s);
+}
+
 static void gen_tac_from_stmt(tacgen *tg, stmt *s) {
   switch (s->t) {
   case STMT_RETURN:
@@ -369,6 +376,12 @@ static void gen_tac_from_stmt(tacgen *tg, stmt *s) {
     break;
   case STMT_IF:
     gen_tac_from_if_stmt(tg, s->v.if_stmt);
+    break;
+  case STMT_GOTO:
+    gen_tac_from_goto_stmt(tg, s->v.goto_stmt);
+    break;
+  case STMT_LABEL:
+    gen_tac_from_label_stmt(tg, s->v.label);
     break;
   }
 }
