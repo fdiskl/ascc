@@ -207,6 +207,9 @@ struct _if_stmt {
 struct _while_stmt {
   expr *cond;
   stmt *s;
+
+  int break_label_idx;
+  int continue_label_idx;
 }; // both while and do while
 
 struct _for_stmt {
@@ -217,6 +220,9 @@ struct _for_stmt {
   expr *post; // if NULL not present
 
   stmt *s;
+
+  int break_label_idx;
+  int continue_label_idx;
 };
 
 struct _return_stmt {
@@ -230,16 +236,22 @@ struct _block_stmt {
 
 struct _default_stmt {
   stmt *s;
+  int label_idx;
 };
 
 struct _case_stmt {
   expr *e;
   stmt *s;
+  int label_idx;
 };
 
 struct _switch_stmt {
   expr *e;
   stmt *s;
+  int break_label_idx;
+  stmt **cases;
+  int cases_len;
+  stmt *default_stmt;
 };
 
 struct _stmt {
@@ -311,6 +323,39 @@ struct _block_item {
  *
  */
 
+// -- for resolve.c
+
+typedef enum {
+  LOOP_RESOLVE_LOOP,
+  LOOP_RESOLVE_SWITCH,
+} loop_resolve_info_t;
+
+typedef struct _loop_resolve_info loop_resolve_info;
+typedef struct _loop_resolve_info_loop loop_resolve_info_loop;
+typedef struct _loop_resolve_info_switch loop_resolve_info_switch;
+
+struct _loop_resolve_info_loop {
+  int break_idx;
+  int continue_idx;
+};
+
+struct _loop_resolve_info_switch {
+  int break_idx;
+  ht *cases; // expr hash -> case
+  stmt *default_stmt;
+};
+
+struct _loop_resolve_info {
+  loop_resolve_info_t t;
+  stmt *s;
+  union {
+    loop_resolve_info_loop l;
+    loop_resolve_info_switch s;
+  } v;
+};
+
+// --
+
 struct _parser {
   lexer *l;
 
@@ -327,6 +372,7 @@ struct _parser {
   ht *ident_ht_list_head;
   ht *labels_ht;
   ht *gotos_to_check_ht;
+  VEC(loop_resolve_info) stack_loop_resolve_info;
 };
 
 void init_parser(parser *p, lexer *l);
