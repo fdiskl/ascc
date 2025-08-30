@@ -1,14 +1,23 @@
 // all functions related to resolving identifiers
 // (part of parser)
 
+#include "arena.h"
 #include "common.h"
 #include "driver.h"
 #include "parser.h"
+#include "strings.h"
 #include "table.h"
 #include "vec.h"
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
+
+extern arena ptr_arena; // (main.c)
+
+// TODO: use this to check if in loop/switch
+static int last_loop_idx = 0;
+static int last_switch_idx = 0;
+static char was_loop_last = 0;
 
 // unique var names (in ident hash tables) are stored as ints casted as void*
 // labels_ht stores label idx casted as void*
@@ -30,6 +39,12 @@ void check_for_constant_expr(parser *p, expr *e) {
             e->pos.pos_start, e->pos.line_end, e->pos.pos_end);
     after_error();
   } // TODO: add more const exprs
+}
+
+string hash_for_constant_expr(parser *p, expr *e) {
+  // anything if it will be unique
+  check_for_constant_expr(p, e);
+  return string_sprintf("%d", e->v.intc); // for now only intc
 }
 
 void resolve_label_stmt(parser *p, stmt *s) {
@@ -133,10 +148,177 @@ void resolve_expr(parser *p, expr *e) {
   }
 }
 
+void resolve_break_stmt(parser *p, stmt *s) {
+  if (p->stack_loop_resolve_info.size <= 0) {
+    fprintf(stderr, "can't use break outside of loop or switch (%d:%d-%d:%d)\n",
+            s->pos.line_start, s->pos.pos_start, s->pos.line_end,
+            s->pos.pos_end);
+
+    after_error();
+  }
+
+  loop_resolve_info *i =
+      &p->stack_loop_resolve_info.data[p->stack_loop_resolve_info.size - 1];
+
+  switch (i->t) {
+  case LOOP_RESOLVE_LOOP:
+    s->v.break_stmt.idx = i->v.l.break_idx;
+    break;
+  case LOOP_RESOLVE_SWITCH:
+    s->v.break_stmt.idx = i->v.s.break_idx;
+    break;
+  }
+}
+
+void resolve_continue_stmt(parser *p, stmt *s) {
+  loop_resolve_info *i;
+  if (p->stack_loop_resolve_info.size <= 0 ||
+      (i = &p->stack_loop_resolve_info
+                .data[p->stack_loop_resolve_info.size - 1])
+              ->t != LOOP_RESOLVE_LOOP) {
+    fprintf(stderr, "can't use continue outside of loop (%d:%d-%d:%d)\n",
+            s->pos.line_start, s->pos.pos_start, s->pos.line_end,
+            s->pos.pos_end);
+
+    after_error();
+  }
+
+  s->v.continue_stmt.idx = i->v.l.continue_idx;
+}
+
+void resolve_case_stmt(parser *p, stmt *s) {
+  loop_resolve_info *i;
+  if (p->stack_loop_resolve_info.size <= 0 ||
+      (i = &p->stack_loop_resolve_info
+                .data[p->stack_loop_resolve_info.size - 1])
+              ->t != LOOP_RESOLVE_SWITCH) {
+    fprintf(stderr, "can't use case outside of switch (%d:%d-%d:%d)\n",
+            s->pos.line_start, s->pos.pos_start, s->pos.line_end,
+            s->pos.pos_end);
+
+    after_error();
+  }
+
+  string key = hash_for_constant_expr(p, s->v.case_stmt.e);
+  stmt *old = (stmt *)ht_get(i->v.s.cases, key);
+  if (old != NULL) {
+    fprintf(
+        stderr,
+        "case with such expr already defined at %d:%d-%d:%d (%d:%d-%d:%d)\n",
+        old->pos.line_start, old->pos.pos_start, old->pos.line_end,
+        old->pos.pos_end, s->pos.line_start, s->pos.pos_start, s->pos.line_end,
+        s->pos.pos_end);
+
+    after_error();
+  }
+
+  ht_set(i->v.s.cases, key, (void *)s);
+
+  s->v.case_stmt.label_idx = get_label();
+}
+
+void resolve_default_stmt(parser *p, stmt *s) {
+  loop_resolve_info *i;
+  if (p->stack_loop_resolve_info.size <= 0 ||
+      (i = &p->stack_loop_resolve_info
+                .data[p->stack_loop_resolve_info.size - 1])
+              ->t != LOOP_RESOLVE_SWITCH) {
+    fprintf(stderr, "can't use default outside of switch (%d:%d-%d:%d)\n",
+            s->pos.line_start, s->pos.pos_start, s->pos.line_end,
+            s->pos.pos_end);
+
+    after_error();
+  }
+
+  i->v.s.default_stmt = s;
+  s->v.default_stmt.label_idx = get_label();
+}
+
+void enter_loop(parser *p, stmt *s) {
+  loop_resolve_info i;
+
+  i.t = LOOP_RESOLVE_LOOP;
+  i.s = s;
+  int breakl = i.v.l.break_idx = get_label();
+  int continuel = i.v.l.continue_idx = get_label();
+
+  switch (s->t) {
+  case STMT_WHILE:
+    s->v.while_stmt.break_label_idx = breakl;
+    s->v.while_stmt.continue_label_idx = continuel;
+    break;
+  case STMT_DOWHILE:
+    s->v.dowhile_stmt.break_label_idx = breakl;
+    s->v.dowhile_stmt.continue_label_idx = continuel;
+    break;
+  case STMT_FOR:
+    s->v.for_stmt.break_label_idx = breakl;
+    s->v.for_stmt.continue_label_idx = continuel;
+    break;
+  default:
+    UNREACHABLE();
+  }
+
+  vec_push_back(p->stack_loop_resolve_info, i);
+}
+
+void exit_loop(parser *p, stmt *s) {
+  assert(
+      p->stack_loop_resolve_info.size >= 0 &&
+      p->stack_loop_resolve_info.data[p->stack_loop_resolve_info.size - 1].s ==
+          s);
+
+  vec_pop_back(p->stack_loop_resolve_info);
+}
+
+void enter_switch(parser *p, stmt *s) {
+  loop_resolve_info i;
+
+  i.t = LOOP_RESOLVE_SWITCH;
+  i.s = s;
+  i.v.s.default_stmt = NULL;
+  s->v.switch_stmt.break_label_idx = i.v.s.break_idx = get_label();
+  i.v.s.cases = ht_create();
+
+  vec_push_back(p->stack_loop_resolve_info, i);
+}
+
+void exit_switch(parser *p, stmt *s) {
+  assert(
+      p->stack_loop_resolve_info.size >= 0 &&
+      p->stack_loop_resolve_info.data[p->stack_loop_resolve_info.size - 1].s ==
+          s);
+  loop_resolve_info *i =
+      &p->stack_loop_resolve_info.data[p->stack_loop_resolve_info.size - 1];
+
+  s->v.switch_stmt.default_stmt = i->v.s.default_stmt;
+
+  hti it = ht_iterator(i->v.s.cases);
+  int c = 0;
+  while (ht_next(&it)) {
+    ++c;
+  }
+
+  stmt **arr = ARENA_ALLOC_ARRAY(&ptr_arena, stmt *, c);
+
+  it = ht_iterator(i->v.s.cases);
+  int j = 0;
+  while (ht_next(&it)) {
+    arr[j++] = (stmt *)it.value;
+  }
+
+  s->v.switch_stmt.cases = arr;
+  s->v.switch_stmt.cases_len = c;
+
+  ht_destroy(i->v.s.cases);
+  vec_pop_back(p->stack_loop_resolve_info);
+}
+
 void enter_func(parser *p, decl *f) {
   enter_scope(p);
   p->labels_ht = ht_create();
   p->gotos_to_check_ht = ht_create();
+  vec_init(p->stack_loop_resolve_info);
 }
 
 void exit_func(parser *p, decl *f) {
@@ -155,6 +337,7 @@ void exit_func(parser *p, decl *f) {
     s->v.goto_stmt.label_idx = ((int)((intptr_t)e));
   }
 
+  vec_free(p->stack_loop_resolve_info);
   exit_scope(p);
   ht_destroy(p->labels_ht);
   ht_destroy(p->gotos_to_check_ht);

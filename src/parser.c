@@ -472,19 +472,28 @@ static stmt *parse_goto_stmt(parser *p) {
   return s;
 }
 
+void enter_loop(parser *p, stmt *s);
+void exit_loop(parser *p, stmt *s);
+void enter_switch(parser *p, stmt *s);
+void exit_switch(parser *p, stmt *s);
+
 static stmt *parse_while_stmt(parser *p) {
   stmt *s = alloc_stmt(p, STMT_WHILE);
   expect(p, TOK_WHILE);
   expect(p, TOK_LPAREN);
   s->v.while_stmt.cond = parse_expr(p);
   expect(p, TOK_RPAREN);
+  enter_loop(p, s);
   s->v.while_stmt.s = parse_stmt(p);
+  exit_loop(p, s);
   return s;
 }
 
 static stmt *parse_do_while_stmt(parser *p) {
   stmt *s = alloc_stmt(p, STMT_DOWHILE);
+  enter_loop(p, s);
   s->v.dowhile_stmt.s = parse_stmt(p);
+  exit_loop(p, s);
   expect(p, TOK_LPAREN);
   s->v.dowhile_stmt.cond = parse_expr(p);
   expect(p, TOK_RPAREN);
@@ -527,15 +536,23 @@ after_semi:
 
   expect(p, TOK_RPAREN);
 
+  enter_loop(p, s);
   s->v.for_stmt.s = parse_stmt(p);
+  exit_loop(p, s);
 
   return s;
 }
+
+void resolve_break_stmt(parser *p, stmt *s);
+void resolve_continue_stmt(parser *p, stmt *s);
+void resolve_case_stmt(parser *p, stmt *s);
+void resolve_default_stmt(parser *p, stmt *s);
 
 static stmt *parse_break_stmt(parser *p) {
   stmt *s = alloc_stmt(p, STMT_BREAK);
   expect(p, TOK_BREAK);
   expect(p, TOK_SEMI);
+  resolve_break_stmt(p, s);
   return s;
 }
 
@@ -543,6 +560,7 @@ static stmt *parse_continue_stmt(parser *p) {
   stmt *s = alloc_stmt(p, STMT_CONTINUE);
   expect(p, TOK_CONTINUE);
   expect(p, TOK_SEMI);
+  resolve_continue_stmt(p, s);
   return s;
 }
 
@@ -552,6 +570,7 @@ static stmt *parse_case_stmt(parser *p) {
   s->v.case_stmt.e = parse_constant_expr(p);
   expect(p, TOK_COLON);
   s->v.case_stmt.s = parse_stmt(p);
+  resolve_case_stmt(p, s);
   return s;
 }
 
@@ -560,6 +579,7 @@ static stmt *parse_default_stmt(parser *p) {
   expect(p, TOK_DEFAULT);
   expect(p, TOK_COLON);
   s->v.default_stmt.s = parse_stmt(p);
+  resolve_default_stmt(p, s);
   return s;
 }
 
@@ -569,7 +589,9 @@ static stmt *parse_switch_stmt(parser *p) {
   expect(p, TOK_LPAREN);
   s->v.switch_stmt.e = parse_expr(p);
   expect(p, TOK_RPAREN);
+  enter_switch(p, s);
   s->v.switch_stmt.s = parse_stmt(p);
+  exit_switch(p, s);
   return s;
 }
 
