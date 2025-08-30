@@ -13,6 +13,8 @@
 #include <sys/wait.h>
 #include <time.h>
 
+arena ptr_arena; // arena to allocate pointers (void*)
+
 static void replace_ext(const char *original, char *dst, const char *ext);
 
 int main(int argc, char *argv[]) {
@@ -23,6 +25,9 @@ int main(int argc, char *argv[]) {
 
   INIT_ARENA(&str_arena, char);
   vec_push_back(arenas_to_free, &str_arena);
+
+  INIT_ARENA(&ptr_arena, void *);
+  vec_push_back(arenas_to_free, &ptr_arena);
 
   driver_options opts;
   parse_driver_options(&opts, argc, argv);
