@@ -40,14 +40,22 @@ typedef struct _unary unary;
 typedef struct _binary binary;
 typedef struct _assignment assignment;
 typedef struct _var_expr var_expr;
+typedef struct _ternary_expr ternary_expr;
 
 typedef enum {
   EXPR_INT_CONST,
   EXPR_UNARY,
   EXPR_BINARY,
   EXPR_ASSIGNMENT,
-  EXPR_VAR
+  EXPR_VAR,
+  EXPR_TERNARY,
 } exprt;
+
+struct _ternary_expr {
+  expr *cond;
+  expr *then;
+  expr *elze;
+};
 
 struct _int_const {
   uint64_t v;
@@ -134,6 +142,7 @@ struct _expr {
     binary b;
     assignment assignment;
     var_expr var;
+    ternary_expr ternary;
   } v;
 };
 
@@ -144,13 +153,21 @@ struct _expr {
  */
 
 typedef struct _return_stmt return_stmt;
+typedef struct _if_stmt if_stmt;
 
 typedef enum {
   STMT_RETURN,
   STMT_BLOCK,
   STMT_EXPR,
   STMT_NULL,
+  STMT_IF,
 } stmtt;
+
+struct _if_stmt {
+  expr *cond;
+  stmt *then;
+  stmt *elze; // NULL if not present, else is kw so elze
+};
 
 struct _return_stmt {
   expr *e;
@@ -168,6 +185,7 @@ struct _stmt {
     return_stmt ret;
     block_stmt block;
     expr *e;
+    if_stmt if_stmt;
   } v;
 };
 
