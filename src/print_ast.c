@@ -298,11 +298,32 @@ static void print_stmt(stmt *s, int indent) {
     printf("BreakStmt");
     print_ast_pos(s->pos);
     printf("\n");
+    return;
   case STMT_CONTINUE:
     printf("ContinueStmt");
     print_ast_pos(s->pos);
     printf("\n");
-    break;
+    return;
+  case STMT_CASE:
+    printf("CaseStmt");
+    print_ast_pos(s->pos);
+    printf("\n");
+    print_expr(s->v.case_stmt.e, indent + 1);
+    print_stmt(s->v.case_stmt.s, indent + 1);
+    return;
+  case STMT_DEFAULT:
+    printf("DefaultStmt");
+    print_ast_pos(s->pos);
+    printf("\n");
+    print_stmt(s->v.default_stmt.s, indent + 1);
+    return;
+  case STMT_SWITCH:
+    printf("SwitchStmt");
+    print_ast_pos(s->pos);
+    printf("\n");
+    print_expr(s->v.switch_stmt.e, indent + 1);
+    print_stmt(s->v.switch_stmt.s, indent + 1);
+    return;
   }
   UNREACHABLE();
 }
