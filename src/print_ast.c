@@ -254,7 +254,9 @@ static void print_stmt(stmt *s, int indent) {
     print_stmt(s->v.label.s, indent + 1);
     return;
   case STMT_WHILE:
-    printf("WhileStmt");
+    printf("WhileStmt (break: %d, continue: %d)",
+           s->v.dowhile_stmt.break_label_idx,
+           s->v.dowhile_stmt.continue_label_idx);
     print_ast_pos(s->pos);
     printf("\n");
     if (s->v.while_stmt.cond != NULL)
@@ -262,7 +264,9 @@ static void print_stmt(stmt *s, int indent) {
     print_stmt(s->v.while_stmt.s, indent + 1);
     return;
   case STMT_DOWHILE:
-    printf("DoWhileStmt");
+    printf("DoWhileStmt (break: %d, continue: %d)",
+           s->v.dowhile_stmt.break_label_idx,
+           s->v.dowhile_stmt.continue_label_idx);
     print_ast_pos(s->pos);
     printf("\n");
     print_stmt(s->v.dowhile_stmt.s, indent + 1);
@@ -270,7 +274,8 @@ static void print_stmt(stmt *s, int indent) {
       print_expr(s->v.dowhile_stmt.cond, indent + 1);
     return;
   case STMT_FOR:
-    printf("ForStmt");
+    printf("ForStmt (break: %d, continue: %d)", s->v.for_stmt.break_label_idx,
+           s->v.for_stmt.continue_label_idx);
     print_ast_pos(s->pos);
     printf("\n");
     if (s->v.for_stmt.init_d != NULL)
@@ -295,32 +300,51 @@ static void print_stmt(stmt *s, int indent) {
     }
     return;
   case STMT_BREAK:
-    printf("BreakStmt");
+    printf("BreakStmt (%d)", s->v.break_stmt.idx);
     print_ast_pos(s->pos);
     printf("\n");
     return;
   case STMT_CONTINUE:
-    printf("ContinueStmt");
+    printf("ContinueStmt (%d)", s->v.continue_stmt.idx);
     print_ast_pos(s->pos);
     printf("\n");
     return;
   case STMT_CASE:
-    printf("CaseStmt");
+    printf("CaseStmt (%d)", s->v.case_stmt.label_idx);
     print_ast_pos(s->pos);
     printf("\n");
     print_expr(s->v.case_stmt.e, indent + 1);
     print_stmt(s->v.case_stmt.s, indent + 1);
     return;
   case STMT_DEFAULT:
-    printf("DefaultStmt");
+    printf("DefaultStmt (%d)", s->v.default_stmt.label_idx);
     print_ast_pos(s->pos);
     printf("\n");
     print_stmt(s->v.default_stmt.s, indent + 1);
     return;
   case STMT_SWITCH:
-    printf("SwitchStmt");
+    if (s->v.switch_stmt.default_stmt != NULL)
+      printf("SwitchStmt (break: %d, default: %d)",
+             s->v.switch_stmt.break_label_idx,
+             s->v.switch_stmt.default_stmt->v.default_stmt.label_idx);
+    else
+      printf("SwitchStmt (break: %d, default: none)",
+             s->v.switch_stmt.break_label_idx);
     print_ast_pos(s->pos);
     printf("\n");
+
+    // print cases
+    print_indent(indent + 1);
+    printf("cases: ");
+    if (s->v.switch_stmt.cases_len > 0) {
+      stmt **arr = s->v.switch_stmt.cases;
+      printf("%d", arr[0]->v.case_stmt.label_idx);
+      for (int i = 1; i < s->v.switch_stmt.cases_len; ++i)
+        printf(", %d", arr[i]->v.case_stmt.label_idx);
+
+      printf("\n");
+    }
+
     print_expr(s->v.switch_stmt.e, indent + 1);
     print_stmt(s->v.switch_stmt.s, indent + 1);
     return;
