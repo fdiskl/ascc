@@ -156,6 +156,9 @@ typedef struct _return_stmt return_stmt;
 typedef struct _if_stmt if_stmt;
 typedef struct _goto_stmt goto_stmt;
 typedef struct _label_stmt label_stmt;
+typedef struct _while_stmt while_stmt;
+typedef struct _while_stmt dowhile_stmt;
+typedef struct _for_stmt for_stmt;
 
 typedef enum {
   STMT_RETURN,
@@ -165,6 +168,9 @@ typedef enum {
   STMT_IF,
   STMT_GOTO,
   STMT_LABEL,
+  STMT_WHILE,
+  STMT_DOWHILE,
+  STMT_FOR,
 } stmtt;
 
 struct _goto_stmt {
@@ -182,6 +188,21 @@ struct _if_stmt {
   expr *cond;
   stmt *then;
   stmt *elze; // NULL if not present, else is kw so elze
+};
+
+struct _while_stmt {
+  expr *cond;
+  stmt *s;
+}; // both while and do while
+
+struct _for_stmt {
+  decl *init_d; // if NULL check init_e
+  expr *init_e; // if NULL there is no init
+
+  expr *cond; // if NULL not present
+  expr *post; // if NULL not present
+
+  stmt *s;
 };
 
 struct _return_stmt {
@@ -203,6 +224,9 @@ struct _stmt {
     if_stmt if_stmt;
     label_stmt label;
     goto_stmt goto_stmt;
+    while_stmt while_stmt;
+    dowhile_stmt dowhile_stmt;
+    for_stmt for_stmt;
   } v;
 };
 
