@@ -270,6 +270,33 @@ static tacv gen_tac_from_assignment_expr(tacgen *tg, assignment a) {
   return dst;
 }
 
+static tacv gen_tac_from_ternary_expr(tacgen *tg, ternary_expr te) {
+  tacv dst = new_tmp();
+  tacv condv = gen_tac_from_expr(tg, te.cond);
+
+  taci *jz = insert_taci(tg, TAC_JZ);
+  int else_label = jz->label_idx = new_label();
+  jz->src1 = condv;
+
+  tacv thenv = gen_tac_from_expr(tg, te.then);
+  taci *cpy_then = insert_taci(tg, TAC_CPY);
+  cpy_then->dst = dst;
+  cpy_then->src1 = thenv;
+
+  taci *j = insert_taci(tg, TAC_JMP);
+  int end_label = j->label_idx = new_label();
+
+  insert_taci(tg, TAC_LABEL)->label_idx = else_label;
+  tacv elzev = gen_tac_from_expr(tg, te.elze);
+  taci *cpy_else = insert_taci(tg, TAC_CPY);
+  cpy_else->dst = dst;
+  cpy_else->src1 = elzev;
+
+  insert_taci(tg, TAC_LABEL)->label_idx = end_label;
+
+  return dst;
+}
+
 static tacv gen_tac_from_expr(tacgen *tg, expr *e) {
   switch (e->t) {
   case EXPR_INT_CONST:
@@ -283,6 +310,9 @@ static tacv gen_tac_from_expr(tacgen *tg, expr *e) {
     break;
   case EXPR_VAR:
     return new_var(e->v.var.name_idx);
+    break;
+  case EXPR_TERNARY:
+    return gen_tac_from_ternary_expr(tg, e->v.ternary);
     break;
   }
   UNREACHABLE();
@@ -309,6 +339,21 @@ static void gen_tac_from_block_stmt(tacgen *tg, block_stmt bs) {
     gen_tac_from_block_item(tg, bs.items[i]);
 }
 
+static void gen_tac_from_if_stmt(tacgen *tg, if_stmt is) {
+  tacv condv = gen_tac_from_expr(tg, is.cond);
+  taci *jz = insert_taci(tg, TAC_JZ);
+  int else_label = jz->label_idx = new_label();
+  jz->src1 = condv;
+  gen_tac_from_stmt(tg, is.then);
+  taci *j = insert_taci(tg, TAC_JMP);
+  int end_label = j->label_idx = new_label();
+  insert_taci(tg, TAC_LABEL)->label_idx = else_label;
+  if (is.elze != NULL) {
+    gen_tac_from_stmt(tg, is.elze);
+  }
+  insert_taci(tg, TAC_LABEL)->label_idx = end_label;
+}
+
 static void gen_tac_from_stmt(tacgen *tg, stmt *s) {
   switch (s->t) {
   case STMT_RETURN:
@@ -321,6 +366,9 @@ static void gen_tac_from_stmt(tacgen *tg, stmt *s) {
     gen_tac_from_expr(tg, s->v.e);
     break;
   case STMT_NULL:
+    break;
+  case STMT_IF:
+    gen_tac_from_if_stmt(tg, s->v.if_stmt);
     break;
   }
 }
