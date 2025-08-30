@@ -12,6 +12,7 @@ statement = Return(expr) | Block(block_item*) | Expr(expr)
           | Label(identifier, statement) | Goto(identifier)
           | While(expr cond, statement body) | DoWhile(statement body, expr cond)
           | For(for_init? init, expr? cond, expr? post, statement body)
+          | Break | Continue
 expr = Constant(int) | Var(identifier) | Unary(unop, expr)
      | Binary(binop, expr) | Assignment(assignment_op, exp, exp)
      | Conditional(expr condition, expr then, expr else)
@@ -41,6 +42,7 @@ assignment_op =  Assign | AddAssign | SubAssign | MulAssign
             | "while" "(" <expr> ")" <statement>
             | "do" <statement> "while" "(" <expr> ")" ";"
             | "for" "(" [<for-init>] ";" [<expr>] ";" [<expr>] ) <statement>
+            | "break" ";" | "continue" ";"
 <expr> ::= <factor> | <expr> <binop> <expr> | <expr> "?" <expr> ":" <expr>
 <factor> ::= <int> | <identifier> | <unary> | "(" <expr> ")"
 <unary> ::= <prefix-unary> | <postfix-unary>

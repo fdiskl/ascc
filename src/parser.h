@@ -159,6 +159,8 @@ typedef struct _label_stmt label_stmt;
 typedef struct _while_stmt while_stmt;
 typedef struct _while_stmt dowhile_stmt;
 typedef struct _for_stmt for_stmt;
+typedef struct _label_idx break_stmt;
+typedef struct _label_idx continue_stmt;
 
 typedef enum {
   STMT_RETURN,
@@ -171,7 +173,13 @@ typedef enum {
   STMT_WHILE,
   STMT_DOWHILE,
   STMT_FOR,
+  STMT_BREAK,
+  STMT_CONTINUE,
 } stmtt;
+
+struct _label_idx {
+  int idx;
+};
 
 struct _goto_stmt {
   string label;
@@ -227,6 +235,8 @@ struct _stmt {
     while_stmt while_stmt;
     dowhile_stmt dowhile_stmt;
     for_stmt for_stmt;
+    break_stmt break_stmt;
+    continue_stmt continue_stmt;
   } v;
 };
 
