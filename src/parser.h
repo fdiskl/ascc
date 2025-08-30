@@ -158,9 +158,12 @@ typedef struct _goto_stmt goto_stmt;
 typedef struct _label_stmt label_stmt;
 typedef struct _while_stmt while_stmt;
 typedef struct _while_stmt dowhile_stmt;
+typedef struct _case_stmt case_stmt;
+typedef struct _switch_stmt switch_stmt;
 typedef struct _for_stmt for_stmt;
 typedef struct _label_idx break_stmt;
 typedef struct _label_idx continue_stmt;
+typedef struct _default_stmt default_stmt;
 
 typedef enum {
   STMT_RETURN,
@@ -175,6 +178,9 @@ typedef enum {
   STMT_FOR,
   STMT_BREAK,
   STMT_CONTINUE,
+  STMT_CASE,
+  STMT_DEFAULT,
+  STMT_SWITCH,
 } stmtt;
 
 struct _label_idx {
@@ -222,6 +228,20 @@ struct _block_stmt {
   size_t items_len;
 };
 
+struct _default_stmt {
+  stmt *s;
+};
+
+struct _case_stmt {
+  expr *e;
+  stmt *s;
+};
+
+struct _switch_stmt {
+  expr *e;
+  stmt *s;
+};
+
 struct _stmt {
   stmtt t;
   ast_pos pos;
@@ -237,6 +257,9 @@ struct _stmt {
     for_stmt for_stmt;
     break_stmt break_stmt;
     continue_stmt continue_stmt;
+    case_stmt case_stmt;
+    default_stmt default_stmt;
+    switch_stmt switch_stmt;
   } v;
 };
 
