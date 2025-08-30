@@ -32,7 +32,7 @@ static void print_expr(expr *e, int indent) {
     printf("IntConst (%llu)", (unsigned long long)e->v.intc.v);
     print_ast_pos(e->pos);
     printf("\n");
-    break;
+    return;
 
   case EXPR_UNARY:
     printf("Unary (");
@@ -63,7 +63,7 @@ static void print_expr(expr *e, int indent) {
     print_ast_pos(e->pos);
     printf("\n");
     print_expr(e->v.u.e, indent + 1);
-    break;
+    return;
 
   case EXPR_BINARY:
     printf("Binary (");
@@ -128,7 +128,7 @@ static void print_expr(expr *e, int indent) {
     printf("\n");
     print_expr(e->v.b.l, indent + 1);
     print_expr(e->v.b.r, indent + 1);
-    break;
+    return;
   case EXPR_ASSIGNMENT:
     printf("Assignment (");
     switch (e->v.assignment.t) {
@@ -171,15 +171,22 @@ static void print_expr(expr *e, int indent) {
     printf("\n");
     print_expr(e->v.assignment.l, indent + 1);
     print_expr(e->v.assignment.r, indent + 1);
-    break;
+    return;
   case EXPR_VAR:
     printf("Var(%s, %d)", e->v.var.name, e->v.var.name_idx);
     print_ast_pos(e->pos);
     printf("\n");
-    break;
-  default:
-    UNREACHABLE();
+    return;
+  case EXPR_TERNARY:
+    printf("TernaryExpr");
+    print_ast_pos(e->pos);
+    printf("\n");
+    print_expr(e->v.ternary.cond, indent + 1);
+    print_expr(e->v.ternary.then, indent + 1);
+    print_expr(e->v.ternary.elze, indent + 1);
+    return;
   }
+  UNREACHABLE();
 }
 
 static void print_decl(decl *d, int indent);
@@ -221,6 +228,15 @@ static void print_stmt(stmt *s, int indent) {
     print_ast_pos(s->pos);
     printf("\n");
     print_expr(s->v.e, indent + 1);
+    return;
+  case STMT_IF:
+    printf("IfStmt");
+    print_ast_pos(s->pos);
+    printf("\n");
+    print_expr(s->v.if_stmt.cond, indent + 1);
+    print_stmt(s->v.if_stmt.then, indent + 1);
+    if (s->v.if_stmt.elze != NULL)
+      print_stmt(s->v.if_stmt.then, indent + 1);
     return;
   }
 
