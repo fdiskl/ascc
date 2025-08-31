@@ -491,9 +491,11 @@ static stmt *parse_while_stmt(parser *p) {
 
 static stmt *parse_do_while_stmt(parser *p) {
   stmt *s = alloc_stmt(p, STMT_DOWHILE);
+  expect(p, TOK_DO);
   enter_loop(p, s);
   s->v.dowhile_stmt.s = parse_stmt(p);
   exit_loop(p, s);
+  expect(p, TOK_WHILE);
   expect(p, TOK_LPAREN);
   s->v.dowhile_stmt.cond = parse_expr(p);
   expect(p, TOK_RPAREN);
@@ -512,9 +514,13 @@ static stmt *parse_for_stmt(parser *p) {
   expect(p, TOK_FOR);
   expect(p, TOK_LPAREN);
 
+  char decl = false;
+
   // init
   if (p->next.token != TOK_SEMI) {
     if (is_decl(p->next.token)) {
+      decl = true;
+      enter_scope(p);
       s->v.for_stmt.init_d = parse_decl(p);
       goto after_semi;
     } else
@@ -538,6 +544,9 @@ after_semi:
 
   enter_loop(p, s);
   s->v.for_stmt.s = parse_stmt(p);
+  if (decl)
+    exit_scope(p);
+
   exit_loop(p, s);
 
   return s;
