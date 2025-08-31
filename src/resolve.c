@@ -248,6 +248,16 @@ void resolve_default_stmt(parser *p, stmt *s) {
 
   loop_resolve_info *i = &p->stack_loop_resolve_info.data[switch_idx];
 
+  if (i->v.s.default_stmt != NULL) {
+    stmt *old = i->v.s.default_stmt;
+    fprintf(stderr, "default already defined at %d:%d-%d:%d (%d:%d-%d:%d)\n",
+            old->pos.line_start, old->pos.pos_start, old->pos.line_end,
+            old->pos.pos_end, s->pos.line_start, s->pos.pos_start,
+            s->pos.line_end, s->pos.pos_end);
+
+    after_error();
+  }
+
   i->v.s.default_stmt = s;
   s->v.default_stmt.label_idx = get_label();
 }
