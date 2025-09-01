@@ -1,11 +1,11 @@
 #include "tac.h"
 #include "arena.h"
+#include "assert.h"
 #include "common.h"
 #include "driver.h"
 #include "parser.h"
 #include "vec.h"
 #include <stdint.h>
-#include <stdio.h>
 
 // TODO: make so with DEBUG_INFO flags we save var names for debugging
 
@@ -371,10 +371,12 @@ static void gen_tac_from_continue_stmt(tacgen *tg, continue_stmt c) {
 
 static void gen_tac_from_default_stmt(tacgen *tg, default_stmt d) {
   insert_taci(tg, TAC_LABEL)->label_idx = d.label_idx;
+  gen_tac_from_stmt(tg, d.s);
 }
 
 static void gen_tac_from_case_stmt(tacgen *tg, case_stmt c) {
   insert_taci(tg, TAC_LABEL)->label_idx = c.label_idx;
+  gen_tac_from_stmt(tg, c.s);
 }
 
 static void gen_tac_from_while_stmt(tacgen *tg, while_stmt w) {
@@ -433,7 +435,28 @@ static void gen_tac_from_for_stmt(tacgen *tg, for_stmt f) {
   insert_taci(tg, TAC_LABEL)->label_idx = f.break_label_idx;
 }
 
-static void gen_tac_from_switch_stmt(tacgen *tg, switch_stmt s) { TODO(); }
+static void gen_tac_from_switch_stmt(tacgen *tg, switch_stmt s) {
+  tacv condv = gen_tac_from_expr(tg, s.e);
+
+  for (int i = 0; i < s.cases_len; ++i) {
+    taci *je = insert_taci(tg, TAC_JE);
+    je->label_idx = s.cases[i]->v.case_stmt.label_idx;
+    assert(s.cases[i]->v.case_stmt.e->t == EXPR_INT_CONST);
+    je->src1 = new_const(s.cases[i]->v.case_stmt.e->v.intc.v);
+    je->src2 = condv;
+  }
+
+  if (s.default_stmt != NULL) {
+    insert_taci(tg, TAC_JMP)->label_idx =
+        s.default_stmt->v.default_stmt.label_idx;
+  } else {
+    insert_taci(tg, TAC_JMP)->label_idx = s.break_label_idx;
+  }
+
+  gen_tac_from_stmt(tg, s.s);
+
+  insert_taci(tg, TAC_LABEL)->label_idx = s.break_label_idx;
+}
 
 static void gen_tac_from_stmt(tacgen *tg, stmt *s) {
   switch (s->t) {
