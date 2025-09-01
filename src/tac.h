@@ -51,10 +51,11 @@ typedef enum {
   TAC_GE,     // >=
 
   // with labels
-  TAC_JMP,   // jmp
-  TAC_JZ,    // jmp if not zero
-  TAC_JNZ,   // jmp if zero
-  TAC_LABEL, // label:
+  TAC_JMP,   // jmp (no vals)
+  TAC_JZ,    // jmp if not zero (src1)
+  TAC_JNZ,   // jmp if zero (src1)
+  TAC_JE,    // jmp if equal (src1, src2)
+  TAC_LABEL, // label: (no vals)
 } tacop;
 
 typedef enum {

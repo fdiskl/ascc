@@ -73,6 +73,7 @@ const char *tacop_str(tacop op) {
   case TAC_JZ:
   case TAC_JNZ:
   case TAC_LABEL:
+  case TAC_JE:
     break;
   }
 
@@ -180,6 +181,14 @@ void fprint_taci(FILE *f, taci *i) {
     break;
   case TAC_LABEL:
     fprintf(f, "L%d:", i->label_idx);
+    break;
+  case TAC_JE:
+    fprintf(f, "je ");
+    fprint_val(f, &i->src1);
+    fprintf(f, " == ");
+    fprint_val(f, &i->src2);
+    fprintf(f, " -> L%d", i->label_idx);
+    break;
     break;
   }
 }
