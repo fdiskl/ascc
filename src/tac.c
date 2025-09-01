@@ -361,6 +361,80 @@ static void gen_tac_from_label_stmt(tacgen *tg, label_stmt ls) {
   gen_tac_from_stmt(tg, ls.s);
 }
 
+static void gen_tac_from_break_stmt(tacgen *tg, break_stmt b) {
+  insert_taci(tg, TAC_LABEL)->label_idx = b.idx;
+}
+
+static void gen_tac_from_continue_stmt(tacgen *tg, continue_stmt c) {
+  insert_taci(tg, TAC_LABEL)->label_idx = c.idx;
+}
+
+static void gen_tac_from_default_stmt(tacgen *tg, default_stmt d) {
+  insert_taci(tg, TAC_LABEL)->label_idx = d.label_idx;
+}
+
+static void gen_tac_from_case_stmt(tacgen *tg, case_stmt c) {
+  insert_taci(tg, TAC_LABEL)->label_idx = c.label_idx;
+}
+
+static void gen_tac_from_while_stmt(tacgen *tg, while_stmt w) {
+  insert_taci(tg, TAC_LABEL)->label_idx = w.continue_label_idx;
+
+  tacv v = gen_tac_from_expr(tg, w.cond);
+
+  taci *jz = insert_taci(tg, TAC_JZ);
+  jz->src1 = v;
+  jz->label_idx = w.break_label_idx;
+
+  gen_tac_from_stmt(tg, w.s);
+
+  insert_taci(tg, TAC_JMP)->label_idx = w.continue_label_idx;
+
+  insert_taci(tg, TAC_LABEL)->label_idx = w.break_label_idx;
+}
+
+static void gen_tac_from_dowhile_stmt(tacgen *tg, dowhile_stmt w) {
+  insert_taci(tg, TAC_LABEL)->label_idx = w.continue_label_idx;
+
+  gen_tac_from_stmt(tg, w.s);
+
+  tacv v = gen_tac_from_expr(tg, w.cond);
+
+  taci *jnz = insert_taci(tg, TAC_JNZ);
+  jnz->src1 = v;
+  jnz->label_idx = w.continue_label_idx;
+
+  insert_taci(tg, TAC_LABEL)->label_idx = w.break_label_idx;
+}
+
+static void gen_tac_from_for_stmt(tacgen *tg, for_stmt f) {
+  if (f.init_d != NULL)
+    gen_tac_from_decl(tg, f.init_d);
+  else if (f.init_e != NULL)
+    gen_tac_from_expr(tg, f.init_e);
+
+  insert_taci(tg, TAC_LABEL)->label_idx = f.continue_label_idx;
+
+  tacv condv;
+  if (f.cond != NULL)
+    condv = gen_tac_from_expr(tg, f.cond);
+
+  taci *jz = insert_taci(tg, TAC_JZ);
+  jz->src1 = condv;
+  jz->label_idx = f.break_label_idx;
+
+  gen_tac_from_stmt(tg, f.s);
+
+  if (f.post != NULL)
+    gen_tac_from_expr(tg, f.post);
+
+  insert_taci(tg, TAC_JMP)->label_idx = f.continue_label_idx;
+
+  insert_taci(tg, TAC_LABEL)->label_idx = f.break_label_idx;
+}
+
+static void gen_tac_from_switch_stmt(tacgen *tg, switch_stmt s) { TODO(); }
+
 static void gen_tac_from_stmt(tacgen *tg, stmt *s) {
   switch (s->t) {
   case STMT_RETURN:
@@ -382,6 +456,30 @@ static void gen_tac_from_stmt(tacgen *tg, stmt *s) {
     break;
   case STMT_LABEL:
     gen_tac_from_label_stmt(tg, s->v.label);
+    break;
+  case STMT_WHILE:
+    gen_tac_from_while_stmt(tg, s->v.while_stmt);
+    break;
+  case STMT_DOWHILE:
+    gen_tac_from_dowhile_stmt(tg, s->v.dowhile_stmt);
+    break;
+  case STMT_FOR:
+    gen_tac_from_for_stmt(tg, s->v.for_stmt);
+    break;
+  case STMT_BREAK:
+    gen_tac_from_break_stmt(tg, s->v.break_stmt);
+    break;
+  case STMT_CONTINUE:
+    gen_tac_from_continue_stmt(tg, s->v.continue_stmt);
+    break;
+  case STMT_CASE:
+    gen_tac_from_case_stmt(tg, s->v.case_stmt);
+    break;
+  case STMT_DEFAULT:
+    gen_tac_from_default_stmt(tg, s->v.default_stmt);
+    break;
+  case STMT_SWITCH:
+    gen_tac_from_switch_stmt(tg, s->v.switch_stmt);
     break;
   }
 }
