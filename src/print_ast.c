@@ -239,7 +239,7 @@ static void print_stmt(stmt *s, int indent) {
       print_stmt(s->v.if_stmt.elze, indent + 1);
     else {
       print_indent(indent + 1);
-      printf("(no else stmt\n)");
+      printf("(no else stmt)\n");
     }
     return;
   case STMT_GOTO:
