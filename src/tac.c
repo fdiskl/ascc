@@ -362,11 +362,11 @@ static void gen_tac_from_label_stmt(tacgen *tg, label_stmt ls) {
 }
 
 static void gen_tac_from_break_stmt(tacgen *tg, break_stmt b) {
-  insert_taci(tg, TAC_LABEL)->label_idx = b.idx;
+  insert_taci(tg, TAC_JMP)->label_idx = b.idx;
 }
 
 static void gen_tac_from_continue_stmt(tacgen *tg, continue_stmt c) {
-  insert_taci(tg, TAC_LABEL)->label_idx = c.idx;
+  insert_taci(tg, TAC_JMP)->label_idx = c.idx;
 }
 
 static void gen_tac_from_default_stmt(tacgen *tg, default_stmt d) {
@@ -396,15 +396,17 @@ static void gen_tac_from_while_stmt(tacgen *tg, while_stmt w) {
 }
 
 static void gen_tac_from_dowhile_stmt(tacgen *tg, dowhile_stmt w) {
-  insert_taci(tg, TAC_LABEL)->label_idx = w.continue_label_idx;
+
+  int start = insert_taci(tg, TAC_LABEL)->label_idx = new_label();
 
   gen_tac_from_stmt(tg, w.s);
 
+  insert_taci(tg, TAC_LABEL)->label_idx = w.continue_label_idx;
   tacv v = gen_tac_from_expr(tg, w.cond);
 
   taci *jnz = insert_taci(tg, TAC_JNZ);
   jnz->src1 = v;
-  jnz->label_idx = w.continue_label_idx;
+  jnz->label_idx = start;
 
   insert_taci(tg, TAC_LABEL)->label_idx = w.break_label_idx;
 }
@@ -415,11 +417,13 @@ static void gen_tac_from_for_stmt(tacgen *tg, for_stmt f) {
   else if (f.init_e != NULL)
     gen_tac_from_expr(tg, f.init_e);
 
-  insert_taci(tg, TAC_LABEL)->label_idx = f.continue_label_idx;
+  int start_label = insert_taci(tg, TAC_LABEL)->label_idx = new_label();
 
   tacv condv;
   if (f.cond != NULL)
     condv = gen_tac_from_expr(tg, f.cond);
+  else
+    condv = new_const(1);
 
   taci *jz = insert_taci(tg, TAC_JZ);
   jz->src1 = condv;
@@ -427,10 +431,12 @@ static void gen_tac_from_for_stmt(tacgen *tg, for_stmt f) {
 
   gen_tac_from_stmt(tg, f.s);
 
+  insert_taci(tg, TAC_LABEL)->label_idx = f.continue_label_idx;
+
   if (f.post != NULL)
     gen_tac_from_expr(tg, f.post);
 
-  insert_taci(tg, TAC_JMP)->label_idx = f.continue_label_idx;
+  insert_taci(tg, TAC_JMP)->label_idx = start_label;
 
   insert_taci(tg, TAC_LABEL)->label_idx = f.break_label_idx;
 }
