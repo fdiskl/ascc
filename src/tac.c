@@ -442,8 +442,8 @@ static void gen_tac_from_switch_stmt(tacgen *tg, switch_stmt s) {
     taci *je = insert_taci(tg, TAC_JE);
     je->label_idx = s.cases[i]->v.case_stmt.label_idx;
     assert(s.cases[i]->v.case_stmt.e->t == EXPR_INT_CONST);
-    je->src1 = new_const(s.cases[i]->v.case_stmt.e->v.intc.v);
-    je->src2 = condv;
+    je->src1 = condv;
+    je->src2 = new_const(s.cases[i]->v.case_stmt.e->v.intc.v);
   }
 
   if (s.default_stmt != NULL) {
