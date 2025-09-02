@@ -5,7 +5,6 @@
 #include "driver.h"
 #include "tac.h"
 #include <stdint.h>
-#include <stdio.h>
 
 void init_x86_asm_gen(x86_asm_gen *ag) {
   INIT_ARENA(&ag->instr_arena, x86_instr);
@@ -235,10 +234,11 @@ static void gen_asm_from_jump_instr(x86_asm_gen *ag, taci *i) {
   x86_instr *cmp = insert_x86_instr(ag, X86_CMP, i);
   x86_instr *jcc = insert_x86_instr(ag, X86_JMPCC, i);
 
-  cmp->v.binary.src = new_x86_imm(0);
+  cmp->v.binary.src =
+      i->op == TAC_JE ? operand_from_tac_val(i->src2) : new_x86_imm(0);
   cmp->v.binary.dst = operand_from_tac_val(i->src1);
 
-  jcc->v.jmpcc.cc = i->op == TAC_JZ ? CC_E : CC_NE;
+  jcc->v.jmpcc.cc = i->op == TAC_JZ || i->op == TAC_JE ? CC_E : CC_NE;
   jcc->v.jmpcc.label_idx = i->label_idx;
 }
 
@@ -344,6 +344,7 @@ static void gen_asm_from_instr(x86_asm_gen *ag, taci *i) {
   case TAC_JMP:
   case TAC_JZ:
   case TAC_JNZ:
+  case TAC_JE:
     gen_asm_from_jump_instr(ag, i);
     break;
   case TAC_LABEL:
