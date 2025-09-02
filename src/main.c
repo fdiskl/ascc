@@ -10,8 +10,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifndef _WIN32
 #include <sys/wait.h>
-#include <time.h>
+#endif
+
+double now_seconds();
 
 arena ptr_arena; // arena to allocate pointers (void*)
 
@@ -19,8 +23,7 @@ static void replace_ext(const char *original, char *dst, const char *ext);
 
 int main(int argc, char *argv[]) {
 #ifdef DEBUG_INFO
-  struct timespec start, end;
-  clock_gettime(CLOCK_MONOTONIC, &start);
+  double start = now_seconds();
 #endif
 
   INIT_ARENA(&str_arena, char);
@@ -192,10 +195,8 @@ int main(int argc, char *argv[]) {
   }
 
 #ifdef DEBUG_INFO
-  clock_gettime(CLOCK_MONOTONIC, &end);
-  double elapsed =
-      (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
-  printf("Done in %.9f seconds\n", elapsed);
+  double end = now_seconds();
+  printf("Done in %.9f seconds\n", end - start);
 #endif
 
   after_success();
@@ -209,3 +210,27 @@ static void replace_ext(const char *original, char *dst, const char *ext) {
   // replace extension
   sprintf(dot, "%s", ext);
 }
+
+// add now_seconds utility
+#ifdef _WIN32
+#include <windows.h>
+
+double now_seconds() {
+  static LARGE_INTEGER freq;
+  static int initialized = 0;
+  if (!initialized) {
+    QueryPerformanceFrequency(&freq);
+    initialized = 1;
+  }
+  LARGE_INTEGER counter;
+  QueryPerformanceCounter(&counter);
+  return (double)counter.QuadPart / (double)freq.QuadPart;
+}
+#else
+#include <time.h>
+double now_seconds() {
+  struct timespec t;
+  clock_gettime(CLOCK_MONOTONIC, &t);
+  return (double)t.tv_sec + (double)t.tv_nsec / 1e9;
+}
+#endif
