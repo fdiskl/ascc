@@ -1,7 +1,7 @@
 @echo off
 setlocal enabledelayedexpansion
 
-set CC=clang
+set CC=gcc
 set CFLAGS_COMMON=-Wall -Wextra
 set LDFLAGS=
 

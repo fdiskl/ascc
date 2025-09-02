@@ -251,5 +251,7 @@ void emit_x86(FILE *w, x86_func *f) {
   for (; f != NULL; f = f->next)
     emit_x86_func(w, f);
 
+#ifndef _WIN32
   fprintf(w, ".section .note.GNU-stack,\"\",@progbits\n");
+#endif
 }

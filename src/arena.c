@@ -35,7 +35,6 @@ static _arena_chunk *alloc_chunk(size_t size) {
   assert(chunk != NULL);
 
   chunk->region = os_alloc(size);
-  assert(chunk->region != MAP_FAILED);
 
   chunk->size = size;
   chunk->index = 0;
