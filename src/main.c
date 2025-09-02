@@ -67,6 +67,14 @@ int main(int argc, char *argv[]) {
 
     int status = system(cmd);
 
+#ifdef _WIN32
+    int exit_code = status;
+    if (exit_code != 0) {
+      fprintf(stderr, "gcc preprocessor failed with exit code %d\n", exit_code);
+      after_error();
+      return exit_code;
+    }
+#else
     if (status == -1) {
       fprintf(stderr, "system failed");
       after_error();
@@ -87,6 +95,7 @@ int main(int argc, char *argv[]) {
       after_error();
       return 1;
     }
+#endif
   }
 
   FILE *in_file = fopen(preprocessor_file_path, "r");
@@ -168,11 +177,20 @@ int main(int argc, char *argv[]) {
 
   // run assembler
   {
+
     char cmd[1024];
     sprintf(cmd, "gcc %s -o %s", asm_file_path, opts.output);
 
     int status = system(cmd);
 
+#ifdef _WIN32
+    int exit_code = status;
+    if (exit_code != 0) {
+      fprintf(stderr, "gas (using gcc) failed with exit code %d\n", exit_code);
+      after_error();
+      return exit_code;
+    }
+#else
     if (status == -1) {
       fprintf(stderr, "system failed");
       after_error();
@@ -182,16 +200,19 @@ int main(int argc, char *argv[]) {
     if (WIFEXITED(status)) {
       int exit_code = WEXITSTATUS(status);
       if (exit_code != 0) {
-        fprintf(stderr, "gcc assembler failed with exit code %d\n", exit_code);
+        fprintf(stderr, "gas (using gcc) failed with exit code %d\n",
+                exit_code);
         after_error();
         return exit_code;
       }
     } else if (WIFSIGNALED(status)) {
-      fprintf(stderr, "gcc assembler terminated by signal %d\n",
+      fprintf(stderr, "gas (using gcc) terminated by signal %d\n",
               WTERMSIG(status));
       after_error();
       return 1;
     }
+
+#endif
   }
 
 #ifdef DEBUG_INFO
