@@ -4,15 +4,37 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef _WIN32
+#include <windows.h>
+static void *os_alloc(size_t size) {
+  return VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+}
+static void os_free(void *ptr, size_t size) {
+  VirtualFree(ptr, 0, MEM_RELEASE);
+}
+static size_t os_page_size() {
+  SYSTEM_INFO si;
+  GetSystemInfo(&si);
+  return si.dwPageSize;
+}
+#else
 #include <sys/mman.h>
 #include <unistd.h>
+static void *os_alloc(size_t size) {
+  void *p =
+      mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+  return p == MAP_FAILED ? NULL : p;
+}
+static void os_free(void *ptr, size_t size) { munmap(ptr, size); }
+static size_t os_page_size() { return sysconf(_SC_PAGESIZE); }
+#endif
 
 static _arena_chunk *alloc_chunk(size_t size) {
   _arena_chunk *chunk = malloc(sizeof(_arena_chunk));
   assert(chunk != NULL);
 
-  chunk->region =
-      mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+  chunk->region = os_alloc(size);
   assert(chunk->region != MAP_FAILED);
 
   chunk->size = size;
@@ -23,7 +45,7 @@ static _arena_chunk *alloc_chunk(size_t size) {
 }
 
 void init_arena(arena *a, size_t alignment_of_element, size_t size_of_element) {
-  size_t size = sysconf(_SC_PAGESIZE);
+  size_t size = os_page_size();
   if (size == 0)
     return;
 
@@ -67,7 +89,7 @@ void free_arena(arena *a) {
   _arena_chunk *chunk = a->head;
   while (chunk) {
     _arena_chunk *next = chunk->next;
-    munmap(chunk->region, chunk->size); // free mmap region
+    os_free(chunk->region, chunk->size); // free mmap region
     free(chunk);
     chunk = next;
   }
