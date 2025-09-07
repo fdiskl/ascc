@@ -41,6 +41,7 @@ typedef struct _binary binary;
 typedef struct _assignment assignment;
 typedef struct _var_expr var_expr;
 typedef struct _ternary_expr ternary_expr;
+typedef struct _func_call_expr func_call_expr;
 
 typedef enum {
   EXPR_INT_CONST,
@@ -49,6 +50,7 @@ typedef enum {
   EXPR_ASSIGNMENT,
   EXPR_VAR,
   EXPR_TERNARY,
+  EXPR_FUNC_CALL,
 } exprt;
 
 struct _ternary_expr {
@@ -120,12 +122,18 @@ struct _binary {
   expr *r;
 };
 
-// in theory could be merged with binary expr, but as separatr struct provides
+// in theory could be merged with binary expr, but as separate struct provides
 // more clarity
 struct _assignment {
   assignment_t t;
   expr *l;
   expr *r;
+};
+
+struct _func_call_expr {
+  string name;
+  expr **args;
+  size_t args_len;
 };
 
 struct _var_expr {
@@ -143,6 +151,7 @@ struct _expr {
     assignment assignment;
     var_expr var;
     ternary_expr ternary;
+    func_call_expr func_call;
   } v;
 };
 
@@ -297,8 +306,11 @@ struct _var_decl {
 
 struct _func_decl {
   string name;
-  block_item *body;
+  block_item *body; // NULL if semi instead of body
   size_t body_len;
+  string *params;   // NULL if void
+  int *params_idxs; // NULL if void
+  size_t params_len;
   // todo: return type, arg type
 };
 
