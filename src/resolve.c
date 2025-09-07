@@ -371,21 +371,32 @@ void exit_func(parser *p, decl *f) {
   ht_destroy(p->gotos_to_check_ht);
 }
 
+// set param to true when resolving param
+// returns id of new ident
+int resolve_var_decl(parser *p, string name, ast_pos pos, char param) {
+  void *e = ht_get(p->ident_ht_list_head, name);
+  if (e != NULL) {
+    if (param)
+      fprintf(stderr, "duplicate param declaration with name %s (%d:%d-%d:%d)",
+              name, pos.line_start, pos.pos_start, pos.line_end, pos.pos_end);
+    else
+      fprintf(stderr,
+              "duplicate variable declaration with name %s (%d:%d-%d:%d)", name,
+              pos.line_start, pos.pos_start, pos.line_end, pos.pos_end);
+    after_error();
+  }
+  int new_name = get_name();
+
+  const char *new_key =
+      ht_set(p->ident_ht_list_head, name, (void *)((intptr_t)new_name));
+  assert(new_key);
+
+  return new_name;
+}
+
 void resolve_decl(parser *p, decl *d) {
   if (d->t == DECL_FUNC)
     return; // skip for now
 
-  void *e = ht_get(p->ident_ht_list_head, d->v.var.name);
-  if (e != NULL) {
-    fprintf(stderr, "duplicate variable declaration with name %s (%d:%d-%d:%d)",
-            d->v.var.name, d->pos.line_start, d->pos.pos_start, d->pos.line_end,
-            d->pos.pos_end);
-    after_error();
-  }
-  int new_name = get_name();
-  d->v.var.name_idx = new_name;
-
-  const char *new_key = ht_set(p->ident_ht_list_head, d->v.var.name,
-                               (void *)((intptr_t)new_name));
-  assert(new_key);
+  d->v.var.name_idx = resolve_var_decl(p, d->v.var.name, d->pos, false);
 }
