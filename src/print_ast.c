@@ -185,6 +185,18 @@ static void print_expr(expr *e, int indent) {
     print_expr(e->v.ternary.then, indent + 1);
     print_expr(e->v.ternary.elze, indent + 1);
     return;
+  case EXPR_FUNC_CALL:
+    printf("FuncCallExpr (%s)", e->v.func_call.name);
+    print_ast_pos(e->pos);
+    printf("\n");
+    if (e->v.func_call.args != NULL)
+      for (int i = 0; i < e->v.func_call.args_len; ++i)
+        print_expr(e->v.func_call.args[i], indent + 1);
+    else {
+      print_indent(indent + 1);
+      printf("(no args)\n");
+    }
+    break;
   }
   UNREACHABLE();
 }
@@ -363,8 +375,22 @@ static void print_decl(decl *d, int indent) {
     printf("FuncDecl (%s)", d->v.func.name);
     print_ast_pos(d->pos);
     printf("\n");
-    for (int i = 0; i < d->v.func.body_len; ++i)
-      print_bi(&d->v.func.body[i], indent + 1);
+    if (d->v.func.params != NULL) {
+      print_indent(indent + 1);
+      printf("%s(%d)", d->v.func.params[0], d->v.func.params_idxs[0]);
+      for (int i = 1; i < d->v.func.params_len; ++i)
+        printf(", %s(%d)", d->v.func.params[i], d->v.func.params_idxs[i]);
+    } else {
+      print_indent(indent + 1);
+      printf("(no params)\n");
+    }
+    if (d->v.func.body != NULL)
+      for (int i = 0; i < d->v.func.body_len; ++i)
+        print_bi(&d->v.func.body[i], indent + 1);
+    else {
+      print_indent(indent + 1);
+      printf("(no body)\n");
+    }
     break;
 
   case DECL_VAR:
