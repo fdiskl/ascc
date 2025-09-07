@@ -9,25 +9,36 @@
 #include <stdio.h>
 #include <string.h>
 
+extern arena ptr_arena; // in main.c
+
 // binary_op returns 0 on non-bin op, so MIN_PREC should be <= -1 so when
 // comparing with >= it still would work
 #define MIN_PREC -100
 
 #define SET_POS(n, start, end)                                                 \
-  {                                                                            \
+  do {                                                                         \
     n->pos.filename = start.filename;                                          \
     n->pos.line_start = start.line;                                            \
     n->pos.line_end = end.line;                                                \
     n->pos.pos_start = start.start_pos;                                        \
     n->pos.pos_end = end.end_pos;                                              \
-  }
+  } while (0)
+
+#define CONVERT_POS(start, end, ast_pos)                                       \
+  do {                                                                         \
+    ast_pos.filename = start.filename;                                         \
+    ast_pos.line_start = start.line;                                           \
+    ast_pos.line_end = end.line;                                               \
+    ast_pos.pos_start = start.start_pos;                                       \
+    ast_pos.pos_end = end.end_pos;                                             \
+  } while (0)
 
 #define SET_POS_FROM_NODES(n, startn, endn)                                    \
-  {                                                                            \
+  do {                                                                         \
     n->pos = startn->pos;                                                      \
     n->pos.line_end = endn->pos.line_end;                                      \
     n->pos.pos_end = endn->pos.pos_end;                                        \
-  }
+  } while (0)
 
 static token *advance(parser *p) {
   p->curr = p->next;
@@ -156,6 +167,34 @@ static expr *parse_postfix(parser *p, expr *e) {
   }
 }
 
+static expr *parse_func_call_expr(parser *p) {
+  expr *e = alloc_expr(p, EXPR_FUNC_CALL);
+
+  expect(p, TOK_IDENT);
+  expect(p, TOK_LPAREN);
+
+  if (p->next.token != TOK_RPAREN) {
+    VEC(expr *) args;
+    vec_init(args);
+
+    vec_push_back(args, parse_expr(p));
+
+    while (p->next.token != TOK_RPAREN) {
+      expect(p, TOK_COMMA);
+      vec_push_back(args, parse_expr(p));
+    }
+
+    e->v.func_call.args_len = args.size;
+    vec_move_into_arena(&ptr_arena, args, expr *, e->v.func_call.args);
+
+    vec_free(args);
+  }
+
+  expect(p, TOK_RPAREN);
+
+  return e;
+}
+
 static expr *parse_factor(parser *p) {
   tok_pos start = p->next.pos;
   expr *e;
@@ -176,7 +215,10 @@ static expr *parse_factor(parser *p) {
     expect(p, TOK_RPAREN);
     break;
   case TOK_IDENT:
-    e = parse_var_expr(p);
+    if (p->after_next.token == TOK_LPAREN)
+      e = parse_func_call_expr(p);
+    else
+      e = parse_var_expr(p);
     break;
   default:
     fprintf(stderr, "invalid token found %s (%d:%d:%d)\n",
@@ -668,6 +710,47 @@ void resolve_decl(parser *p, decl *d);
 void enter_func(parser *p, decl *f);
 void exit_func(parser *p, decl *f);
 
+int resolve_var_decl(parser *p, string name, ast_pos pos, char param);
+
+static void parse_params(parser *p, func_decl *f) {
+  if (p->next.token == TOK_VOID) {
+    expect(p, TOK_VOID);
+    f->params = NULL;
+    f->params_len = 0;
+    return;
+  }
+
+  VEC(string) params;
+  VEC(int) params_idxs;
+  vec_init(params);
+
+  ast_pos pos;
+  tok_pos start = expect(p, TOK_INT)->pos;
+  tok_pos end = expect(p, TOK_IDENT)->pos;
+  CONVERT_POS(start, end, pos);
+
+  vec_push_back(params, p->curr.v.ident);
+  vec_push_back(params_idxs, resolve_var_decl(p, p->curr.v.ident, pos, true));
+
+  while (p->next.token != TOK_RPAREN) {
+    start = expect(p, TOK_COMMA)->pos;
+    expect(p, TOK_INT);
+    end = expect(p, TOK_IDENT)->pos;
+    CONVERT_POS(start, end, pos);
+
+    vec_push_back(params, p->curr.v.ident);
+    vec_push_back(params_idxs, resolve_var_decl(p, p->curr.v.ident, pos, true));
+  }
+
+  f->params_len = params.size;
+
+  vec_move_into_arena(&ptr_arena, params, string, f->params);
+
+  // TODO: save params_idxs
+
+  vec_free(params);
+}
+
 static decl *parse_decl(parser *p) {
   tok_pos start = expect(p, TOK_INT)->pos; // TODO: parse return type of func or
                                            // type of var, not just int
@@ -679,9 +762,22 @@ static decl *parse_decl(parser *p) {
     res = alloc_decl(p, DECL_FUNC);
     res->v.func.name = ident;
 
+    enter_func(p, res);
+
     expect(p, TOK_LPAREN);
-    expect(p, TOK_VOID); // TODO: parse arg types
+
+    parse_params(p, &res->v.func);
+
     expect(p, TOK_RPAREN);
+
+    tok_pos end;
+
+    if (p->next.token == TOK_SEMI) {
+      end = expect(p, TOK_SEMI)->pos;
+      res->v.func.body = NULL;
+      res->v.func.body_len = 0;
+      goto after_body_parse;
+    }
 
     expect(p, TOK_LBRACE);
 
@@ -689,8 +785,6 @@ static decl *parse_decl(parser *p) {
     vec_init(items_tmp);
 
     resolve_decl(p, res);
-
-    enter_func(p, res);
 
     while (p->next.token != TOK_RBRACE) {
       vec_push_back(items_tmp, parse_bi(p));
@@ -703,8 +797,8 @@ static decl *parse_decl(parser *p) {
 
     vec_free(items_tmp);
 
-    tok_pos end = expect(p, TOK_RBRACE)->pos;
-    SET_POS(res, start, end);
+    end = expect(p, TOK_RBRACE)->pos;
+  after_body_parse: { SET_POS(res, start, end); }
 
   } else {
     res = alloc_decl(p, DECL_VAR);
