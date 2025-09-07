@@ -1,6 +1,6 @@
 CC := clang
 BUILD ?= debug
-CFLAGS_COMMON := -Wall -Wextra
+CFLAGS_COMMON := -Wall -Wextra -Wno-sign-compare
 LDFLAGS :=
 
 ifeq ($(BUILD),debug)

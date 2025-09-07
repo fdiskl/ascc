@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 set CC=gcc
-set CFLAGS_COMMON=-Wall -Wextra
+set CFLAGS_COMMON=-Wall -Wextra -Wno-sign-compare
 set LDFLAGS=
 
 :: default debug build
