@@ -3,6 +3,7 @@
 #include "common.h"
 #include "driver.h"
 #include "scan.h"
+#include "table.h"
 #include "vec.h"
 #include <assert.h>
 #include <stdint.h>
@@ -64,13 +65,15 @@ void init_parser(parser *p, lexer *l) {
   INIT_ARENA(&p->stmt_arena, stmt);
   INIT_ARENA(&p->expr_arena, expr);
   INIT_ARENA(&p->bi_arena, block_item);
+  INIT_ARENA(&p->symbol_arena, symbol_entry);
 
   vec_push_back(arenas_to_free, &p->decl_arena);
   vec_push_back(arenas_to_free, &p->stmt_arena);
   vec_push_back(arenas_to_free, &p->expr_arena);
   vec_push_back(arenas_to_free, &p->bi_arena);
+  vec_push_back(arenas_to_free, &p->symbol_arena);
 
-  p->ident_ht_list_head = NULL;
+  p->ident_ht_list_head = ht_create();
 
   advance(p); // for after_next
   advance(p); // for next
@@ -705,8 +708,6 @@ static stmt *parse_stmt(parser *p) {
   return res;
 }
 
-void resolve_decl(parser *p, decl *d);
-
 void enter_func(parser *p, decl *f);
 void exit_func(parser *p, decl *f);
 
@@ -721,8 +722,9 @@ static void parse_params(parser *p, func_decl *f) {
   }
 
   VEC(string) params;
-  VEC(int) params_idxs;
+  VEC(void *) params_idxs;
   vec_init(params);
+  vec_init(params_idxs);
 
   ast_pos pos;
   tok_pos start = expect(p, TOK_INT)->pos;
@@ -730,7 +732,8 @@ static void parse_params(parser *p, func_decl *f) {
   CONVERT_POS(start, end, pos);
 
   vec_push_back(params, p->curr.v.ident);
-  vec_push_back(params_idxs, resolve_var_decl(p, p->curr.v.ident, pos, true));
+  vec_push_back(params_idxs, (void *)((intptr_t)resolve_var_decl(
+                                 p, p->curr.v.ident, pos, true)));
 
   while (p->next.token != TOK_RPAREN) {
     start = expect(p, TOK_COMMA)->pos;
@@ -739,14 +742,14 @@ static void parse_params(parser *p, func_decl *f) {
     CONVERT_POS(start, end, pos);
 
     vec_push_back(params, p->curr.v.ident);
-    vec_push_back(params_idxs, resolve_var_decl(p, p->curr.v.ident, pos, true));
+    vec_push_back(params_idxs, (void *)((intptr_t)resolve_var_decl(
+                                   p, p->curr.v.ident, pos, true)));
   }
 
   f->params_len = params.size;
 
   vec_move_into_arena(&ptr_arena, params, string, f->params);
-
-  // TODO: save params_idxs
+  vec_move_into_arena(&ptr_arena, params_idxs, void *, f->params_idxs);
 
   vec_free(params);
 }
@@ -755,6 +758,7 @@ static decl *parse_decl(parser *p) {
   tok_pos start = expect(p, TOK_INT)->pos; // TODO: parse return type of func or
                                            // type of var, not just int
   string ident = expect(p, TOK_IDENT)->v.ident;
+  tok_pos tmp_end = p->curr.pos;
 
   decl *res;
 
@@ -784,8 +788,6 @@ static decl *parse_decl(parser *p) {
     VEC(block_item) items_tmp;
     vec_init(items_tmp);
 
-    resolve_decl(p, res);
-
     while (p->next.token != TOK_RBRACE) {
       vec_push_back(items_tmp, parse_bi(p));
     }
@@ -804,7 +806,10 @@ static decl *parse_decl(parser *p) {
     res = alloc_decl(p, DECL_VAR);
     res->v.var.name = ident;
 
-    resolve_decl(p, res); // it's important to resolve before init expr
+    ast_pos pos;
+    CONVERT_POS(start, tmp_end, pos);
+
+    resolve_var_decl(p, ident, pos, false);
 
     if (p->next.token == TOK_ASSIGN) {
       expect(p, TOK_ASSIGN);

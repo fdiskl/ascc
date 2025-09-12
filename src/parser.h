@@ -308,8 +308,9 @@ struct _func_decl {
   string name;
   block_item *body; // NULL if semi instead of body
   size_t body_len;
-  string *params;   // NULL if void
-  int *params_idxs; // NULL if void
+  string *params; // NULL if void
+  void *
+      *params_idxs; // NULL if void, actually not ptrs but ints casted as void*
   size_t params_len;
   // todo: return type, arg type
 };
@@ -366,6 +367,13 @@ struct _loop_resolve_info {
   } v;
 };
 
+// -- for reolve.c --
+typedef struct _symbol_entry symbol_entry;
+struct _symbol_entry {
+  string name;
+  int name_idx;
+  char has_linkage;
+};
 // --
 
 struct _parser {
@@ -384,6 +392,7 @@ struct _parser {
   ht *ident_ht_list_head;
   ht *labels_ht;
   ht *gotos_to_check_ht;
+  arena symbol_arena;
   VEC(loop_resolve_info) stack_loop_resolve_info;
 };
 
