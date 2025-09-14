@@ -378,9 +378,12 @@ static void print_decl(decl *d, int indent) {
     printf("\n");
     if (d->v.func.params != NULL) {
       print_indent(indent + 1);
-      printf("%s(%d)", d->v.func.params[0], (int)(intptr_t)d->v.func.params_idxs[0]);
+      printf("%s(%d)", d->v.func.params[0],
+             (int)(intptr_t)d->v.func.params_idxs[0]);
       for (int i = 1; i < d->v.func.params_len; ++i)
-        printf(", %s(%d)", d->v.func.params[i], (int)(intptr_t)d->v.func.params_idxs[i]);
+        printf(", %s(%d)", d->v.func.params[i],
+               (int)(intptr_t)d->v.func.params_idxs[i]);
+      printf("\n");
     } else {
       print_indent(indent + 1);
       printf("(no params)\n");
