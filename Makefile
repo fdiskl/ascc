@@ -42,4 +42,4 @@ count:
 	@find ./src -type f \( -name "*.c" -o -name "*.h" \) -exec wc -l {} +
 
 gdb: debug
-	@gdb $(BINDIR)/ascc
+	gdb $(BIN)
