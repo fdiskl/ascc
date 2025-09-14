@@ -187,7 +187,8 @@ static void print_expr(expr *e, int indent) {
     print_expr(e->v.ternary.elze, indent + 1);
     return;
   case EXPR_FUNC_CALL:
-    printf("FuncCallExpr (%s)", e->v.func_call.name);
+    printf("FuncCallExpr (%s, %d)", e->v.func_call.name,
+           e->v.func_call.name_idx);
     print_ast_pos(e->pos);
     printf("\n");
     if (e->v.func_call.args != NULL)
@@ -373,7 +374,7 @@ static void print_decl(decl *d, int indent) {
   print_indent(indent);
   switch (d->t) {
   case DECL_FUNC:
-    printf("FuncDecl (%s)", d->v.func.name);
+    printf("FuncDecl (%s, %d)", d->v.func.name, d->v.func.name_idx);
     print_ast_pos(d->pos);
     printf("\n");
     if (d->v.func.params != NULL) {

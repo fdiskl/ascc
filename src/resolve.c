@@ -101,7 +101,17 @@ void *find_entry(parser *p, string name) {
   return entry;
 }
 
-void resolve_func_call_expr(parser *p, func_call_expr fe) {}
+void resolve_func_call_expr(parser *p, expr *e) {
+  symbol_entry *entry = find_entry(p, e->v.func_call.name);
+  if (entry == NULL) {
+    fprintf(stderr, "call to undeclared func %s (%d:%d-%d:%d)\n",
+            e->v.func_call.name, e->pos.line_start, e->pos.pos_start,
+            e->pos.line_end, e->pos.pos_end);
+    after_error();
+  }
+
+  e->v.func_call.name_idx = entry->name_idx;
+}
 
 void resolve_expr(parser *p, expr *e) {
   switch (e->t) {
@@ -151,7 +161,7 @@ void resolve_expr(parser *p, expr *e) {
     resolve_expr(p, e->v.ternary.elze);
     break;
   case EXPR_FUNC_CALL:
-    resolve_func_call_expr(p, e->v.func_call);
+    resolve_func_call_expr(p, e);
     break;
   }
 }
@@ -366,8 +376,11 @@ void enter_func(parser *p, decl *f) {
     after_error();
   }
 
-  ht_set(p->ident_ht_list_head, f->v.func.name,
-         new_symt_entry(p, f->v.func.name, true));
+  e = new_symt_entry(p, f->v.func.name, true);
+
+  f->v.func.name_idx = e->name_idx;
+
+  ht_set(p->ident_ht_list_head, f->v.func.name, e);
 
   enter_scope(p);
   p->labels_ht = ht_create();

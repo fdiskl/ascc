@@ -173,7 +173,7 @@ static expr *parse_postfix(parser *p, expr *e) {
 static expr *parse_func_call_expr(parser *p) {
   expr *e = alloc_expr(p, EXPR_FUNC_CALL);
 
-  expect(p, TOK_IDENT);
+  e->v.func_call.name = expect(p, TOK_IDENT)->v.ident;
   expect(p, TOK_LPAREN);
 
   if (p->next.token != TOK_RPAREN) {

@@ -132,6 +132,7 @@ struct _assignment {
 
 struct _func_call_expr {
   string name;
+  int name_idx;
   expr **args;
   size_t args_len;
 };
@@ -306,6 +307,7 @@ struct _var_decl {
 
 struct _func_decl {
   string name;
+  int name_idx;
   block_item *body; // NULL if semi instead of body
   size_t body_len;
   string *params; // NULL if void
