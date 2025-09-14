@@ -567,6 +567,14 @@ static stmt *parse_for_stmt(parser *p) {
       decl = true;
       enter_scope(p);
       s->v.for_stmt.init_d = parse_decl(p);
+      if (s->v.for_stmt.init_d->t == DECL_FUNC) {
+        ast_pos pos = s->v.for_stmt.init_d->pos;
+        fprintf(stderr,
+                "function declaration are not permitted in for loop init "
+                "(%d:%d-%d:%d)\n",
+                pos.line_start, pos.pos_start, pos.line_end, pos.pos_end);
+        after_error();
+      }
       goto after_semi;
     } else
       s->v.for_stmt.init_e = parse_expr(p);
