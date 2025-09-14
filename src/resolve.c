@@ -23,8 +23,8 @@ int label_idx_counter = 0;
 static int get_label() { return ++label_idx_counter; }
 static int get_name() { return ++var_name_idx_counter; }
 
-static symbol_entry *new_symt_entry(parser *p, string name, char linkage) {
-  symbol_entry *e = ARENA_ALLOC_OBJ(&p->symbol_arena, symbol_entry);
+static ident_entry *new_symt_entry(parser *p, string name, char linkage) {
+  ident_entry *e = ARENA_ALLOC_OBJ(&p->symbol_arena, ident_entry);
   e->has_linkage = linkage;
   e->name = name;
   e->name_idx = get_name();
@@ -102,7 +102,7 @@ void *find_entry(parser *p, string name) {
 }
 
 void resolve_func_call_expr(parser *p, expr *e) {
-  symbol_entry *entry = find_entry(p, e->v.func_call.name);
+  ident_entry *entry = find_entry(p, e->v.func_call.name);
   if (entry == NULL) {
     fprintf(stderr, "call to undeclared func %s (%d:%d-%d:%d)\n",
             e->v.func_call.name, e->pos.line_start, e->pos.pos_start,
@@ -143,7 +143,7 @@ void resolve_expr(parser *p, expr *e) {
 
     break;
   case EXPR_VAR: {
-    symbol_entry *entry = find_entry(p, e->v.var.name);
+    ident_entry *entry = find_entry(p, e->v.var.name);
     if (entry == NULL) {
       fprintf(stderr, "undefined var %s (%d:%d-%d:%d)\n", e->v.var.name,
               e->pos.line_start, e->pos.pos_start, e->pos.line_end,
@@ -366,7 +366,7 @@ void exit_switch(parser *p, stmt *s) {
 }
 
 void enter_func(parser *p, decl *f) {
-  symbol_entry *e =
+  ident_entry *e =
       ht_get(p->ident_ht_list_head, f->v.func.name); // check only curr scope
   if (e != NULL && !e->has_linkage) {
     fprintf(stderr, "function with name %s already defined (%d:%d-%d:%d)\n",
@@ -383,12 +383,17 @@ void enter_func(parser *p, decl *f) {
   ht_set(p->ident_ht_list_head, f->v.func.name, e);
 
   enter_scope(p);
+}
+
+void enter_body_of_func(parser *p, decl *f) {
   p->labels_ht = ht_create();
   p->gotos_to_check_ht = ht_create();
   vec_init(p->stack_loop_resolve_info);
 }
 
-void exit_func(parser *p, decl *f) {
+void exit_func(parser *p, decl *f) { exit_scope(p); }
+
+void exit_func_with_body(parser *p, decl *f) {
   hti it = ht_iterator(p->gotos_to_check_ht);
   while (ht_next(&it)) {
     void *e = ht_get(p->labels_ht, it.key);
@@ -404,18 +409,17 @@ void exit_func(parser *p, decl *f) {
     s->v.goto_stmt.label_idx = ((int)((intptr_t)e));
   }
 
-  vec_free(p->stack_loop_resolve_info);
   exit_scope(p);
+
+  vec_free(p->stack_loop_resolve_info);
   ht_destroy(p->labels_ht);
   ht_destroy(p->gotos_to_check_ht);
 }
 
 // set param to true when resolving param
 // returns id of new ident
-symbol_entry *resolve_var_decl(parser *p, string name, ast_pos pos,
-                               char param) {
-  symbol_entry *e =
-      ht_get(p->ident_ht_list_head, name); // check only curr scope
+ident_entry *resolve_var_decl(parser *p, string name, ast_pos pos, char param) {
+  ident_entry *e = ht_get(p->ident_ht_list_head, name); // check only curr scope
   if (e != NULL) {
     if (param)
       fprintf(stderr, "duplicate param declaration with name %s (%d:%d-%d:%d)",
@@ -426,7 +430,7 @@ symbol_entry *resolve_var_decl(parser *p, string name, ast_pos pos,
               pos.line_start, pos.pos_start, pos.line_end, pos.pos_end);
     after_error();
   }
-  symbol_entry *new_e = new_symt_entry(p, name, false);
+  ident_entry *new_e = new_symt_entry(p, name, false);
 
   const char *new_key = ht_set(p->ident_ht_list_head, name, new_e);
   assert(new_key);

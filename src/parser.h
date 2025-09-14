@@ -370,8 +370,8 @@ struct _loop_resolve_info {
 };
 
 // -- for reolve.c --
-typedef struct _symbol_entry symbol_entry;
-struct _symbol_entry {
+typedef struct _ident_entry ident_entry;
+struct _ident_entry {
   string name;
   int name_idx;
   char has_linkage;

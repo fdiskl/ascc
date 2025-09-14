@@ -65,7 +65,7 @@ void init_parser(parser *p, lexer *l) {
   INIT_ARENA(&p->stmt_arena, stmt);
   INIT_ARENA(&p->expr_arena, expr);
   INIT_ARENA(&p->bi_arena, block_item);
-  INIT_ARENA(&p->symbol_arena, symbol_entry);
+  INIT_ARENA(&p->symbol_arena, ident_entry);
 
   vec_push_back(arenas_to_free, &p->decl_arena);
   vec_push_back(arenas_to_free, &p->stmt_arena);
@@ -708,11 +708,13 @@ static stmt *parse_stmt(parser *p) {
   return res;
 }
 
-void enter_func(parser *p, decl *f); // resolve.c
-void exit_func(parser *p, decl *f);  // resolve.c
+void enter_func(parser *p, decl *f);          // resolve.c
+void enter_body_of_func(parser *p, decl *f);  // resolve.c
+void exit_func(parser *p, decl *f);           // resolve.c
+void exit_func_with_body(parser *p, decl *f); // resolve.c
 
-symbol_entry *resolve_var_decl(parser *p, string name, ast_pos pos,
-                               char param); // resolve.c
+ident_entry *resolve_var_decl(parser *p, string name, ast_pos pos,
+                              char param); // resolve.c
 
 static void parse_params(parser *p, func_decl *f) {
   if (p->next.token == TOK_VOID) {
@@ -787,6 +789,8 @@ static decl *parse_decl(parser *p) {
       goto after_body_parse;
     }
 
+    enter_body_of_func(p, res);
+
     expect(p, TOK_LBRACE);
 
     VEC(block_item) items_tmp;
@@ -804,7 +808,10 @@ static decl *parse_decl(parser *p) {
     end = expect(p, TOK_RBRACE)->pos;
   after_body_parse: {
     SET_POS(res, start, end);
-    exit_func(p, res);
+    if (res->v.func.body == NULL)
+      exit_func(p, res);
+    else
+      exit_func_with_body(p, res);
   }
 
   } else {
