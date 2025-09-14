@@ -708,10 +708,11 @@ static stmt *parse_stmt(parser *p) {
   return res;
 }
 
-void enter_func(parser *p, decl *f);
-void exit_func(parser *p, decl *f);
+void enter_func(parser *p, decl *f); // resolve.c
+void exit_func(parser *p, decl *f);  // resolve.c
 
-int resolve_var_decl(parser *p, string name, ast_pos pos, char param);
+symbol_entry *resolve_var_decl(parser *p, string name, ast_pos pos,
+                               char param); // resolve.c
 
 static void parse_params(parser *p, func_decl *f) {
   if (p->next.token == TOK_VOID) {
@@ -733,7 +734,8 @@ static void parse_params(parser *p, func_decl *f) {
 
   vec_push_back(params, p->curr.v.ident);
   vec_push_back(params_idxs, (void *)((intptr_t)resolve_var_decl(
-                                 p, p->curr.v.ident, pos, true)));
+                                          p, p->curr.v.ident, pos, true)
+                                          ->name_idx));
 
   while (p->next.token != TOK_RPAREN) {
     start = expect(p, TOK_COMMA)->pos;
@@ -742,8 +744,10 @@ static void parse_params(parser *p, func_decl *f) {
     CONVERT_POS(start, end, pos);
 
     vec_push_back(params, p->curr.v.ident);
-    vec_push_back(params_idxs, (void *)((intptr_t)resolve_var_decl(
-                                   p, p->curr.v.ident, pos, true)));
+    vec_push_back(
+        params_idxs,
+        (void *)(intptr_t)(resolve_var_decl(p, p->curr.v.ident, pos, true)
+                               ->name_idx));
   }
 
   f->params_len = params.size;
@@ -792,15 +796,16 @@ static decl *parse_decl(parser *p) {
       vec_push_back(items_tmp, parse_bi(p));
     }
 
-    exit_func(p, res);
-
     res->v.func.body_len = items_tmp.size;
     vec_move_into_arena(&p->bi_arena, items_tmp, block_item, res->v.func.body);
 
     vec_free(items_tmp);
 
     end = expect(p, TOK_RBRACE)->pos;
-  after_body_parse: { SET_POS(res, start, end); }
+  after_body_parse: {
+    SET_POS(res, start, end);
+    exit_func(p, res);
+  }
 
   } else {
     res = alloc_decl(p, DECL_VAR);

@@ -356,13 +356,6 @@ void exit_switch(parser *p, stmt *s) {
 }
 
 void enter_func(parser *p, decl *f) {
-  enter_scope(p);
-  p->labels_ht = ht_create();
-  p->gotos_to_check_ht = ht_create();
-  vec_init(p->stack_loop_resolve_info);
-}
-
-void exit_func(parser *p, decl *f) {
   symbol_entry *e =
       ht_get(p->ident_ht_list_head, f->v.func.name); // check only curr scope
   if (e != NULL && !e->has_linkage) {
@@ -376,6 +369,13 @@ void exit_func(parser *p, decl *f) {
   ht_set(p->ident_ht_list_head, f->v.func.name,
          new_symt_entry(p, f->v.func.name, true));
 
+  enter_scope(p);
+  p->labels_ht = ht_create();
+  p->gotos_to_check_ht = ht_create();
+  vec_init(p->stack_loop_resolve_info);
+}
+
+void exit_func(parser *p, decl *f) {
   hti it = ht_iterator(p->gotos_to_check_ht);
   while (ht_next(&it)) {
     void *e = ht_get(p->labels_ht, it.key);
