@@ -7,14 +7,20 @@
 typedef struct _hte hte;
 
 struct _hte {
-  const char *key;
+  union {
+    const char *key;
+    int idx;
+  } v;
   void *val;
 };
+
+#define NULL_INT_KEY -1
 
 struct ht {
   hte *entries;
   size_t cap;
   size_t size;
+  int is_keys_strings;
   ht *next;
 };
 
@@ -26,9 +32,30 @@ ht *ht_create(void) {
   t->cap = HT_INITIAL_CAPACITY;
 
   t->next = NULL;
+  t->is_keys_strings = true;
 
   t->entries = calloc(t->cap, sizeof(hte));
   assert(t->entries);
+
+  return t;
+}
+
+ht *ht_create_int(void) {
+  ht *t = (ht *)malloc(sizeof(ht));
+
+  assert(t);
+  t->size = 0;
+  t->cap = HT_INITIAL_CAPACITY;
+
+  t->next = NULL;
+  t->is_keys_strings = false;
+
+  t->entries = calloc(t->cap, sizeof(hte));
+  assert(t->entries);
+
+  for (size_t i = 0; i < t->cap; ++i) {
+    t->entries[i].v.idx = NULL_INT_KEY;
+  }
 
   return t;
 }
@@ -37,8 +64,9 @@ ht *ht_get_next_table(ht *t) { return t->next; }
 void ht_set_next_table(ht *t, ht *next) { t->next = next; }
 
 void ht_destroy(ht *t) {
-  for (size_t i = 0; i < t->cap; ++i)
-    free((void *)t->entries[i].key);
+  if (t->is_keys_strings)
+    for (size_t i = 0; i < t->cap; ++i)
+      free((void *)t->entries[i].v.key);
 
   free(t->entries);
   free(t);
@@ -64,9 +92,24 @@ void *ht_get(ht *t, const char *key) {
   size_t idx = (size_t)(hash & (uint64_t)(t->cap - 1));
 
   // linear probing
-  while (t->entries[idx].key != NULL) {
-    if (strcmp(key, t->entries[idx].key) == 0)
+  while (t->entries[idx].v.key != NULL) {
+    if (strcmp(key, t->entries[idx].v.key) == 0)
       return t->entries[idx].val;
+    ++idx;
+    if (idx >= t->cap)
+      idx = 0; // wrap around
+  }
+
+  return NULL;
+}
+
+void *ht_get_int(ht *t, int key) {
+  size_t idx = (size_t)(key & (t->cap - 1));
+
+  while (t->entries[idx].v.idx != NULL_INT_KEY) {
+    if (t->entries[idx].v.idx == key)
+      return t->entries[idx].val;
+
     ++idx;
     if (idx >= t->cap)
       idx = 0; // wrap around
@@ -82,10 +125,10 @@ static const char *ht_set_entry(hte *entries, size_t cap, const char *key,
   uint64_t hash = hash_key(key);
   size_t idx = (size_t)(hash & (uint64_t)(cap - 1));
 
-  while (entries[idx].key != NULL) {
-    if (strcmp(key, entries[idx].key) == 0) {
+  while (entries[idx].v.key != NULL) {
+    if (strcmp(key, entries[idx].v.key) == 0) {
       entries[idx].val = v;
-      return entries[idx].key;
+      return entries[idx].v.key;
     }
 
     ++idx;
@@ -100,25 +143,57 @@ static const char *ht_set_entry(hte *entries, size_t cap, const char *key,
     ++(*psize);
   }
 
-  entries[idx].key = key;
+  entries[idx].v.key = key;
   entries[idx].val = v;
   return key;
+}
+
+static bool ht_set_entry_int(hte *entries, size_t cap, int key, void *v,
+                             size_t *psize) {
+  size_t idx = (size_t)(key & (cap - 1));
+
+  while (entries[idx].v.idx != NULL_INT_KEY) {
+    if (entries[idx].v.idx == key) {
+      entries[idx].val = v; // update existing key
+      return true;
+    }
+
+    ++idx;
+    if (idx >= cap)
+      idx = 0; // wrap around
+  }
+
+  // key not found, insert
+  entries[idx].v.idx = key;
+  entries[idx].val = v;
+  if (psize != NULL)
+    ++(*psize);
+  return true;
 }
 
 // twice size, true on success, false on failure
 static bool ht_expand(ht *t) {
   size_t newcap = t->cap * 2;
-
   if (newcap < t->cap)
     return false;
 
   hte *new_entries = calloc(newcap, sizeof(hte));
   assert(new_entries);
 
+  if (!t->is_keys_strings) {
+    for (size_t i = 0; i < newcap; ++i)
+      new_entries[i].v.idx = NULL_INT_KEY;
+  }
+
   for (size_t i = 0; i < t->cap; ++i) {
     hte e = t->entries[i];
-    if (e.key != NULL)
-      ht_set_entry(new_entries, newcap, e.key, e.val, NULL);
+    if (t->is_keys_strings) {
+      if (e.v.key != NULL)
+        ht_set_entry(new_entries, newcap, e.v.key, e.val, NULL);
+    } else {
+      if (e.v.idx != NULL_INT_KEY)
+        ht_set_entry_int(new_entries, newcap, e.v.idx, e.val, NULL);
+    }
   }
 
   free(t->entries);
@@ -140,6 +215,17 @@ const char *ht_set(ht *t, const char *key, void *v) {
   return ht_set_entry(t->entries, t->cap, key, v, &t->size);
 }
 
+bool ht_set_int(ht *t, int key, void *v) {
+  assert(v != NULL);
+
+  if (t->size >= t->cap / 2) {
+    if (!ht_expand(t))
+      return false;
+  }
+
+  return ht_set_entry_int(t->entries, t->cap, key, v, &t->size);
+}
+
 size_t ht_size(ht *table) { return table->size; }
 
 hti ht_iterator(ht *t) {
@@ -153,11 +239,25 @@ bool ht_next(hti *it) {
   ht *t = it->_table;
   while (it->_index < t->cap) {
     size_t i = it->_index++;
-    if (t->entries[i].key != NULL) {
-      hte e = t->entries[i];
-      it->key = e.key;
-      it->value = e.val;
-      return true;
+
+    if (t->is_keys_strings) {
+      if (t->entries[i].v.key != NULL) {
+        hte e = t->entries[i];
+        it->key = e.v.key;
+        it->idx = NULL_INT_KEY;
+
+        it->value = e.val;
+        return true;
+      }
+    } else {
+      if (t->entries[i].v.idx != NULL_INT_KEY) {
+        hte e = t->entries[i];
+        it->key = NULL;
+        it->idx = e.v.idx;
+
+        it->value = e.val;
+        return true;
+      }
     }
   }
 
