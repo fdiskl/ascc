@@ -5,6 +5,7 @@
 #include "scan.h"
 #include "strings.h"
 #include "tac.h"
+#include "typecheck.h"
 #include "x86.h"
 #include <assert.h>
 #include <stdio.h>
@@ -122,9 +123,18 @@ int main(int argc, char *argv[]) {
 
   program *parsed_ast = parse(&p);
 
-  if (opts.dof == DOF_PARSE ||
-      opts.dof == DOF_VALIDATE) { // for now validate lives here
+  if (opts.dof == DOF_PARSE) {
     print_program(parsed_ast);
+    after_success();
+    return 0;
+  }
+
+  sym_table st = typecheck(parsed_ast);
+
+  if (opts.dof == DOF_VALIDATE) {
+    print_program(parsed_ast);
+    printf("\n");
+    print_sym_table(st);
     after_success();
     return 0;
   }
