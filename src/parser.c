@@ -829,7 +829,8 @@ static decl *parse_decl(parser *p) {
     ast_pos pos;
     CONVERT_POS(start, tmp_end, pos);
 
-    resolve_var_decl(p, ident, pos, false);
+    ident_entry *e = resolve_var_decl(p, ident, pos, false);
+    res->v.var.name_idx = e->name_idx;
 
     if (p->next.token == TOK_ASSIGN) {
       expect(p, TOK_ASSIGN);
