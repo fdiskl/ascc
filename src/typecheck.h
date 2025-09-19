@@ -1,4 +1,5 @@
 #ifndef _ASCC_TYPECHECK_H
+#define _ASCC_TYPECHECK_H
 
 #include "parser.h"
 
