@@ -328,7 +328,7 @@ static void gen_asm_from_call(x86_asm_gen *ag, taci *i) {
     mov->v.binary.src = operand_from_tac_val(i->v.call.args[j]);
   }
 
-  for (int j = i->v.call.args_len; j > 7; --j) {
+  for (int j = i->v.call.args_len - 1; j > 5; --j) {
     x86_op op = operand_from_tac_val(i->v.call.args[j]);
 
     if (op.t == X86_OP_REG || op.t == X86_OP_IMM)
@@ -448,7 +448,7 @@ static x86_func *gen_asm_from_func(x86_asm_gen *ag, tacf *f) {
     op.v.pseudo_idx = (int)(intptr_t)f->params[i];
     x86_op op2;
     op2.t = X86_OP_STACK;
-    op2.v.stack_offset = (i + 1) * 16;
+    op2.v.stack_offset = (i - 5) * -8 - 8;
     mov->v.binary.dst = op;
     mov->v.binary.src = op2;
   }

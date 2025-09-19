@@ -610,5 +610,3 @@ tacf *gen_tac(tacgen *tg, program *p) {
 
   return head;
 }
-
-// TODO: add return 0 at end of func

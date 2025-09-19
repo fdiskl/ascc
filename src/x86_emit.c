@@ -52,7 +52,8 @@ static void emit_x86_reg(FILE *w, x86_reg reg, int size) {
       fprintf(w, "%%r11");
       return;
     }
-  } break;
+    break;
+  }
   case 4: {
     switch (reg) {
     case X86_AX:
@@ -83,7 +84,8 @@ static void emit_x86_reg(FILE *w, x86_reg reg, int size) {
       fprintf(w, "%%r11d");
       return;
     }
-  } break;
+    break;
+  }
 
   case 1: {
     switch (reg) {
@@ -115,7 +117,8 @@ static void emit_x86_reg(FILE *w, x86_reg reg, int size) {
       fprintf(w, "%%r11b");
       return;
     }
-  } break;
+    break;
+  }
   }
 
   TODO();
@@ -157,7 +160,10 @@ static void emit_x86_op(FILE *w, x86_op op, int size) {
     fprintf(w, "PSEUDO(%d)", op.v.pseudo_idx);
     break;
   case X86_OP_STACK:
-    fprintf(w, "-%d(%%rbp)", op.v.stack_offset);
+    if (op.v.stack_offset > 0)
+      fprintf(w, "-%d(%%rbp)", op.v.stack_offset);
+    else
+      fprintf(w, "%d(%%rbp)", -op.v.stack_offset);
     break;
   }
 }
@@ -165,7 +171,7 @@ static void emit_x86_op(FILE *w, x86_op op, int size) {
 static void emit_x86_unary(FILE *w, x86_instr *i, const char *name, int size) {
   SMART_EMIT_ORIGIN({
     fprintf(w, "\t%s ", name);
-    emit_x86_op(w, i->v.unary.src, 8);
+    emit_x86_op(w, i->v.unary.src, size);
   });
 }
 

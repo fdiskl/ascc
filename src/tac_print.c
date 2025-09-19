@@ -220,8 +220,8 @@ void print_tac_func(tacf *f) {
   }
 }
 
-void print_tac(tacf *first) {
-  for (tacf *f = first; f != NULL; f = f->next) {
+void print_tac(tacf *f) {
+  for (; f != NULL; f = f->next) {
     print_tac_func(f);
     printf("\n");
   }
