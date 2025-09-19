@@ -1,5 +1,6 @@
 #include "common.h"
 #include "tac.h"
+#include <stdint.h>
 #include <stdio.h>
 
 const char *tacop_str(tacop op) {
@@ -74,6 +75,7 @@ const char *tacop_str(tacop op) {
   case TAC_JNZ:
   case TAC_LABEL:
   case TAC_JE:
+  case TAC_CALL:
     break;
   }
 
@@ -189,12 +191,27 @@ void fprint_taci(FILE *f, taci *i) {
     fprint_val(f, &i->v.s.src2);
     fprintf(f, " -> L%d", i->label_idx);
     break;
+  case TAC_CALL:
+    fprintf(f, "call %s[%d] (", i->v.call.name, i->label_idx);
+    if (i->v.call.args != NULL)
+      fprint_val(f, &i->v.call.args[0]);
+    for (int j = 1; j < i->v.call.args_len; ++j) {
+      fprintf(f, ", ");
+      fprint_val(f, &i->v.call.args[j]);
+    }
+    fprintf(f, ")\n");
     break;
   }
 }
 
 void print_tac_func(tacf *f) {
-  printf("func %s:\n", f->name);
+  printf("func %s[%d] (", f->name, f->idx);
+  if (f->params != NULL) {
+    printf("v%d", (int)(intptr_t)f->params[0]);
+    for (int i = 1; i < f->params_len; ++i)
+      printf(", v%d", (int)(intptr_t)f->params[i]);
+  }
+  printf("):\n");
 
   for (taci *i = f->firsti; i != NULL; i = i->next) {
     printf("\t");
