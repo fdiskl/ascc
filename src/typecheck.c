@@ -150,9 +150,9 @@ static void typecheck_stmt(checker *c, stmt *s) {
     typecheck_stmt(c, s->v.dowhile_stmt.s);
     break;
   case STMT_FOR:
-    if (s->v.for_stmt.init_d != NULL)
+    if (s->v.for_stmt.init_d)
       typecheck_decl(c, s->v.for_stmt.init_d);
-    else
+    else if (s->v.for_stmt.init_e)
       typecheck_expr(c, s->v.for_stmt.init_e);
     if (s->v.for_stmt.cond)
       typecheck_expr(c, s->v.for_stmt.cond);
@@ -197,7 +197,7 @@ static void typecheck_func_decl(checker *c, decl *d) {
   char alr_defined = false;
 
   syme *e = ht_get_int(c->st, d->v.var.name_idx);
-  
+
   if (e != NULL) {
     if (!types_eq(e->t, t)) {
       ast_pos old = e->ref->pos;
