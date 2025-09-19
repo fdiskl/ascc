@@ -3,15 +3,21 @@
 #include "arena.h"
 #include "common.h"
 #include "driver.h"
+#include "parser.h"
+#include "table.h"
 #include "tac.h"
+#include "typecheck.h"
+#include <assert.h>
 #include <stdint.h>
 
-void init_x86_asm_gen(x86_asm_gen *ag) {
+void init_x86_asm_gen(x86_asm_gen *ag, sym_table st) {
   INIT_ARENA(&ag->instr_arena, x86_instr);
   INIT_ARENA(&ag->func_arena, x86_func);
 
   vec_push_back(arenas_to_free, &ag->instr_arena);
   vec_push_back(arenas_to_free, &ag->func_arena);
+
+  ag->sym_table = st;
 }
 
 x86_instr *alloc_x86_instr(x86_asm_gen *ag, int op) {
@@ -306,6 +312,54 @@ static void gen_asm_from_assign(x86_asm_gen *ag, taci *i) {
   instr->v.binary.src = operand_from_tac_val(i->v.s.src1);
 }
 
+static x86_reg arg_regs[6] = {
+    X86_DI, X86_SI, X86_DX, X86_CX, X86_R8, X86_R9,
+};
+
+static void gen_asm_from_call(x86_asm_gen *ag, taci *i) {
+  int padding = 0;
+  if (i->v.call.args_len % 2 == 1)
+    insert_x86_instr(ag, X86_ALLOC_STACK, i)->v.bytes_to_alloc = padding = 8;
+
+  for (int j = 0;
+       j < sizeof(arg_regs) / sizeof(x86_reg) && j < i->v.call.args_len; ++j) {
+    x86_instr *mov = insert_x86_instr(ag, X86_MOV, i);
+    mov->v.binary.dst = new_x86_reg(arg_regs[j]);
+    mov->v.binary.src = operand_from_tac_val(i->v.call.args[j]);
+  }
+
+  for (int j = i->v.call.args_len; j > 7; --j) {
+    x86_op op = operand_from_tac_val(i->v.call.args[j]);
+
+    if (op.t == X86_OP_REG || op.t == X86_OP_IMM)
+      insert_x86_instr(ag, X86_PUSH, i)->v.unary.src = op;
+    else {
+      x86_instr *mov = insert_x86_instr(ag, X86_MOV, i);
+      mov->v.binary.dst = new_x86_reg(X86_AX);
+      mov->v.binary.src = op;
+      insert_x86_instr(ag, X86_PUSH, i)->v.unary.src = new_x86_reg(X86_AX);
+    }
+  }
+
+  x86_instr *call = insert_x86_instr(ag, X86_CALL, i);
+  call->v.call.str_label = i->v.call.name;
+  padding += 8 * (i->v.call.args_len - 6);
+  if (padding != 0)
+    insert_x86_instr(ag, X86_DEALLOC_STACK, i)->v.bytes_to_alloc = padding;
+
+  x86_op dst = operand_from_tac_val(i->dst);
+  x86_instr *mov = insert_x86_instr(ag, X86_MOV, i);
+  mov->v.binary.dst = dst;
+  mov->v.binary.src = new_x86_reg(X86_AX);
+
+  syme *e = ht_get_int(ag->sym_table, i->label_idx);
+  assert(e);
+  if (e->t->v.fntype.defined)
+    call->v.call.plt = 0;
+  else
+    call->v.call.plt = 1;
+}
+
 static void gen_asm_from_instr(x86_asm_gen *ag, taci *i) {
   switch (i->op) {
   case TAC_RET:
@@ -366,6 +420,9 @@ static void gen_asm_from_instr(x86_asm_gen *ag, taci *i) {
   case TAC_ASRSHIFT:
     gen_asm_from_assign(ag, i);
     break;
+  case TAC_CALL:
+    gen_asm_from_call(ag, i);
+    break;
   }
 }
 
@@ -373,6 +430,29 @@ static x86_func *gen_asm_from_func(x86_asm_gen *ag, tacf *f) {
   x86_func *func = alloc_x86_func(ag, f->name);
   ag->head = NULL;
   ag->tail = NULL;
+
+  for (int i = 0; i < f->params_len && i < sizeof(arg_regs) / sizeof(x86_reg);
+       ++i) {
+    x86_instr *mov = insert_x86_instr(ag, X86_MOV, NULL);
+    x86_op op;
+    op.t = X86_OP_PSEUDO;
+    op.v.pseudo_idx = (int)(intptr_t)f->params[i];
+    mov->v.binary.dst = op;
+    mov->v.binary.src = new_x86_reg(arg_regs[i]);
+  }
+
+  for (int i = sizeof(arg_regs) / sizeof(x86_reg); i < f->params_len; ++i) {
+    x86_instr *mov = insert_x86_instr(ag, X86_MOV, NULL);
+    x86_op op;
+    op.t = X86_OP_PSEUDO;
+    op.v.pseudo_idx = (int)(intptr_t)f->params[i];
+    x86_op op2;
+    op2.t = X86_OP_STACK;
+    op2.v.stack_offset = (i + 1) * 16;
+    mov->v.binary.dst = op;
+    mov->v.binary.src = op2;
+  }
+
   for (taci *i = f->firsti; i != NULL; i = i->next)
     gen_asm_from_instr(ag, i);
 
