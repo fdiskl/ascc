@@ -4,6 +4,7 @@
 #include "arena.h"
 #include "strings.h"
 #include "tac.h"
+#include "typecheck.h"
 typedef struct _x86_instr x86_instr;
 typedef struct _x86_asm_gen x86_asm_gen;
 typedef struct _x86_op x86_op;
@@ -32,8 +33,12 @@ typedef enum {
 
 typedef enum {
   X86_AX,
-  X86_DX,
   X86_CX,
+  X86_DX,
+  X86_DI,
+  X86_SI,
+  X86_R8,
+  X86_R9,
   X86_R10,
   X86_R11,
 } x86_reg;
@@ -56,6 +61,7 @@ typedef enum {
   X86_IDIV,
   X86_INC,
   X86_DEC,
+  X86_PUSH,
 
   // binary
   X86_MOV,
@@ -71,10 +77,12 @@ typedef enum {
 
   // special
   X86_ALLOC_STACK,
+  X86_DEALLOC_STACK,
   X86_JMP,
   X86_JMPCC,
   X86_SETCC,
   X86_LABEL,
+  X86_CALL,
 
   X86_COMMENT,
 } x86_t;
@@ -108,6 +116,10 @@ struct _x86_instr {
       x86_op op;
     } setcc;
     int label; // label or jump
+    struct {
+      char plt;
+      string str_label; // call
+    } call;
     int bytes_to_alloc;
     string comment; // for comment instr
   } v;
@@ -126,11 +138,13 @@ struct _x86_asm_gen {
   arena instr_arena;
   arena func_arena;
 
+  sym_table sym_table;
+
   x86_instr *head; // head of instr linked list for curr func
   x86_instr *tail; // tail of instr linked list for curr func
 };
 
-void init_x86_asm_gen(x86_asm_gen *ag);
+void init_x86_asm_gen(x86_asm_gen *ag, sym_table st);
 
 x86_func *gen_asm(x86_asm_gen *ag, tacf *tac_first_f);
 
