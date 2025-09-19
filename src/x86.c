@@ -82,7 +82,7 @@ static void gen_asm_from_ret_instr(x86_asm_gen *ag, taci *i) {
   insert_x86_instr(ag, X86_RET, i);
 
   mov->v.binary.dst = new_x86_reg(X86_AX);
-  mov->v.binary.src = operand_from_tac_val(i->src1);
+  mov->v.binary.src = operand_from_tac_val(i->v.s.src1);
 }
 
 static void gen_asm_from_unary_instr(x86_asm_gen *ag, taci *i) {
@@ -101,7 +101,7 @@ static void gen_asm_from_unary_instr(x86_asm_gen *ag, taci *i) {
   x86_instr *mov = insert_x86_instr(ag, X86_MOV, i);
 
   mov->v.binary.dst = operand_from_tac_val(i->dst);
-  mov->v.binary.src = operand_from_tac_val(i->src1);
+  mov->v.binary.src = operand_from_tac_val(i->v.s.src1);
 
   x86_instr *u = insert_x86_instr(ag, op, i);
   u->v.unary.src = operand_from_tac_val(i->dst);
@@ -115,9 +115,9 @@ static void gen_asm_from_binary_instr(x86_asm_gen *ag, taci *i) {
     x86_instr *mov2 = insert_x86_instr(ag, X86_MOV, i);
 
     mov1->v.binary.dst = new_x86_reg(X86_AX);
-    mov1->v.binary.src = operand_from_tac_val(i->src1);
+    mov1->v.binary.src = operand_from_tac_val(i->v.s.src1);
 
-    idiv->v.unary.src = operand_from_tac_val(i->src2);
+    idiv->v.unary.src = operand_from_tac_val(i->v.s.src2);
 
     mov2->v.binary.src = new_x86_reg(i->op == TAC_DIV ? X86_AX : X86_DX);
     mov2->v.binary.dst = operand_from_tac_val(i->dst);
@@ -159,10 +159,10 @@ static void gen_asm_from_binary_instr(x86_asm_gen *ag, taci *i) {
   x86_instr *bini = insert_x86_instr(ag, op, i);
 
   mov->v.binary.dst = operand_from_tac_val(i->dst);
-  mov->v.binary.src = operand_from_tac_val(i->src1);
+  mov->v.binary.src = operand_from_tac_val(i->v.s.src1);
 
   bini->v.binary.dst = mov->v.binary.dst;
-  bini->v.binary.src = operand_from_tac_val(i->src2);
+  bini->v.binary.src = operand_from_tac_val(i->v.s.src2);
 }
 
 static void gen_asm_from_not_instr(x86_asm_gen *ag, taci *i) {
@@ -170,7 +170,7 @@ static void gen_asm_from_not_instr(x86_asm_gen *ag, taci *i) {
   x86_instr *mov = insert_x86_instr(ag, X86_MOV, i);
   x86_instr *sete = insert_x86_instr(ag, X86_SETCC, i);
 
-  cmp->v.binary.dst = operand_from_tac_val(i->src1);
+  cmp->v.binary.dst = operand_from_tac_val(i->v.s.src1);
   cmp->v.binary.src = new_x86_imm(0);
 
   mov->v.binary.src = new_x86_imm(0);
@@ -181,7 +181,7 @@ static void gen_asm_from_not_instr(x86_asm_gen *ag, taci *i) {
 
 static void gen_asm_from_cpy_instr(x86_asm_gen *ag, taci *i) {
   x86_instr *mov = insert_x86_instr(ag, X86_MOV, i);
-  mov->v.binary.src = operand_from_tac_val(i->src1);
+  mov->v.binary.src = operand_from_tac_val(i->v.s.src1);
   mov->v.binary.dst = operand_from_tac_val(i->dst);
 }
 
@@ -190,8 +190,8 @@ static void gen_asm_from_comparing_instr(x86_asm_gen *ag, taci *i) {
   x86_instr *mov = insert_x86_instr(ag, X86_MOV, i);
   x86_instr *setcc = insert_x86_instr(ag, X86_SETCC, i);
 
-  cmp->v.binary.dst = operand_from_tac_val(i->src1);
-  cmp->v.binary.src = operand_from_tac_val(i->src2);
+  cmp->v.binary.dst = operand_from_tac_val(i->v.s.src1);
+  cmp->v.binary.src = operand_from_tac_val(i->v.s.src2);
 
   mov->v.binary.src = new_x86_imm(0);
 
@@ -235,8 +235,8 @@ static void gen_asm_from_jump_instr(x86_asm_gen *ag, taci *i) {
   x86_instr *jcc = insert_x86_instr(ag, X86_JMPCC, i);
 
   cmp->v.binary.src =
-      i->op == TAC_JE ? operand_from_tac_val(i->src2) : new_x86_imm(0);
-  cmp->v.binary.dst = operand_from_tac_val(i->src1);
+      i->op == TAC_JE ? operand_from_tac_val(i->v.s.src2) : new_x86_imm(0);
+  cmp->v.binary.dst = operand_from_tac_val(i->v.s.src1);
 
   jcc->v.jmpcc.cc = i->op == TAC_JZ || i->op == TAC_JE ? CC_E : CC_NE;
   jcc->v.jmpcc.label_idx = i->label_idx;
@@ -250,7 +250,7 @@ static void gen_asm_from_inc_dec(x86_asm_gen *ag, taci *i) {
   x86_instr *instr =
       insert_x86_instr(ag, i->op == TAC_INC ? X86_INC : X86_DEC, i);
 
-  instr->v.unary.src = operand_from_tac_val(i->src1);
+  instr->v.unary.src = operand_from_tac_val(i->v.s.src1);
 }
 
 static void gen_asm_from_assign(x86_asm_gen *ag, taci *i) {
@@ -263,7 +263,7 @@ static void gen_asm_from_assign(x86_asm_gen *ag, taci *i) {
     mov1->v.binary.dst = new_x86_reg(X86_AX);
     mov2->v.binary.dst = mov1->v.binary.src = operand_from_tac_val(i->dst);
 
-    idiv->v.unary.src = operand_from_tac_val(i->src1);
+    idiv->v.unary.src = operand_from_tac_val(i->v.s.src1);
 
     mov2->v.binary.src = new_x86_reg(i->op == TAC_ASDIV ? X86_AX : X86_DX);
     return;
@@ -303,7 +303,7 @@ static void gen_asm_from_assign(x86_asm_gen *ag, taci *i) {
   x86_instr *instr = insert_x86_instr(ag, op, i);
 
   instr->v.binary.dst = operand_from_tac_val(i->dst);
-  instr->v.binary.src = operand_from_tac_val(i->src1);
+  instr->v.binary.src = operand_from_tac_val(i->v.s.src1);
 }
 
 static void gen_asm_from_instr(x86_asm_gen *ag, taci *i) {

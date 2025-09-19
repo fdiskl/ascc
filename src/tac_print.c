@@ -124,12 +124,12 @@ void fprint_taci(FILE *f, taci *i) {
   case TAC_RET:
   case TAC_INC:
   case TAC_DEC:
-    fprint_single_val(f, &i->src1, tacop_str(i->op));
+    fprint_single_val(f, &i->v.s.src1, tacop_str(i->op));
     break;
   case TAC_COMPLEMENT:
   case TAC_NEGATE:
   case TAC_NOT:
-    fprint_unary(f, &i->dst, &i->src1, tacop_str(i->op));
+    fprint_unary(f, &i->dst, &i->v.s.src1, tacop_str(i->op));
     break;
   case TAC_ASADD:
   case TAC_ASSUB:
@@ -141,7 +141,7 @@ void fprint_taci(FILE *f, taci *i) {
   case TAC_ASXOR:
   case TAC_ASLSHIFT:
   case TAC_ASRSHIFT:
-    fprint_assignment(f, &i->dst, &i->src1, tacop_str(i->op));
+    fprint_assignment(f, &i->dst, &i->v.s.src1, tacop_str(i->op));
     break;
   case TAC_ADD:
   case TAC_SUB:
@@ -159,24 +159,24 @@ void fprint_taci(FILE *f, taci *i) {
   case TAC_LE:
   case TAC_GT:
   case TAC_GE:
-    fprint_binary(f, &i->dst, &i->src1, &i->src2, tacop_str(i->op));
+    fprint_binary(f, &i->dst, &i->v.s.src1, &i->v.s.src2, tacop_str(i->op));
     break;
   case TAC_CPY:
     fprint_val(f, &i->dst);
     fprintf(f, " = ");
-    fprint_val(f, &i->src1);
+    fprint_val(f, &i->v.s.src1);
     break;
   case TAC_JMP:
     fprintf(f, "jmp -> L%d", i->label_idx);
     break;
   case TAC_JZ:
     fprintf(f, "jz ");
-    fprint_val(f, &i->src1);
+    fprint_val(f, &i->v.s.src1);
     fprintf(f, " -> L%d", i->label_idx);
     break;
   case TAC_JNZ:
     fprintf(f, "jnz ");
-    fprint_val(f, &i->src1);
+    fprint_val(f, &i->v.s.src1);
     fprintf(f, " -> L%d", i->label_idx);
     break;
   case TAC_LABEL:
@@ -184,9 +184,9 @@ void fprint_taci(FILE *f, taci *i) {
     break;
   case TAC_JE:
     fprintf(f, "je ");
-    fprint_val(f, &i->src1);
+    fprint_val(f, &i->v.s.src1);
     fprintf(f, " == ");
-    fprint_val(f, &i->src2);
+    fprint_val(f, &i->v.s.src2);
     fprintf(f, " -> L%d", i->label_idx);
     break;
     break;

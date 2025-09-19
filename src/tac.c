@@ -79,16 +79,16 @@ static tacv gen_tac_from_expr(tacgen *tg, expr *e);
 
 static tacv gen_inc_dec_prefix(tacgen *tg, unary u, tacv inner_v) {
   taci *inc_dec = insert_taci(tg, u.t == UNARY_PREFIX_INC ? TAC_INC : TAC_DEC);
-  inc_dec->src1 = inner_v;
+  inc_dec->v.s.src1 = inner_v;
   return inner_v;
 }
 
 static tacv gen_inc_dec_postfix(tacgen *tg, unary u, tacv inner_v) {
   taci *cpy = insert_taci(tg, TAC_CPY);
   cpy->dst = new_tmp();
-  cpy->src1 = inner_v;
+  cpy->v.s.src1 = inner_v;
   taci *inc_dec = insert_taci(tg, u.t == UNARY_POSTFIX_INC ? TAC_INC : TAC_DEC);
-  inc_dec->src1 = inner_v;
+  inc_dec->v.s.src1 = inner_v;
   return cpy->dst;
 }
 
@@ -117,7 +117,7 @@ static tacv gen_tac_from_unary_expr(tacgen *tg, unary u) {
   taci *i = insert_taci(tg, op);
 
   i->dst = new_tmp();
-  i->src1 = inner_v;
+  i->v.s.src1 = inner_v;
 
   return i->dst;
 }
@@ -127,22 +127,22 @@ static tacv gen_tac_from_OR_binary(tacgen *tg, binary b) {
 
   tacv v1 = gen_tac_from_expr(tg, b.l);
   taci *jnz1 = insert_taci(tg, TAC_JNZ);
-  jnz1->src1 = v1;
+  jnz1->v.s.src1 = v1;
   int true_label = jnz1->label_idx = new_label();
   tacv v2 = gen_tac_from_expr(tg, b.r);
   taci *jnz2 = insert_taci(tg, TAC_JNZ);
-  jnz2->src1 = v2;
+  jnz2->v.s.src1 = v2;
   jnz2->label_idx = true_label;
   taci *cpy1 = insert_taci(tg, TAC_CPY);
   cpy1->dst = res;
-  cpy1->src1 = new_const(0);
+  cpy1->v.s.src1 = new_const(0);
   taci *jmp = insert_taci(tg, TAC_JMP);
   int end_label = jmp->label_idx = new_label();
   taci *true_label_i = insert_taci(tg, TAC_LABEL);
   true_label_i->label_idx = true_label;
   taci *cpy2 = insert_taci(tg, TAC_CPY);
   cpy2->dst = res;
-  cpy2->src1 = new_const(1);
+  cpy2->v.s.src1 = new_const(1);
   taci *end_label_i = insert_taci(tg, TAC_LABEL);
   end_label_i->label_idx = end_label;
 
@@ -154,22 +154,22 @@ static tacv gen_tac_from_AND_binary(tacgen *tg, binary b) {
 
   tacv v1 = gen_tac_from_expr(tg, b.l);
   taci *jz1 = insert_taci(tg, TAC_JZ);
-  jz1->src1 = v1;
+  jz1->v.s.src1 = v1;
   int false_label = jz1->label_idx = new_label();
   tacv v2 = gen_tac_from_expr(tg, b.r);
   taci *jz2 = insert_taci(tg, TAC_JZ);
-  jz2->src1 = v2;
+  jz2->v.s.src1 = v2;
   jz2->label_idx = false_label;
   taci *cpy1 = insert_taci(tg, TAC_CPY);
   cpy1->dst = res;
-  cpy1->src1 = new_const(1);
+  cpy1->v.s.src1 = new_const(1);
   taci *jmp = insert_taci(tg, TAC_JMP);
   int end_label = jmp->label_idx = new_label();
   taci *false_label_i = insert_taci(tg, TAC_LABEL);
   false_label_i->label_idx = false_label;
   taci *cpy2 = insert_taci(tg, TAC_CPY);
   cpy2->dst = res;
-  cpy2->src1 = new_const(0);
+  cpy2->v.s.src1 = new_const(0);
   taci *end_label_i = insert_taci(tg, TAC_LABEL);
   end_label_i->label_idx = end_label;
 
@@ -212,8 +212,8 @@ static tacv gen_tac_from_binary_expr(tacgen *tg, binary b) {
   tacv v2 = gen_tac_from_expr(tg, b.r);
 
   taci *i = insert_taci(tg, op);
-  i->src1 = v1;
-  i->src2 = v2;
+  i->v.s.src1 = v1;
+  i->v.s.src2 = v2;
   i->dst = new_tmp();
 
   return i->dst;
@@ -263,7 +263,7 @@ static tacv gen_tac_from_assignment_expr(tacgen *tg, assignment a) {
 
   taci *instr = insert_taci(tg, op);
   instr->dst = dst;
-  instr->src1 = src;
+  instr->v.s.src1 = src;
 
   return dst;
 }
@@ -274,12 +274,12 @@ static tacv gen_tac_from_ternary_expr(tacgen *tg, ternary_expr te) {
 
   taci *jz = insert_taci(tg, TAC_JZ);
   int else_label = jz->label_idx = new_label();
-  jz->src1 = condv;
+  jz->v.s.src1 = condv;
 
   tacv thenv = gen_tac_from_expr(tg, te.then);
   taci *cpy_then = insert_taci(tg, TAC_CPY);
   cpy_then->dst = dst;
-  cpy_then->src1 = thenv;
+  cpy_then->v.s.src1 = thenv;
 
   taci *j = insert_taci(tg, TAC_JMP);
   int end_label = j->label_idx = new_label();
@@ -288,7 +288,7 @@ static tacv gen_tac_from_ternary_expr(tacgen *tg, ternary_expr te) {
   tacv elzev = gen_tac_from_expr(tg, te.elze);
   taci *cpy_else = insert_taci(tg, TAC_CPY);
   cpy_else->dst = dst;
-  cpy_else->src1 = elzev;
+  cpy_else->v.s.src1 = elzev;
 
   insert_taci(tg, TAC_LABEL)->label_idx = end_label;
 
@@ -319,7 +319,7 @@ static tacv gen_tac_from_expr(tacgen *tg, expr *e) {
 static void gen_tac_from_return_stmt(tacgen *tg, return_stmt rs) {
   tacv e = gen_tac_from_expr(tg, rs.e);
   taci *i = insert_taci(tg, TAC_RET);
-  i->src1 = e;
+  i->v.s.src1 = e;
 }
 
 static void gen_tac_from_stmt(tacgen *tg, stmt *s);
@@ -341,7 +341,7 @@ static void gen_tac_from_if_stmt(tacgen *tg, if_stmt is) {
   tacv condv = gen_tac_from_expr(tg, is.cond);
   taci *jz = insert_taci(tg, TAC_JZ);
   int else_label = jz->label_idx = new_label();
-  jz->src1 = condv;
+  jz->v.s.src1 = condv;
   gen_tac_from_stmt(tg, is.then);
   taci *j = insert_taci(tg, TAC_JMP);
   int end_label = j->label_idx = new_label();
@@ -385,7 +385,7 @@ static void gen_tac_from_while_stmt(tacgen *tg, while_stmt w) {
   tacv v = gen_tac_from_expr(tg, w.cond);
 
   taci *jz = insert_taci(tg, TAC_JZ);
-  jz->src1 = v;
+  jz->v.s.src1 = v;
   jz->label_idx = w.break_label_idx;
 
   gen_tac_from_stmt(tg, w.s);
@@ -405,7 +405,7 @@ static void gen_tac_from_dowhile_stmt(tacgen *tg, dowhile_stmt w) {
   tacv v = gen_tac_from_expr(tg, w.cond);
 
   taci *jnz = insert_taci(tg, TAC_JNZ);
-  jnz->src1 = v;
+  jnz->v.s.src1 = v;
   jnz->label_idx = start;
 
   insert_taci(tg, TAC_LABEL)->label_idx = w.break_label_idx;
@@ -426,7 +426,7 @@ static void gen_tac_from_for_stmt(tacgen *tg, for_stmt f) {
     condv = new_const(1);
 
   taci *jz = insert_taci(tg, TAC_JZ);
-  jz->src1 = condv;
+  jz->v.s.src1 = condv;
   jz->label_idx = f.break_label_idx;
 
   gen_tac_from_stmt(tg, f.s);
@@ -448,8 +448,8 @@ static void gen_tac_from_switch_stmt(tacgen *tg, switch_stmt s) {
     taci *je = insert_taci(tg, TAC_JE);
     je->label_idx = s.cases[i]->v.case_stmt.label_idx;
     assert(s.cases[i]->v.case_stmt.e->t == EXPR_INT_CONST);
-    je->src1 = condv;
-    je->src2 = new_const(s.cases[i]->v.case_stmt.e->v.intc.v);
+    je->v.s.src1 = condv;
+    je->v.s.src2 = new_const(s.cases[i]->v.case_stmt.e->v.intc.v);
   }
 
   if (s.default_stmt != NULL) {
@@ -522,7 +522,7 @@ static tacf *gen_tac_from_func_decl(tacgen *tg, func_decl fd) {
     gen_tac_from_block_item(tg, fd.body[i]);
 
   taci *ret_at_end = insert_taci(tg, TAC_RET);
-  ret_at_end->src1 = new_const(0);
+  ret_at_end->v.s.src1 = new_const(0);
 
   res->firsti = tg->head;
 
@@ -536,7 +536,7 @@ static void gen_tac_from_var_decl(tacgen *tg, var_decl vd) {
 
     taci *cpy = insert_taci(tg, TAC_CPY);
     cpy->dst = dst;
-    cpy->src1 = src;
+    cpy->v.s.src1 = src;
   }
 }
 

@@ -76,8 +76,18 @@ struct _tac_instr {
   tacop op;
 
   tacv dst;
-  tacv src1; // used for single val instructions (like return)
-  tacv src2;
+
+  union {
+    struct {
+      tacv src1; // used for single val instructions (like return)
+      tacv src2;
+    } s;
+
+    struct {
+      tacv *args;
+      size_t args_len;
+    } call;
+  } v;
 
   int label_idx; // for jumps, labels
 
