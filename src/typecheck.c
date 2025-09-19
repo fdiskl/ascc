@@ -211,7 +211,6 @@ static void typecheck_func_decl(checker *c, decl *d) {
       after_error();
     }
     alr_defined = e->t->v.fntype.defined;
-    printf("%d %d \n", alr_defined, has_body);
     if (alr_defined && has_body) {
       ast_pos old = e->ref->pos;
       ast_pos curr = d->pos;
