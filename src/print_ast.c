@@ -389,9 +389,8 @@ static void print_decl(decl *d, int indent) {
       print_indent(indent + 1);
       printf("(no params)\n");
     }
-    if (d->v.func.body != NULL)
-      for (int i = 0; i < d->v.func.body_len; ++i)
-        print_bi(&d->v.func.body[i], indent + 1);
+    if (d->v.func.bs != NULL)
+      print_stmt(d->v.func.bs, indent + 1);
     else {
       print_indent(indent + 1);
       printf("(no body)\n");

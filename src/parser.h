@@ -308,8 +308,7 @@ struct _var_decl {
 struct _func_decl {
   string name;
   int name_idx;
-  block_item *body; // NULL if semi instead of body
-  size_t body_len;
+  stmt *bs;       // NULL if prototype, otherwise block_stmt
   string *params; // NULL if void
   void *
       *params_idxs; // NULL if void, actually not ptrs but ints casted as void*
@@ -394,7 +393,7 @@ struct _parser {
   ht *ident_ht_list_head;
   ht *labels_ht;
   ht *gotos_to_check_ht;
-  ht* funcs_ht;
+  ht *funcs_ht;
   arena symbol_arena;
   VEC(loop_resolve_info) stack_loop_resolve_info;
 };

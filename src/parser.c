@@ -76,8 +76,8 @@ void init_parser(parser *p, lexer *l) {
   p->ident_ht_list_head = ht_create();
   p->funcs_ht = ht_create();
 
-  vec_push_back(tables_to_destroy , p->funcs_ht);
-  vec_push_back(tables_to_destroy , p->ident_ht_list_head);
+  vec_push_back(tables_to_destroy, p->funcs_ht);
+  vec_push_back(tables_to_destroy, p->ident_ht_list_head);
 
   advance(p); // for after_next
   advance(p); // for next
@@ -796,8 +796,7 @@ static decl *parse_decl(parser *p) {
 
     if (p->next.token == TOK_SEMI) {
       end = expect(p, TOK_SEMI)->pos;
-      res->v.func.body = NULL;
-      res->v.func.body_len = 0;
+      res->v.func.bs = NULL;
       goto after_body_parse;
     }
 
@@ -812,15 +811,17 @@ static decl *parse_decl(parser *p) {
       vec_push_back(items_tmp, parse_bi(p));
     }
 
-    res->v.func.body_len = items_tmp.size;
-    vec_move_into_arena(&p->bi_arena, items_tmp, block_item, res->v.func.body);
+    stmt *s;
+    res->v.func.bs = s = alloc_stmt(p, STMT_BLOCK);
+    s->v.block.items_len = items_tmp.size;
+    vec_move_into_arena(&p->bi_arena, items_tmp, block_item, s->v.block.items);
 
     vec_free(items_tmp);
 
     end = expect(p, TOK_RBRACE)->pos;
   after_body_parse: {
     SET_POS(res, start, end);
-    if (res->v.func.body == NULL)
+    if (res->v.func.bs == NULL)
       exit_func(p, res);
     else
       exit_func_with_body(p, res);

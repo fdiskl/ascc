@@ -193,7 +193,7 @@ static void init_checker(checker *c) {
 static void typecheck_func_decl(checker *c, decl *d) {
   type *t = new_type(c, TYPE_FN);
   t->v.fntype.param_count = d->v.func.params_len;
-  char has_body = d->v.func.body != NULL ? 1 : 0;
+  char has_body = d->v.func.bs != NULL ? 1 : 0;
   char alr_defined = false;
 
   syme *e = ht_get_int(c->st, d->v.var.name_idx);
@@ -233,7 +233,8 @@ static void typecheck_func_decl(checker *c, decl *d) {
                       (int)(intptr_t)d->v.func.params_idxs[i], NULL);
     }
 
-    typecheck_block(c, d->v.func.body, d->v.func.body_len);
+    typecheck_block(c, d->v.func.bs->v.block.items,
+                    d->v.func.bs->v.block.items_len);
   }
 }
 

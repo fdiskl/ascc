@@ -545,7 +545,7 @@ static void gen_tac_from_stmt(tacgen *tg, stmt *s) {
 }
 
 static tacf *gen_tac_from_func_decl(tacgen *tg, func_decl fd) {
-  if (fd.body == NULL)
+  if (fd.bs == NULL)
     return NULL;
   tacf *res = alloc_tacf(tg, fd.name, fd.name_idx);
   if (fd.params != NULL) {
@@ -558,8 +558,8 @@ static tacf *gen_tac_from_func_decl(tacgen *tg, func_decl fd) {
 
   tg->head = tg->tail = NULL;
 
-  for (int i = 0; i < fd.body_len; ++i)
-    gen_tac_from_block_item(tg, fd.body[i]);
+  for (int i = 0; i < fd.bs->v.block.items_len; ++i)
+    gen_tac_from_block_item(tg, fd.bs->v.block.items[i]);
 
   taci *ret_at_end = insert_taci(tg, TAC_RET);
   ret_at_end->v.s.src1 = new_const(0);
