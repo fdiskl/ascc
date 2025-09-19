@@ -394,6 +394,7 @@ struct _parser {
   ht *ident_ht_list_head;
   ht *labels_ht;
   ht *gotos_to_check_ht;
+  ht* funcs_ht;
   arena symbol_arena;
   VEC(loop_resolve_info) stack_loop_resolve_info;
 };

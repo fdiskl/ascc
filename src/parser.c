@@ -74,6 +74,10 @@ void init_parser(parser *p, lexer *l) {
   vec_push_back(arenas_to_free, &p->symbol_arena);
 
   p->ident_ht_list_head = ht_create();
+  p->funcs_ht = ht_create();
+
+  vec_push_back(tables_to_destroy , p->funcs_ht);
+  vec_push_back(tables_to_destroy , p->ident_ht_list_head);
 
   advance(p); // for after_next
   advance(p); // for next

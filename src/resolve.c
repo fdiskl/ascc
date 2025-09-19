@@ -23,13 +23,18 @@ int label_idx_counter = 0;
 static int get_label() { return ++label_idx_counter; }
 static int get_name() { return ++var_name_idx_counter; }
 
-static ident_entry *new_symt_entry(parser *p, string name, char linkage) {
+static ident_entry *alloc_symt_entry(parser *p, string name, char linkage,
+                                     int name_idx) {
   ident_entry *e = ARENA_ALLOC_OBJ(&p->symbol_arena, ident_entry);
   e->has_linkage = linkage;
   e->name = name;
-  e->name_idx = get_name();
+  e->name_idx = name_idx;
 
   return e;
+}
+
+static ident_entry *new_symt_entry(parser *p, string name, char linkage) {
+  return alloc_symt_entry(p, name, linkage, get_name());
 }
 
 static bool is_lvalue(expr *e) {
@@ -376,11 +381,16 @@ void enter_func(parser *p, decl *f) {
     after_error();
   }
 
-  e = new_symt_entry(p, f->v.func.name, true);
+  if (e == NULL) {
+    ident_entry *e2 = ht_get(p->funcs_ht, f->v.func.name);
 
+    e = e2 == NULL ? new_symt_entry(p, f->v.func.name, true)
+                   : alloc_symt_entry(p, f->v.func.name, true, e2->name_idx);
+
+    ht_set(p->ident_ht_list_head, f->v.func.name, e);
+    ht_set(p->funcs_ht, f->v.func.name, e);
+  }
   f->v.func.name_idx = e->name_idx;
-
-  ht_set(p->ident_ht_list_head, f->v.func.name, e);
 
   enter_scope(p);
 }
