@@ -22,6 +22,37 @@
 static void emit_x86_reg(FILE *w, x86_reg reg, int size) {
 
   switch (size) {
+  case 8: {
+    switch (reg) {
+    case X86_AX:
+      fprintf(w, "%%rax");
+      return;
+    case X86_DX:
+      fprintf(w, "%%rdx");
+      return;
+    case X86_CX:
+      fprintf(w, "%%rcx");
+      return;
+    case X86_DI:
+      fprintf(w, "%%rdi");
+      return;
+    case X86_SI:
+      fprintf(w, "%%rsi");
+      return;
+    case X86_R8:
+      fprintf(w, "%%r8");
+      return;
+    case X86_R9:
+      fprintf(w, "%%r9");
+      return;
+    case X86_R10:
+      fprintf(w, "%%r10");
+      return;
+    case X86_R11:
+      fprintf(w, "%%r11");
+      return;
+    }
+  } break;
   case 4: {
     switch (reg) {
     case X86_AX:
@@ -32,6 +63,18 @@ static void emit_x86_reg(FILE *w, x86_reg reg, int size) {
       return;
     case X86_CX:
       fprintf(w, "%%ecx");
+      return;
+    case X86_DI:
+      fprintf(w, "%%edi");
+      return;
+    case X86_SI:
+      fprintf(w, "%%esi");
+      return;
+    case X86_R8:
+      fprintf(w, "%%r8d");
+      return;
+    case X86_R9:
+      fprintf(w, "%%r9d");
       return;
     case X86_R10:
       fprintf(w, "%%r10d");
@@ -52,6 +95,18 @@ static void emit_x86_reg(FILE *w, x86_reg reg, int size) {
       return;
     case X86_CX:
       fprintf(w, "%%cl");
+      return;
+    case X86_DI:
+      fprintf(w, "%%dil");
+      return;
+    case X86_SI:
+      fprintf(w, "%%sil");
+      return;
+    case X86_R8:
+      fprintf(w, "%%r8b");
+      return;
+    case X86_R9:
+      fprintf(w, "%%r9b");
       return;
     case X86_R10:
       fprintf(w, "%%r10b");
@@ -107,10 +162,10 @@ static void emit_x86_op(FILE *w, x86_op op, int size) {
   }
 }
 
-static void emit_x86_unary(FILE *w, x86_instr *i, const char *name) {
+static void emit_x86_unary(FILE *w, x86_instr *i, const char *name, int size) {
   SMART_EMIT_ORIGIN({
     fprintf(w, "\t%s ", name);
-    emit_x86_op(w, i->v.unary.src, 4);
+    emit_x86_op(w, i->v.unary.src, 8);
   });
 }
 
@@ -192,22 +247,22 @@ static void emit_x86_instr(FILE *w, x86_instr *i) {
     emit_x86_binary(w, i, "cmpl");
     break;
   case X86_NOT:
-    emit_x86_unary(w, i, "notl");
+    emit_x86_unary(w, i, "notl", 4);
     break;
   case X86_NEG:
-    emit_x86_unary(w, i, "negl");
+    emit_x86_unary(w, i, "negl", 4);
     break;
   case X86_IDIV:
-    emit_x86_unary(w, i, "idivl");
+    emit_x86_unary(w, i, "idivl", 4);
     break;
   case X86_INC:
-    emit_x86_unary(w, i, "incl");
+    emit_x86_unary(w, i, "incl", 4);
     break;
   case X86_DEC:
-    emit_x86_unary(w, i, "decl");
+    emit_x86_unary(w, i, "decl", 4);
     break;
   case X86_ALLOC_STACK:
-    fprintf(w, "\tsubq $%d, %%rsp\n", i->v.bytes_to_alloc);
+    fprintf(w, "\n\tsubq $%d, %%rsp\n", i->v.bytes_to_alloc);
     break;
   case X86_CDQ:
     SMART_EMIT_ORIGIN(fprintf(w, "\tcdq"););
@@ -228,6 +283,18 @@ static void emit_x86_instr(FILE *w, x86_instr *i) {
     break;
   case X86_COMMENT:
     fprintf(w, "\t#%s\n", i->v.comment);
+    break;
+  case X86_PUSH:
+    emit_x86_unary(w, i, "pushq", 8);
+    break;
+  case X86_DEALLOC_STACK:
+    fprintf(w, "\taddq $%d, %%rsp\n", i->v.bytes_to_alloc);
+    break;
+  case X86_CALL:
+    if (i->v.call.plt)
+      SMART_EMIT_ORIGIN(fprintf(w, "\tcall %s@plt\n", i->v.call.str_label););
+    else
+      SMART_EMIT_ORIGIN(fprintf(w, "\tcall %s\n", i->v.call.str_label););
     break;
   }
 }
