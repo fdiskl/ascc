@@ -56,6 +56,7 @@ typedef enum {
   TAC_JNZ,   // jmp if zero (src1)
   TAC_JE,    // jmp if equal (src1, src2)
   TAC_LABEL, // label: (no vals)
+  TAC_CALL,  // call
 } tacop;
 
 typedef enum {
@@ -86,6 +87,7 @@ struct _tac_instr {
     struct {
       tacv *args;
       size_t args_len;
+      string name;
     } call;
   } v;
 
@@ -96,6 +98,9 @@ struct _tac_instr {
 
 struct _tac_func {
   string name;
+  int idx;
+  void **params;
+  size_t params_len;
   taci *firsti;
 
   tacf *next;
@@ -104,6 +109,7 @@ struct _tac_func {
 struct _tacgen {
   arena taci_arena;
   arena tacf_arena;
+  arena tacv_arena;
 
   taci *head; // head of instr linked list of curr func
   taci *tail; // tail of instr linked list of curr func

@@ -6,21 +6,25 @@
 #include "parser.h"
 #include "vec.h"
 #include <stdint.h>
+#include <stdio.h>
 
 // TODO: make so with DEBUG_INFO flags we save var names for debugging
 
 void init_tacgen(tacgen *tg) {
   INIT_ARENA(&tg->taci_arena, taci);
   INIT_ARENA(&tg->tacf_arena, tacf);
+  INIT_ARENA(&tg->tacv_arena, tacv);
 
   vec_push_back(arenas_to_free, &tg->taci_arena);
   vec_push_back(arenas_to_free, &tg->tacf_arena);
+  vec_push_back(arenas_to_free, &tg->tacv_arena);
 }
 
-static tacf *alloc_tacf(tacgen *tg, string name) {
+static tacf *alloc_tacf(tacgen *tg, string name, int idx) {
   tacf *res = ARENA_ALLOC_OBJ(&tg->tacf_arena, tacf);
   res->next = NULL;
   res->name = name;
+  res->idx = idx;
   return res;
 }
 
@@ -295,6 +299,30 @@ static tacv gen_tac_from_ternary_expr(tacgen *tg, ternary_expr te) {
   return dst;
 }
 
+static tacv gen_tac_from_func_call_expr(tacgen *tg, func_call_expr fe) {
+  VEC(tacv) v;
+  vec_init(v);
+
+  if (fe.args != NULL)
+    for (int i = 0; i < fe.args_len; ++i)
+      vec_push_back(v, gen_tac_from_expr(tg, fe.args[i]));
+
+  taci *i = insert_taci(tg, TAC_CALL);
+  i->dst = new_tmp();
+  i->label_idx = fe.name_idx;
+  i->v.call.name = fe.name;
+
+  if (fe.args != NULL) {
+    i->v.call.args_len = v.size;
+    vec_move_into_arena(&tg->tacv_arena, v, tacv, i->v.call.args);
+  } else {
+    i->v.call.args_len = 0;
+    i->v.call.args = NULL;
+  }
+
+  return i->dst;
+}
+
 static tacv gen_tac_from_expr(tacgen *tg, expr *e) {
   switch (e->t) {
   case EXPR_INT_CONST:
@@ -311,6 +339,9 @@ static tacv gen_tac_from_expr(tacgen *tg, expr *e) {
     break;
   case EXPR_TERNARY:
     return gen_tac_from_ternary_expr(tg, e->v.ternary);
+    break;
+  case EXPR_FUNC_CALL:
+    return gen_tac_from_func_call_expr(tg, e->v.func_call);
     break;
   }
   UNREACHABLE();
@@ -514,7 +545,16 @@ static void gen_tac_from_stmt(tacgen *tg, stmt *s) {
 }
 
 static tacf *gen_tac_from_func_decl(tacgen *tg, func_decl fd) {
-  tacf *res = alloc_tacf(tg, fd.name);
+  if (fd.body == NULL)
+    return NULL;
+  tacf *res = alloc_tacf(tg, fd.name, fd.name_idx);
+  if (fd.params != NULL) {
+    res->params = fd.params_idxs;
+    res->params_len = fd.params_len;
+  } else {
+    res->params = NULL;
+    res->params_len = 0;
+  }
 
   tg->head = tg->tail = NULL;
 
@@ -559,6 +599,8 @@ tacf *gen_tac(tacgen *tg, program *p) {
     if (d->t != DECL_FUNC)
       continue;
     tacf *f = gen_tac_from_func_decl(tg, d->v.func);
+    if (f == NULL)
+      continue;
     if (head == NULL)
       head = f;
     else
