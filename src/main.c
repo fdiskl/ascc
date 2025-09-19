@@ -182,8 +182,39 @@ int main(int argc, char *argv[]) {
   vec_push_back(files_to_delete, asm_file_path);
 
   if (opts.dof == DOF_C) {
+    char cmd[1024];
+    sprintf(cmd, "gcc %s -c -o %s.o", asm_file_path, opts.output);
+
+    int status = system(cmd);
+#ifdef _WIN32
     TODO();
-  };
+#else
+    if (status == -1) {
+      fprintf(stderr, "system failed");
+      after_error();
+      return 1;
+    }
+
+    if (WIFEXITED(status)) {
+      int exit_code = WEXITSTATUS(status);
+      if (exit_code != 0) {
+        fprintf(stderr, "gas (using gcc) failed with exit code %d\n",
+                exit_code);
+        after_error();
+        return exit_code;
+      }
+    } else if (WIFSIGNALED(status)) {
+      fprintf(stderr, "gas (using gcc) terminated by signal %d\n",
+              WTERMSIG(status));
+      after_error();
+      return 1;
+    }
+
+#endif
+
+    after_success();
+    return 0;
+  }
 
   // run assembler
   {
