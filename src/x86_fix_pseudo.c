@@ -6,6 +6,8 @@
 #include <stdio.h>
 
 static int max_offset = 0;
+static int offset = 0;
+static ht *offset_table;
 
 // defined in x86.c
 x86_instr *alloc_x86_instr(x86_asm_gen *ag, int op);
@@ -41,8 +43,21 @@ static void fix_pseudo_op(x86_op *op) {
 #endif
 
   op->t = X86_OP_STACK;
-  op->v.stack_offset =
-      (op->v.pseudo_idx) * 4; // will do for now, hash table later mb
+
+  void *e = ht_get_int(offset_table, op->v.pseudo_idx);
+  if (e != NULL) {
+    int d = (int)(intptr_t)e;
+    if (d > max_offset)
+      max_offset = d;
+    op->v.stack_offset = d;
+  } else {
+    offset += 4;
+    if (offset > max_offset)
+      max_offset = offset;
+    ht_set_int(offset_table, op->v.pseudo_idx, (void *)(intptr_t)offset);
+
+    op->v.stack_offset = offset;
+  }
 
 #ifdef PRINT_VARS_LAYOUT_X86
   char buf[128];
@@ -61,6 +76,7 @@ static void fix_pseudo_for_instr(x86_instr *i) {
   case X86_IDIV:
   case X86_INC:
   case X86_DEC:
+  case X86_PUSH:
     fix_pseudo_op(&i->v.unary.src);
     break;
   case X86_MOV:
@@ -86,11 +102,18 @@ static void fix_pseudo_for_instr(x86_instr *i) {
   case X86_JMP:
   case X86_JMPCC:
   case X86_COMMENT:
+  case X86_DEALLOC_STACK:
+  case X86_CALL:
     break;
   }
 }
 
 int fix_pseudo_for_func(x86_asm_gen *ag, x86_func *f) {
+  max_offset = 0;
+  offset = 0;
+
+  offset_table = ht_create_int();
+
 #ifdef PRINT_VARS_LAYOUT_X86
   names_table = ht_create();
 #endif
@@ -104,21 +127,6 @@ int fix_pseudo_for_func(x86_asm_gen *ag, x86_func *f) {
   int count = 0;
   while (ht_next(&it)) {
     ++count;
-    // x86_instr *i = alloc_x86_instr(ag, X86_COMMENT);
-    // i->v.comment =
-    //     string_sprintf("%s: -%d(%%rbp)", it.key, (int)((intptr_t)it.value));
-
-    // i->next = NULL;
-    // i->prev = NULL;
-
-    // if (head == NULL) {
-    //   head = i;
-    //   tail = i;
-    // } else {
-    //   i->prev = tail;
-    //   tail->next = i;
-    //   tail = i;
-    // }
   }
 
   kv_pair *arr = malloc(count * sizeof(kv_pair));
@@ -175,5 +183,7 @@ int fix_pseudo_for_func(x86_asm_gen *ag, x86_func *f) {
   ht_destroy(names_table);
 #endif
 
-  return max_offset;
+  ht_destroy(offset_table);
+
+  return (max_offset + 15) & ~15;
 }
