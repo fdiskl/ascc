@@ -151,7 +151,7 @@ int main(int argc, char *argv[]) {
   }
 
   x86_asm_gen ag;
-  init_x86_asm_gen(&ag);
+  init_x86_asm_gen(&ag, st);
 
   x86_func *x86_prog = gen_asm(&ag, tac_prog);
 
