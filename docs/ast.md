@@ -4,9 +4,10 @@
 program = Program(decl*)
 block_item = D(decl) | S(statement)
 decl = var_decl | func_decl
-var_decl = Var(identifier name, expr? init)
-func_decl = Func(identifier name, identifier* params ,block_item* body)
-for_init = var_decl | expr
+var_decl = Var(identifier name, expr? init, storage_class?)
+func_decl = Func(identifier name, identifier* params, block_item* body, storage_class?)
+storage_class = Static | Extern
+for_init = V(var_decl) | E(expr)
 statement = Return(expr) | Block(block_item*) | Expr(expr)
           | Null | If(expr cond, statement then, statement? else)
           | Label(identifier, statement) | Goto(identifier)
@@ -40,8 +41,9 @@ assignment_op =  Assign | AddAssign | SubAssign | MulAssign
 <program> ::= { <decl> }
 <block_item> ::= <decl> | <statement>
 <decl> ::= <var_decl> | <func_decl>
-<var_decl> ::= "int" <identifier> [ "=" <expr> ] ";"
-<func_decl> ::= "int" <identifier> "(" <params> ")" ( ("{" {<block_item>} "}") | ";" )
+<var_decl> ::= {<specifier>}+ <identifier> [ "=" <expr> ] ";"
+<func_decl> ::= {<specifier>}+ <identifier> "(" <params> ")" ( ("{" {<block_item>} "}") | ";" )
+<specifier> ::= "int" | "extern" | "static"
 <params> ::= "void" | "int" <identifier> {"," "int" <identifier>}
 <for-init> ::= <var_decl> | <func_decl>
 <statement> ::= "return" <expr> | "{" {<block_item>} "}" | <expr> ";" | ";"
