@@ -411,6 +411,8 @@ static expr *parse_constant_expr(parser *p) {
 static bool is_decl(int toktype) {
   switch (toktype) {
   case TOK_INT:
+  case TOK_STATIC:
+  case TOK_EXTERN:
     return true;
   default:
     return false;
@@ -772,9 +774,47 @@ static void parse_params(parser *p, func_decl *f) {
   vec_free(params);
 }
 
+static sct parse_type_and_storage_class(parser *p) {
+  VEC(int) types;
+  VEC(int) scs;
+  vec_init(types);
+  vec_init(scs);
+
+  while (p->next.token != TOK_IDENT) {
+    advance(p);
+
+    if (p->curr.token == TOK_INT)
+      vec_push_back(types, p->curr.token);
+    else
+      vec_push_back(scs, p->curr.token);
+  }
+
+  // TODO: line info in err
+  if (types.size != 1) {
+    fprintf(stderr, "invalid type specifier\n");
+    after_error();
+  }
+  if (scs.size > 1) {
+    fprintf(stderr, "invalid storage class specifier\n");
+    after_error();
+  }
+
+  sct res;
+  if (scs.size == 0)
+    res = SC_NONE;
+  else
+    res = scs.data[0] == TOK_EXTERN ? SC_EXTERN : SC_STATIC;
+
+  vec_free(types);
+  vec_free(scs);
+
+  return res;
+}
+
 static decl *parse_decl(parser *p) {
-  tok_pos start = expect(p, TOK_INT)->pos; // TODO: parse return type of func or
-                                           // type of var, not just int
+  tok_pos start = p->next.pos;
+
+  sct sc = parse_type_and_storage_class(p);
   string ident = expect(p, TOK_IDENT)->v.ident;
   tok_pos tmp_end = p->curr.pos;
 
@@ -846,6 +886,8 @@ static decl *parse_decl(parser *p) {
     tok_pos end = expect(p, TOK_SEMI)->pos;
     SET_POS(res, start, end);
   }
+
+  res->sc = sc;
 
   return res;
 }
