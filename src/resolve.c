@@ -20,6 +20,8 @@ extern arena ptr_arena; // (main.c)
 int var_name_idx_counter = 0;
 int label_idx_counter = 0;
 
+static int scope = 0;
+
 static int get_label() { return ++label_idx_counter; }
 static int get_name() { return ++var_name_idx_counter; }
 
@@ -74,6 +76,7 @@ void resolve_goto_stmt(parser *p, stmt *s) {
 void resolve_decl(parser *p, decl *d);
 
 void enter_scope(parser *p) {
+  ++scope;
   // set as first in linked list
   ht *t = ht_create();
   ht_set_next_table(t, p->ident_ht_list_head);
@@ -83,6 +86,7 @@ void enter_scope(parser *p) {
 }
 
 void exit_scope(parser *p) {
+  --scope;
   ht *tmp = p->ident_ht_list_head;
   p->ident_ht_list_head = ht_get_next_table(tmp);
 
@@ -426,18 +430,20 @@ void exit_func_with_body(parser *p, decl *f) {
   ht_destroy(p->gotos_to_check_ht);
 }
 
-// set param to true when resolving param
-// returns id of new ident
-ident_entry *resolve_var_decl(parser *p, string name, ast_pos pos, char param) {
+ident_entry *resolve_global_var_decl(parser *p, string name, ast_pos pos) {
+  ident_entry *new_e = new_symt_entry(p, name, true);
+
+  const char *new_key = ht_set(p->ident_ht_list_head, name, new_e);
+  assert(new_key);
+
+  return new_e;
+}
+
+ident_entry *resolve_param(parser *p, string name, ast_pos pos) {
   ident_entry *e = ht_get(p->ident_ht_list_head, name); // check only curr scope
   if (e != NULL) {
-    if (param)
-      fprintf(stderr, "duplicate param declaration with name %s (%d:%d-%d:%d)",
-              name, pos.line_start, pos.pos_start, pos.line_end, pos.pos_end);
-    else
-      fprintf(stderr,
-              "duplicate variable declaration with name %s (%d:%d-%d:%d)", name,
-              pos.line_start, pos.pos_start, pos.line_end, pos.pos_end);
+    fprintf(stderr, "duplicate param declaration with name %s (%d:%d-%d:%d)",
+            name, pos.line_start, pos.pos_start, pos.line_end, pos.pos_end);
     after_error();
   }
   ident_entry *new_e = new_symt_entry(p, name, false);
@@ -446,4 +452,42 @@ ident_entry *resolve_var_decl(parser *p, string name, ast_pos pos, char param) {
   assert(new_key);
 
   return new_e;
+}
+
+ident_entry *resolve_local_var_decl(parser *p, string name, ast_pos pos,
+                                    sct sc) {
+  ident_entry *e = ht_get(p->ident_ht_list_head, name); // check only curr scope
+  if (e != NULL && e->has_linkage && sc == SC_EXTERN) {
+    fprintf(stderr, "conflicting local declarations with name %s (%d:%d-%d:%d)",
+            name, pos.line_start, pos.pos_start, pos.line_end, pos.pos_end);
+    after_error();
+  }
+
+  if (sc == SC_EXTERN) {
+    ident_entry *new_e = new_symt_entry(p, name, true);
+
+    const char *new_key = ht_set(p->ident_ht_list_head, name, new_e);
+    assert(new_key);
+
+    return new_e;
+  } else {
+    ident_entry *new_e = new_symt_entry(p, name, false);
+
+    const char *new_key = ht_set(p->ident_ht_list_head, name, new_e);
+    assert(new_key);
+
+    return new_e;
+  }
+}
+
+// set param to true when resolving param
+// returns id of new ident
+ident_entry *resolve_var_decl(parser *p, string name, ast_pos pos, char param,
+                              sct sc) {
+  if (scope == 0)
+    return resolve_global_var_decl(p, name, pos);
+  if (param)
+    return resolve_param(p, name, pos);
+  else
+    return resolve_local_var_decl(p, name, pos, sc);
 }
