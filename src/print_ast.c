@@ -372,6 +372,11 @@ static void print_decl(decl *d, int indent) {
     return;
 
   print_indent(indent);
+  if (d->sc == SC_EXTERN) {
+    printf("extern ");
+  } else if (d->sc == SC_STATIC) {
+    printf("static ");
+  }
   switch (d->t) {
   case DECL_FUNC:
     printf("FuncDecl (%s, %d)", d->v.func.name, d->v.func.name_idx);
