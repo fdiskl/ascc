@@ -727,8 +727,8 @@ void enter_body_of_func(parser *p, decl *f);  // resolve.c
 void exit_func(parser *p, decl *f);           // resolve.c
 void exit_func_with_body(parser *p, decl *f); // resolve.c
 
-ident_entry *resolve_var_decl(parser *p, string name, ast_pos pos,
-                              char param); // resolve.c
+ident_entry *resolve_var_decl(parser *p, string name, ast_pos pos, char param,
+                              sct sc); // resolve.c
 
 static void parse_params(parser *p, func_decl *f) {
   if (p->next.token == TOK_VOID) {
@@ -749,9 +749,10 @@ static void parse_params(parser *p, func_decl *f) {
   CONVERT_POS(start, end, pos);
 
   vec_push_back(params, p->curr.v.ident);
-  vec_push_back(params_idxs, (void *)((intptr_t)resolve_var_decl(
-                                          p, p->curr.v.ident, pos, true)
-                                          ->name_idx));
+  vec_push_back(params_idxs,
+                (void *)((intptr_t)resolve_var_decl(p, p->curr.v.ident, pos,
+                                                    true, SC_NONE)
+                             ->name_idx));
 
   while (p->next.token != TOK_RPAREN) {
     start = expect(p, TOK_COMMA)->pos;
@@ -760,10 +761,10 @@ static void parse_params(parser *p, func_decl *f) {
     CONVERT_POS(start, end, pos);
 
     vec_push_back(params, p->curr.v.ident);
-    vec_push_back(
-        params_idxs,
-        (void *)(intptr_t)(resolve_var_decl(p, p->curr.v.ident, pos, true)
-                               ->name_idx));
+    vec_push_back(params_idxs,
+                  (void *)(intptr_t)(resolve_var_decl(p, p->curr.v.ident, pos,
+                                                      true, SC_NONE)
+                                         ->name_idx));
   }
 
   f->params_len = params.size;
@@ -874,7 +875,7 @@ static decl *parse_decl(parser *p) {
     ast_pos pos;
     CONVERT_POS(start, tmp_end, pos);
 
-    ident_entry *e = resolve_var_decl(p, ident, pos, false);
+    ident_entry *e = resolve_var_decl(p, ident, pos, false, sc);
     res->v.var.name_idx = e->name_idx;
 
     if (p->next.token == TOK_ASSIGN) {
