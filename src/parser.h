@@ -295,6 +295,12 @@ typedef struct _var_decl var_decl;
 typedef struct _func_decl func_decl;
 
 typedef enum {
+  SC_EXTERN,
+  SC_STATIC,
+  SC_NONE,
+} sct;
+
+typedef enum {
   DECL_FUNC,
   DECL_VAR,
 } declt;
@@ -319,6 +325,7 @@ struct _func_decl {
 struct _decl {
   declt t;
   ast_pos pos;
+  sct sc;
   union {
     func_decl func;
     var_decl var;
