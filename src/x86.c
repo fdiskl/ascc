@@ -354,7 +354,8 @@ static void gen_asm_from_call(x86_asm_gen *ag, taci *i) {
 
   syme *e = ht_get_int(ag->sym_table, i->label_idx);
   assert(e);
-  if (e->t->v.fntype.defined)
+  assert(e->a.t == ATTR_FUNC);
+  if (e->a.v.f.defined)
     call->v.call.plt = 0;
   else
     call->v.call.plt = 1;

@@ -4,6 +4,7 @@
 #include "driver.h"
 #include "parser.h"
 #include "table.h"
+#include <assert.h>
 #include <stdio.h>
 
 typedef struct _checker checker;
@@ -21,19 +22,20 @@ static type *new_type(checker *c, int t) {
 }
 
 static syme *new_syme(checker *c, type *t, string name, int name_idx,
-                      decl *origin) {
+                      decl *origin, attrs a) {
   syme *e = ARENA_ALLOC_OBJ(c->syme_arena, syme);
   e->name_idx = name_idx;
   e->original_name = name;
   e->ref = origin;
   e->t = t;
+  e->a = a;
   return e;
 }
 
 static syme *add_to_symtable(checker *c, type *t, string name, int name_idx,
-                             decl *origin) {
+                             decl *origin, attrs a) {
   syme *e;
-  ht_set_int(c->st, name_idx, e = new_syme(c, t, name, name_idx, origin));
+  ht_set_int(c->st, name_idx, e = new_syme(c, t, name, name_idx, origin, a));
   return e;
 }
 
@@ -210,7 +212,8 @@ static void typecheck_func_decl(checker *c, decl *d) {
               old.pos_end);
       after_error();
     }
-    alr_defined = e->t->v.fntype.defined;
+    // assert(e->a->t == ATTR_FUNC);
+    alr_defined = e->a.v.f.defined;
     if (alr_defined && has_body) {
       ast_pos old = e->ref->pos;
       ast_pos curr = d->pos;
@@ -223,14 +226,19 @@ static void typecheck_func_decl(checker *c, decl *d) {
       after_error();
     }
   }
+  // FIXME
+  attrs a;
+  a.t = ATTR_FUNC;
+  a.v.f.defined = alr_defined || has_body;
+  add_to_symtable(c, t, d->v.func.name, d->v.func.name_idx, d, a);
 
-  t->v.fntype.defined = alr_defined || has_body;
-  add_to_symtable(c, t, d->v.func.name, d->v.func.name_idx, d);
+  attrs local_a;
+  local_a.t = ATTR_LOCAL;
 
   if (has_body) {
     for (int i = 0; i < d->v.func.params_len; ++i) {
       add_to_symtable(c, new_type(c, TYPE_INT), d->v.func.params[i],
-                      (int)(intptr_t)d->v.func.params_idxs[i], NULL);
+                      (int)(intptr_t)d->v.func.params_idxs[i], NULL, local_a);
     }
 
     typecheck_block(c, d->v.func.bs->v.block.items,
@@ -239,8 +247,11 @@ static void typecheck_func_decl(checker *c, decl *d) {
 }
 
 static void typecheck_var_decl(checker *c, decl *d) {
-  add_to_symtable(c, new_type(c, TYPE_INT), d->v.var.name, d->v.var.name_idx,
-                  d);
+  // FIXME
+  attrs a;
+  a.t = ATTR_LOCAL;
+  add_to_symtable(c, new_type(c, TYPE_INT), d->v.var.name, d->v.var.name_idx, d,
+                  a);
 
   if (d->v.var.init != NULL)
     typecheck_expr(c, d->v.var.init);
