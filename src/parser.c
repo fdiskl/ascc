@@ -781,7 +781,11 @@ static sct parse_type_and_storage_class(parser *p) {
   vec_init(types);
   vec_init(scs);
 
-  while (p->next.token != TOK_IDENT) {
+  int i = 0;
+
+  while (p->next.token != TOK_IDENT &&
+         (p->next.token == TOK_INT || p->next.token == TOK_STATIC ||
+          p->next.token == TOK_EXTERN)) {
     advance(p);
 
     if (p->curr.token == TOK_INT)
@@ -792,10 +796,14 @@ static sct parse_type_and_storage_class(parser *p) {
 
   // TODO: line info in err
   if (types.size != 1) {
+    vec_free(types);
+    vec_free(scs);
     fprintf(stderr, "invalid type specifier\n");
     after_error();
   }
   if (scs.size > 1) {
+    vec_free(types);
+    vec_free(scs);
     fprintf(stderr, "invalid storage class specifier\n");
     after_error();
   }
