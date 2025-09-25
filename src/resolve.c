@@ -457,9 +457,10 @@ ident_entry *resolve_param(parser *p, string name, ast_pos pos) {
 ident_entry *resolve_local_var_decl(parser *p, string name, ast_pos pos,
                                     sct sc) {
   ident_entry *e = ht_get(p->ident_ht_list_head, name); // check only curr scope
-  if (e != NULL && e->has_linkage && sc == SC_EXTERN) {
-    fprintf(stderr, "conflicting local declarations with name %s (%d:%d-%d:%d)",
-            name, pos.line_start, pos.pos_start, pos.line_end, pos.pos_end);
+  if (e != NULL && !(e->has_linkage && sc == SC_EXTERN)) {
+    fprintf(stderr,
+            "conflicting local declarations with name %s (%d:%d-%d:%d)\n", name,
+            pos.line_start, pos.pos_start, pos.line_end, pos.pos_end);
     after_error();
   }
 
