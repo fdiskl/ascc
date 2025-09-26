@@ -49,7 +49,7 @@ bool is_constant_expr(expr *e) {
 }
 
 void check_for_constant_expr(expr *e) {
-  if (is_constant_expr(e)) {
+  if (!is_constant_expr(e)) {
     fprintf(stderr, "expected constant expr (%d:%d-%d:%d)\n", e->pos.line_start,
             e->pos.pos_start, e->pos.line_end, e->pos.pos_end);
     after_error();
@@ -470,8 +470,11 @@ ident_entry *resolve_local_var_decl(parser *p, string name, ast_pos pos,
   }
 
   if (sc == SC_EXTERN) {
-    ident_entry *new_e = new_symt_entry(p, name, true);
 
+    ident_entry *e = find_entry(p, name);
+
+    ident_entry *new_e =
+        alloc_symt_entry(p, name, true, e != NULL ? e->name_idx : get_name());
     const char *new_key = ht_set(p->ident_ht_list_head, name, new_e);
     assert(new_key);
 
