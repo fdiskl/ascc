@@ -38,6 +38,7 @@ static syme *add_to_symtable(checker *c, type *t, string name, int name_idx,
                              decl *origin, attrs a) {
   syme *e;
   ht_set_int(c->st, name_idx, e = new_syme(c, t, name, name_idx, origin, a));
+
   return e;
 }
 
@@ -266,6 +267,7 @@ static void typecheck_func_decl(checker *c, decl *d) {
   a.t = ATTR_FUNC;
   a.v.f.defined = alr_defined || has_body;
   a.v.f.global = global;
+  assert(t->t == TYPE_FN);
   add_to_symtable(c, t, d->v.func.name, d->v.func.name_idx, d, a);
 
   attrs local_a;
@@ -304,19 +306,31 @@ static void typecheck_filescope_var_decl(checker *c, decl *d) {
   syme *old = ht_get_int(c->st, d->v.var.name_idx);
   if (old != NULL) {
     if (old->t->t == TYPE_FN) {
-      ast_pos old_pos = old->ref->pos;
       ast_pos new_pos = d->pos;
+      ast_pos old_pos = old->ref->pos;
       fprintf(stderr,
               "function %s redeclared as var (%d:%d-%d:%d), old decl at "
               "%d:%d-%d:%d\n",
-              d->v.var.name, old_pos.line_start, old_pos.pos_start,
-              old_pos.line_end, old_pos.pos_end, new_pos.line_start,
-              new_pos.pos_start, new_pos.line_end, new_pos.pos_end);
+              d->v.var.name, new_pos.line_start, new_pos.pos_start,
+              new_pos.line_end, new_pos.pos_end, old_pos.line_start,
+              old_pos.pos_start, old_pos.line_end, old_pos.pos_end);
 
       after_error();
     }
 
-    assert(old->a.t == ATTR_STATIC);
+    if (old->a.t != ATTR_STATIC) {
+      ast_pos new_pos = d->pos;
+      ast_pos old_pos = old->ref->pos;
+      fprintf(stderr,
+              " %s (%d:%d-%d:%d), old decl at "
+              "%d:%d-%d:%d\n",
+              d->v.var.name, new_pos.line_start, new_pos.pos_start,
+              new_pos.line_end, new_pos.pos_end, old_pos.line_start,
+              old_pos.pos_start, old_pos.line_end, old_pos.pos_end);
+
+      after_error();
+    }
+
     if (d->sc == SC_EXTERN) {
       global = old->a.v.s.global;
     } else if (old->a.v.s.global != global) {
@@ -382,6 +396,7 @@ static void typecheck_local_var_decl(checker *c, decl *d) {
     syme *old = ht_get_int(c->st, d->v.var.name_idx);
     if (old != NULL) {
       if (old->t->t == TYPE_FN) {
+
         ast_pos old_pos = old->ref->pos;
         ast_pos new_pos = d->pos;
         fprintf(stderr,
@@ -393,12 +408,17 @@ static void typecheck_local_var_decl(checker *c, decl *d) {
 
         after_error();
       }
+      return;
     } else {
       a.t = ATTR_STATIC;
       a.v.s.global = true;
       a.v.s.init.t = INIT_NOINIT;
-      break;
+
+      add_to_symtable(c, new_type(c, TYPE_INT), d->v.var.name,
+                      d->v.var.name_idx, d, a);
+      return;
     }
+    break;
 
   } break;
   case SC_STATIC: {
@@ -429,6 +449,8 @@ static void typecheck_local_var_decl(checker *c, decl *d) {
 
     if (d->v.var.init != NULL)
       typecheck_expr(c, d->v.var.init);
+
+    return;
 
   } break;
   }
@@ -507,7 +529,11 @@ static void print_attr(attrs *a) {
 }
 
 static void print_syme(int idx, syme *e) {
-  printf("%d : %s (%s) ", idx, e->original_name, type_name(e->t));
+  if (e->ref != NULL)
+    printf("%d : %s (%s) (%d:%d)", idx, e->original_name, type_name(e->t),
+           e->ref->pos.line_start, e->ref->pos.pos_start);
+  else
+    printf("%d : %s (%s)", idx, e->original_name, type_name(e->t));
   print_attr(&e->a);
   printf("\n");
 }
