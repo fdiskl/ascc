@@ -9,6 +9,8 @@
 
 typedef struct _checker checker;
 
+static void print_syme(int idx, syme *e);
+
 struct _checker {
   arena *syme_arena;
   arena *type_arena;
@@ -152,9 +154,17 @@ static void typecheck_stmt(checker *c, stmt *s) {
     typecheck_stmt(c, s->v.dowhile_stmt.s);
     break;
   case STMT_FOR:
-    if (s->v.for_stmt.init_d)
+    if (s->v.for_stmt.init_d) {
+      if (s->v.for_stmt.init_d->sc != SC_NONE) {
+        ast_pos pos = s->v.for_stmt.init_d->pos;
+        fprintf(stderr,
+                "Can't use storage class in for loop init declaration "
+                "%d:%d-%d:%d\n",
+                pos.line_start, pos.pos_start, pos.line_end, pos.pos_end);
+        after_error();
+      }
       typecheck_decl(c, s->v.for_stmt.init_d);
-    else if (s->v.for_stmt.init_e)
+    } else if (s->v.for_stmt.init_e)
       typecheck_expr(c, s->v.for_stmt.init_e);
     if (s->v.for_stmt.cond)
       typecheck_expr(c, s->v.for_stmt.cond);
@@ -486,6 +496,12 @@ static void print_attr(attrs *a) {
   }
 }
 
+static void print_syme(int idx, syme *e) {
+  printf("%d : %s (%s) ", idx, e->original_name, type_name(e->t));
+  print_attr(&e->a);
+  printf("\n");
+}
+
 void print_sym_table(sym_table st) {
   hti it = ht_iterator(st);
 
@@ -493,8 +509,6 @@ void print_sym_table(sym_table st) {
 
   while (ht_next(&it)) {
     syme *e = (syme *)it.value;
-    printf("%d : %s (%s) ", it.idx, e->original_name, type_name(e->t));
-    print_attr(&e->a);
-    printf("\n");
+    print_syme(it.idx, e);
   }
 }
