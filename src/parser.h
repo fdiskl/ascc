@@ -309,7 +309,6 @@ struct _var_decl {
   string name;  // name in src
   int name_idx; // unique idx representing name
   expr *init;   // NULL if not present
-  int scope;    // 0 if file scope
 };
 
 struct _func_decl {
@@ -327,6 +326,7 @@ struct _decl {
   declt t;
   ast_pos pos;
   sct sc;
+  int scope; // 0 if file scope
   union {
     func_decl func;
     var_decl var;

@@ -379,7 +379,8 @@ static void print_decl(decl *d, int indent) {
   }
   switch (d->t) {
   case DECL_FUNC:
-    printf("FuncDecl (%s, %d)", d->v.func.name, d->v.func.name_idx);
+    printf("FuncDecl (%s, %d) (scp: %d)", d->v.func.name, d->v.func.name_idx,
+           d->scope);
     print_ast_pos(d->pos);
     printf("\n");
     if (d->v.func.params != NULL) {
@@ -404,7 +405,7 @@ static void print_decl(decl *d, int indent) {
 
   case DECL_VAR:
     printf("VarDecl (%s, %d) (scp: %d)", d->v.var.name, d->v.var.name_idx,
-           d->v.var.scope);
+           d->scope);
     print_ast_pos(d->pos);
     printf("\n");
     if (d->v.var.init != NULL)

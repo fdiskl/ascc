@@ -380,6 +380,7 @@ void exit_switch(parser *p, stmt *s) {
 }
 
 void enter_func(parser *p, decl *f) {
+  f->scope = scope;
   ident_entry *e =
       ht_get(p->ident_ht_list_head, f->v.func.name); // check only curr scope
   if (e != NULL && !e->has_linkage) {

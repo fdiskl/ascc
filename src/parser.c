@@ -884,7 +884,7 @@ static decl *parse_decl(parser *p) {
 
     ident_entry *e = resolve_var_decl(p, ident, pos, false, sc);
     res->v.var.name_idx = e->name_idx;
-    res->v.var.scope = e->scope;
+    res->scope = e->scope;
 
     if (p->next.token == TOK_ASSIGN) {
       expect(p, TOK_ASSIGN);
