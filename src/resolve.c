@@ -437,7 +437,9 @@ void exit_func_with_body(parser *p, decl *f) {
 }
 
 ident_entry *resolve_global_var_decl(parser *p, string name, ast_pos pos) {
-  ident_entry *new_e = new_symt_entry(p, name, true);
+  ident_entry *e = ht_get(p->ident_ht_list_head, name); // check only curr scope
+  ident_entry *new_e =
+      alloc_symt_entry(p, name, true, e != NULL ? e->name_idx : get_name());
 
   const char *new_key = ht_set(p->ident_ht_list_head, name, new_e);
   assert(new_key);
