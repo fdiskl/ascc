@@ -211,6 +211,16 @@ static void typecheck_func_decl(checker *c, decl *d) {
 
   syme *e = ht_get_int(c->st, d->v.var.name_idx);
 
+  if (d->sc == SC_STATIC && d->scope != 0) {
+    ast_pos curr = d->pos;
+    fprintf(stderr,
+            "function %s is declared in block, but has static storage class"
+            "(%d:%d-%d:%d)\n",
+            d->v.func.name, curr.line_start, curr.pos_start, curr.line_end,
+            curr.pos_end);
+    after_error();
+  }
+
   if (e != NULL) {
     if (!types_eq(e->t, t)) {
       ast_pos old = e->ref->pos;
@@ -428,7 +438,7 @@ static void typecheck_local_var_decl(checker *c, decl *d) {
 }
 
 static void typecheck_var_decl(checker *c, decl *d) {
-  if (d->v.var.scope == 0)
+  if (d->scope == 0)
     typecheck_filescope_var_decl(c, d);
   else
     typecheck_local_var_decl(c, d);
