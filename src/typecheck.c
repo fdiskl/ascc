@@ -197,6 +197,7 @@ static void typecheck_func_decl(checker *c, decl *d) {
   t->v.fntype.param_count = d->v.func.params_len;
   char has_body = d->v.func.bs != NULL ? 1 : 0;
   char alr_defined = false;
+  char global = d->sc != SC_STATIC;
 
   syme *e = ht_get_int(c->st, d->v.var.name_idx);
 
@@ -212,7 +213,7 @@ static void typecheck_func_decl(checker *c, decl *d) {
               old.pos_end);
       after_error();
     }
-    // assert(e->a->t == ATTR_FUNC);
+    assert(e->a.t == ATTR_FUNC);
     alr_defined = e->a.v.f.defined;
     if (alr_defined && has_body) {
       ast_pos old = e->ref->pos;
@@ -225,11 +226,26 @@ static void typecheck_func_decl(checker *c, decl *d) {
               old.pos_end);
       after_error();
     }
+
+    if (e->a.v.f.global && d->sc == SC_STATIC) {
+      ast_pos old = e->ref->pos;
+      ast_pos curr = d->pos;
+      fprintf(stderr,
+              "global function %s follows non-static "
+              "(%d:%d-%d:%d), other decl at %d:%d-%d:%d\n",
+              d->v.func.name, curr.line_start, curr.pos_start, curr.line_end,
+              curr.pos_end, old.line_start, old.pos_start, old.line_end,
+              old.pos_end);
+      after_error();
+    }
+
+    global = e->a.v.f.global;
   }
-  // FIXME
+
   attrs a;
   a.t = ATTR_FUNC;
   a.v.f.defined = alr_defined || has_body;
+  a.v.f.global = global;
   add_to_symtable(c, t, d->v.func.name, d->v.func.name_idx, d, a);
 
   attrs local_a;
@@ -246,7 +262,90 @@ static void typecheck_func_decl(checker *c, decl *d) {
   }
 }
 
-static void typecheck_var_decl(checker *c, decl *d) {
+static void typecheck_filescope_var_decl(checker *c, decl *d) {
+  struct _init_value iv;
+
+  if (d->v.var.init != NULL) {
+    check_for_constant_expr(d->v.var.init);
+    iv.t = INIT_INITIAL;
+
+    // FIXME: eval here, (or at some other stage but eval)
+    {
+      assert(d->v.var.init->t == EXPR_INT_CONST);
+      iv.v = d->v.var.init->v.intc.v;
+    }
+  } else if (d->sc == SC_EXTERN)
+    iv.t = INIT_NOINIT;
+  else
+    iv.t = INIT_TENTATIVE;
+
+  bool global = d->sc != SC_STATIC;
+
+  syme *old = ht_get_int(c->st, d->v.var.name_idx);
+  if (old != NULL) {
+    if (old->t->t == TYPE_FN) {
+      ast_pos old_pos = old->ref->pos;
+      ast_pos new_pos = d->pos;
+      fprintf(stderr,
+              "function %s redeclared as var (%d:%d-%d:%d), old decl at "
+              "%d:%d-%d:%d\n",
+              d->v.var.name, old_pos.line_start, old_pos.pos_start,
+              old_pos.line_end, old_pos.pos_end, new_pos.line_start,
+              new_pos.pos_start, new_pos.line_end, new_pos.pos_end);
+
+      after_error();
+    }
+
+    assert(old->a.t == ATTR_STATIC);
+    if (d->sc == SC_EXTERN) {
+      global = old->a.v.s.global;
+    } else if (old->a.v.s.global != global) {
+      ast_pos old_pos = old->ref->pos;
+      ast_pos new_pos = d->pos;
+      fprintf(
+          stderr,
+          "conflicting variable linkage for var %s (%d:%d-%d:%d), old decl at "
+          "%d:%d-%d:%d\n",
+          d->v.var.name, old_pos.line_start, old_pos.pos_start,
+          old_pos.line_end, old_pos.pos_end, new_pos.line_start,
+          new_pos.pos_start, new_pos.line_end, new_pos.pos_end);
+
+      after_error();
+    }
+
+    if (old->a.v.s.init.t == INIT_INITIAL) {
+      if (iv.t == INIT_INITIAL) {
+        ast_pos old_pos = old->ref->pos;
+        ast_pos new_pos = d->pos;
+        fprintf(stderr,
+                "conflicting file scope declarations for var %s (%d:%d-%d:%d), "
+                "old decl at "
+                "%d:%d-%d:%d\n",
+                d->v.var.name, old_pos.line_start, old_pos.pos_start,
+                old_pos.line_end, old_pos.pos_end, new_pos.line_start,
+                new_pos.pos_start, new_pos.line_end, new_pos.pos_end);
+
+        after_error();
+      }
+
+      else {
+        iv = old->a.v.s.init;
+      }
+    } else if (iv.t != INIT_INITIAL && old->a.v.s.init.t == INIT_TENTATIVE) {
+      iv.t = INIT_TENTATIVE;
+    }
+  }
+
+  attrs a;
+  a.t = ATTR_STATIC;
+  a.v.s.global = global;
+  a.v.s.init = iv;
+
+  add_to_symtable(c, new_type(c, TYPE_INT), d->v.var.name, d->v.var.name_idx, d,
+                  a);
+}
+
+static void typecheck_local_var_decl(checker *c, decl *d) {
   // FIXME
   attrs a;
   a.t = ATTR_LOCAL;
@@ -255,6 +354,13 @@ static void typecheck_var_decl(checker *c, decl *d) {
 
   if (d->v.var.init != NULL)
     typecheck_expr(c, d->v.var.init);
+}
+
+static void typecheck_var_decl(checker *c, decl *d) {
+  if (d->v.var.scope == 0)
+    typecheck_filescope_var_decl(c, d);
+  else
+    typecheck_local_var_decl(c, d);
 }
 
 static void typecheck_decl(checker *c, decl *d) {
@@ -292,6 +398,33 @@ static const char *type_name(type *t) {
   }
 }
 
+static void print_attr(attrs *a) {
+  switch (a->t) {
+  case ATTR_FUNC:
+    printf("func(global: %s, defined: %s)", a->v.f.global ? "true" : "false",
+           a->v.f.defined ? "true" : "false");
+    break;
+  case ATTR_STATIC:
+    printf("static(global: %s, ", a->v.s.global ? "true" : "false");
+    switch (a->v.s.init.t) {
+    case INIT_TENTATIVE:
+      printf("tentative");
+      break;
+    case INIT_INITIAL:
+      printf("initial(%llu)", (unsigned long long)a->v.s.init.v);
+      break;
+    case INIT_NOINIT:
+      printf("no init");
+      break;
+    }
+    printf(")");
+    break;
+  case ATTR_LOCAL:
+    printf("local");
+    break;
+  }
+}
+
 void print_sym_table(sym_table st) {
   hti it = ht_iterator(st);
 
@@ -299,6 +432,8 @@ void print_sym_table(sym_table st) {
 
   while (ht_next(&it)) {
     syme *e = (syme *)it.value;
-    printf("%d : %s (%s)\n", it.idx, e->original_name, type_name(e->t));
+    printf("%d : %s (%s) ", it.idx, e->original_name, type_name(e->t));
+    print_attr(&e->a);
+    printf("\n");
   }
 }
