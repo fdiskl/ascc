@@ -300,15 +300,15 @@ static void typecheck_filescope_var_decl(checker *c, decl *d) {
     if (d->sc == SC_EXTERN) {
       global = old->a.v.s.global;
     } else if (old->a.v.s.global != global) {
-      ast_pos old_pos = old->ref->pos;
       ast_pos new_pos = d->pos;
+      ast_pos old_pos = old->ref->pos;
       fprintf(
           stderr,
           "conflicting variable linkage for var %s (%d:%d-%d:%d), old decl at "
           "%d:%d-%d:%d\n",
-          d->v.var.name, old_pos.line_start, old_pos.pos_start,
-          old_pos.line_end, old_pos.pos_end, new_pos.line_start,
-          new_pos.pos_start, new_pos.line_end, new_pos.pos_end);
+          d->v.var.name, new_pos.line_start, new_pos.pos_start,
+          new_pos.line_end, new_pos.pos_end, old_pos.line_start,
+          old_pos.pos_start, old_pos.line_end, old_pos.pos_end);
 
       after_error();
     }
@@ -321,9 +321,9 @@ static void typecheck_filescope_var_decl(checker *c, decl *d) {
                 "conflicting file scope declarations for var %s (%d:%d-%d:%d), "
                 "old decl at "
                 "%d:%d-%d:%d\n",
-                d->v.var.name, old_pos.line_start, old_pos.pos_start,
-                old_pos.line_end, old_pos.pos_end, new_pos.line_start,
-                new_pos.pos_start, new_pos.line_end, new_pos.pos_end);
+                d->v.var.name, new_pos.line_start, new_pos.pos_start,
+                new_pos.line_end, new_pos.pos_end, old_pos.line_start,
+                old_pos.pos_start, old_pos.line_end, old_pos.pos_end);
 
         after_error();
       }
@@ -346,14 +346,75 @@ static void typecheck_filescope_var_decl(checker *c, decl *d) {
 }
 
 static void typecheck_local_var_decl(checker *c, decl *d) {
-  // FIXME
   attrs a;
-  a.t = ATTR_LOCAL;
+  switch (d->sc) {
+  case SC_EXTERN: {
+    if (d->v.var.init != NULL) {
+      ast_pos pos = d->pos;
+      fprintf(
+          stderr,
+          "initializer on local extern variable declaration %s (%d:%d-%d:%d)\n",
+          d->v.var.name, pos.line_start, pos.pos_start, pos.line_end,
+          pos.pos_end);
+
+      after_error();
+    }
+    syme *old = ht_get_int(c->st, d->v.var.name_idx);
+    if (old != NULL) {
+      if (old->t->t == TYPE_FN) {
+        ast_pos old_pos = old->ref->pos;
+        ast_pos new_pos = d->pos;
+        fprintf(stderr,
+                "function %s redeclared as var (%d:%d-%d:%d), old decl at "
+                "%d:%d-%d:%d\n",
+                d->v.var.name, old_pos.line_start, old_pos.pos_start,
+                old_pos.line_end, old_pos.pos_end, new_pos.line_start,
+                new_pos.pos_start, new_pos.line_end, new_pos.pos_end);
+
+        after_error();
+      }
+    } else {
+      a.t = ATTR_STATIC;
+      a.v.s.global = true;
+      a.v.s.init.t = INIT_NOINIT;
+      break;
+    }
+
+  } break;
+  case SC_STATIC: {
+    struct _init_value iv;
+    iv.t = INIT_INITIAL;
+    if (d->v.var.init != NULL) {
+      check_for_constant_expr(d->v.var.init);
+      // FIXME: eval here, (or at some other stage but eval)
+      {
+        assert(d->v.var.init->t == EXPR_INT_CONST);
+        iv.v = d->v.var.init->v.intc.v;
+      }
+    } else {
+      iv.v = 0;
+    }
+
+    a.t = ATTR_STATIC;
+    a.v.s.global = false;
+    a.v.s.init = iv;
+    break;
+
+  } break;
+  case SC_NONE: {
+    a.t = ATTR_LOCAL;
+    add_to_symtable(c, new_type(c, TYPE_INT), d->v.var.name, d->v.var.name_idx,
+                    d,
+                    a); // important to be begore typechecking expr
+
+    if (d->v.var.init != NULL)
+      typecheck_expr(c, d->v.var.init);
+
+  } break;
+  }
+
   add_to_symtable(c, new_type(c, TYPE_INT), d->v.var.name, d->v.var.name_idx, d,
                   a);
-
-  if (d->v.var.init != NULL)
-    typecheck_expr(c, d->v.var.init);
 }
 
 static void typecheck_var_decl(checker *c, decl *d) {
