@@ -309,6 +309,7 @@ struct _var_decl {
   string name;  // name in src
   int name_idx; // unique idx representing name
   expr *init;   // NULL if not present
+  int scope;    // 0 if file scope
 };
 
 struct _func_decl {
@@ -381,7 +382,12 @@ struct _ident_entry {
   string name;
   int name_idx;
   char has_linkage;
+  int scope;
 };
+
+bool is_constant_expr(expr *e);
+void check_for_constant_expr(expr *e);
+string hash_for_constant_expr(expr *e);
 // --
 
 struct _parser {

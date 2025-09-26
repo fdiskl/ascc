@@ -400,10 +400,9 @@ static expr *parse_expr(parser *p) {
   return e;
 }
 
-void check_for_constant_expr(parser *p, expr *e);
 static expr *parse_constant_expr(parser *p) {
   expr *e = _parse_expr(p, MIN_PREC);
-  check_for_constant_expr(p, e);
+  check_for_constant_expr(e);
   return e;
 }
 
@@ -885,6 +884,7 @@ static decl *parse_decl(parser *p) {
 
     ident_entry *e = resolve_var_decl(p, ident, pos, false, sc);
     res->v.var.name_idx = e->name_idx;
+    res->v.var.scope = e->scope;
 
     if (p->next.token == TOK_ASSIGN) {
       expect(p, TOK_ASSIGN);

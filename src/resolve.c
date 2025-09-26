@@ -31,6 +31,7 @@ static ident_entry *alloc_symt_entry(parser *p, string name, char linkage,
   e->has_linkage = linkage;
   e->name = name;
   e->name_idx = name_idx;
+  e->scope = scope;
 
   return e;
 }
@@ -43,17 +44,21 @@ static bool is_lvalue(expr *e) {
   return e->t == EXPR_VAR; // for now
 }
 
-void check_for_constant_expr(parser *p, expr *e) {
-  if (e->t != EXPR_INT_CONST) {
+bool is_constant_expr(expr *e) {
+  return e->t == EXPR_INT_CONST; // TODO
+}
+
+void check_for_constant_expr(expr *e) {
+  if (is_constant_expr(e)) {
     fprintf(stderr, "expected constant expr (%d:%d-%d:%d)\n", e->pos.line_start,
             e->pos.pos_start, e->pos.line_end, e->pos.pos_end);
     after_error();
   } // TODO: add more const exprs
 }
 
-string hash_for_constant_expr(parser *p, expr *e) {
+string hash_for_constant_expr(expr *e) {
   // anything if it will be unique
-  check_for_constant_expr(p, e);
+  check_for_constant_expr(e);
   return string_sprintf("%d", e->v.intc); // for now only intc
 }
 
@@ -250,7 +255,7 @@ void resolve_case_stmt(parser *p, stmt *s) {
 
   loop_resolve_info *i = &p->stack_loop_resolve_info.data[switch_idx];
 
-  string key = hash_for_constant_expr(p, s->v.case_stmt.e);
+  string key = hash_for_constant_expr(s->v.case_stmt.e);
   stmt *old = (stmt *)ht_get(i->v.s.cases, key);
   if (old != NULL) {
     fprintf(

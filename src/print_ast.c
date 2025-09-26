@@ -403,7 +403,8 @@ static void print_decl(decl *d, int indent) {
     break;
 
   case DECL_VAR:
-    printf("VarDecl (%s, %d)", d->v.var.name, d->v.var.name_idx);
+    printf("VarDecl (%s, %d) (scp: %d)", d->v.var.name, d->v.var.name_idx,
+           d->v.var.scope);
     print_ast_pos(d->pos);
     printf("\n");
     if (d->v.var.init != NULL)
