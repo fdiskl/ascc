@@ -49,20 +49,21 @@ static bool types_eq(type *t1, type *t2) {
 }
 
 static void typecheck_var_expr(checker *c, expr *e) {
-  syme *entry = ht_get_int(c->st, e->v.var.name_idx);
-  if (entry->t->t == TYPE_FN) {
-    fprintf(stderr, "function name used as variable %s, (%d:%d-%d:%d)\n",
-            e->v.var.name, e->pos.line_start, e->pos.pos_start, e->pos.line_end,
-            e->pos.pos_end);
+  // syme *entry = ht_get_int(c->st, e->v.var.name_idx); FIXME
+  // if (entry->t->t == TYPE_FN) { FIXME
+  fprintf(stderr, "function name used as variable %s, (%d:%d-%d:%d)\n",
+          e->v.var.name, e->pos.line_start, e->pos.pos_start, e->pos.line_end,
+          e->pos.pos_end);
 
-    after_error();
-  }
+  after_error();
+  // } FIXME
 }
 
 static void typecheck_expr(checker *c, expr *e);
 
 static void typecheck_fn_call_expr(checker *c, expr *e) {
-  syme *entry = ht_get_int(c->st, e->v.var.name_idx);
+  // syme *entry = ht_get_int(c->st, e->v.var.name_idx); FIXME
+  syme *entry; // FIXME
   if (entry->t->t != TYPE_FN) {
     fprintf(stderr, "var name used as variable %s, (%d:%d-%d:%d)\n",
             e->v.var.name, e->pos.line_start, e->pos.pos_start, e->pos.line_end,
@@ -210,7 +211,7 @@ static void typecheck_func_decl(checker *c, decl *d) {
   char alr_defined = false;
   char global = d->sc != SC_STATIC;
 
-  syme *e = ht_get_int(c->st, d->v.var.name_idx);
+  // syme *e = ht_get_int(c->st, d->v.var.name_idx); FIXME
 
   if (d->sc == SC_STATIC && d->scope != 0) {
     ast_pos curr = d->pos;
@@ -222,6 +223,7 @@ static void typecheck_func_decl(checker *c, decl *d) {
     after_error();
   }
 
+  syme *e; // FIXME
   if (e != NULL) {
     if (!types_eq(e->t, t)) {
       ast_pos old = e->ref->pos;
@@ -268,15 +270,16 @@ static void typecheck_func_decl(checker *c, decl *d) {
   a.v.f.defined = alr_defined || has_body;
   a.v.f.global = global;
   assert(t->t == TYPE_FN);
-  add_to_symtable(c, t, d->v.func.name, d->v.func.name_idx, d, a);
+  // add_to_symtable(c, t, d->v.func.name, d->v.func.name_idx, d, a); FIXME
 
   attrs local_a;
   local_a.t = ATTR_LOCAL;
 
   if (has_body) {
     for (int i = 0; i < d->v.func.params_len; ++i) {
-      add_to_symtable(c, new_type(c, TYPE_INT), d->v.func.params[i],
-                      (int)(intptr_t)d->v.func.params_idxs[i], NULL, local_a);
+      // add_to_symtable(c, new_type(c, TYPE_INT), d->v.func.params[i],
+      //                 (int)(intptr_t)d->v.func.params_idxs[i], NULL,
+      //                 local_a); FIXME
     }
 
     typecheck_block(c, d->v.func.bs->v.block.items,
@@ -303,7 +306,8 @@ static void typecheck_filescope_var_decl(checker *c, decl *d) {
 
   bool global = d->sc != SC_STATIC;
 
-  syme *old = ht_get_int(c->st, d->v.var.name_idx);
+  // syme *old = ht_get_int(c->st, d->v.var.name_idx); FIXME
+  syme *old; // FIXME
   if (old != NULL) {
     if (old->t->t == TYPE_FN) {
       ast_pos new_pos = d->pos;
@@ -375,8 +379,9 @@ static void typecheck_filescope_var_decl(checker *c, decl *d) {
   a.v.s.global = global;
   a.v.s.init = iv;
 
-  add_to_symtable(c, new_type(c, TYPE_INT), d->v.var.name, d->v.var.name_idx, d,
-                  a);
+  // add_to_symtable(c, new_type(c, TYPE_INT), d->v.var.name, d->v.var.name_idx,
+  // d,
+  //                 a); FIXME
 }
 
 static void typecheck_local_var_decl(checker *c, decl *d) {
@@ -393,7 +398,8 @@ static void typecheck_local_var_decl(checker *c, decl *d) {
 
       after_error();
     }
-    syme *old = ht_get_int(c->st, d->v.var.name_idx);
+    // syme *old = ht_get_int(c->st, d->v.var.name_idx); FIXME
+    syme *old; // FIXME
     if (old != NULL) {
       if (old->t->t == TYPE_FN) {
 
@@ -414,8 +420,8 @@ static void typecheck_local_var_decl(checker *c, decl *d) {
       a.v.s.global = true;
       a.v.s.init.t = INIT_NOINIT;
 
-      add_to_symtable(c, new_type(c, TYPE_INT), d->v.var.name,
-                      d->v.var.name_idx, d, a);
+      // add_to_symtable(c, new_type(c, TYPE_INT), d->v.var.name, FIXME
+      //                 d->v.var.name_idx, d, a);
       return;
     }
     break;
@@ -443,9 +449,10 @@ static void typecheck_local_var_decl(checker *c, decl *d) {
   } break;
   case SC_NONE: {
     a.t = ATTR_LOCAL;
-    add_to_symtable(c, new_type(c, TYPE_INT), d->v.var.name, d->v.var.name_idx,
-                    d,
-                    a); // important to be begore typechecking expr
+    // add_to_symtable(c, new_type(c, TYPE_INT), d->v.var.name,
+    // d->v.var.name_idx,
+    //                 d,
+    //                 a); // important to be begore typechecking expr FIXME
 
     if (d->v.var.init != NULL)
       typecheck_expr(c, d->v.var.init);
@@ -455,8 +462,9 @@ static void typecheck_local_var_decl(checker *c, decl *d) {
   } break;
   }
 
-  add_to_symtable(c, new_type(c, TYPE_INT), d->v.var.name, d->v.var.name_idx, d,
-                  a);
+  // add_to_symtable(c, new_type(c, TYPE_INT), d->v.var.name, d->v.var.name_idx,
+  // d,
+  //                 a); FIXME
 }
 
 static void typecheck_var_decl(checker *c, decl *d) {
