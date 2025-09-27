@@ -10,6 +10,8 @@
 #include <stdio.h>
 #include <string.h>
 
+// TODO: location for block stmt
+
 extern arena ptr_arena; // in main.c
 
 // binary_op returns 0 on non-bin op, so MIN_PREC should be <= -1 so when
