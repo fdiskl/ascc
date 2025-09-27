@@ -174,7 +174,7 @@ static void print_expr(expr *e, int indent) {
     print_expr(e->v.assignment.r, indent + 1);
     return;
   case EXPR_VAR:
-    printf("Var(%s, %d)", e->v.var.name, e->v.var.name_idx);
+    printf("Var(%s, %s)", e->v.var.name, e->v.var.original_name);
     print_ast_pos(e->pos);
     printf("\n");
     return;
@@ -187,8 +187,7 @@ static void print_expr(expr *e, int indent) {
     print_expr(e->v.ternary.elze, indent + 1);
     return;
   case EXPR_FUNC_CALL:
-    printf("FuncCallExpr (%s, %d)", e->v.func_call.name,
-           e->v.func_call.name_idx);
+    printf("FuncCallExpr (%s)", e->v.func_call.name);
     print_ast_pos(e->pos);
     printf("\n");
     if (e->v.func_call.args != NULL)
@@ -379,17 +378,15 @@ static void print_decl(decl *d, int indent) {
   }
   switch (d->t) {
   case DECL_FUNC:
-    printf("FuncDecl (%s, %d) (scp: %d)", d->v.func.name, d->v.func.name_idx,
-           d->scope);
+    printf("FuncDecl (%s) (scp: %d)", d->v.func.name, d->scope);
     print_ast_pos(d->pos);
     printf("\n");
-    if (d->v.func.params != NULL) {
+    if (d->v.func.params_names != NULL && d->v.func.original_params != NULL) {
       print_indent(indent + 1);
-      printf("%s(%d)", d->v.func.params[0],
-             (int)(intptr_t)d->v.func.params_idxs[0]);
+      printf("%s(%s)", d->v.func.params_names[0], d->v.func.original_params[0]);
       for (int i = 1; i < d->v.func.params_len; ++i)
-        printf(", %s(%d)", d->v.func.params[i],
-               (int)(intptr_t)d->v.func.params_idxs[i]);
+        printf(", %s(%s)", d->v.func.params_names[i],
+               d->v.func.original_params[i]);
       printf("\n");
     } else {
       print_indent(indent + 1);
@@ -404,7 +401,7 @@ static void print_decl(decl *d, int indent) {
     break;
 
   case DECL_VAR:
-    printf("VarDecl (%s, %d) (scp: %d)", d->v.var.name, d->v.var.name_idx,
+    printf("VarDecl (%s, %s) (scp: %d)", d->v.var.name, d->v.var.original_name,
            d->scope);
     print_ast_pos(d->pos);
     printf("\n");
