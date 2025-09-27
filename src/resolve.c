@@ -25,19 +25,25 @@ static int scope = 0;
 static int get_label() { return ++label_idx_counter; }
 static int get_name() { return ++var_name_idx_counter; }
 
-static ident_entry *alloc_symt_entry(parser *p, string name, char linkage,
-                                     int name_idx) {
+static ident_entry *alloc_symt_entry(parser *p, string original_name,
+                                     char linkage, string name) {
   ident_entry *e = ARENA_ALLOC_OBJ(&p->symbol_arena, ident_entry);
   e->has_linkage = linkage;
+  e->original_name = original_name;
   e->name = name;
-  e->name_idx = name_idx;
   e->scope = scope;
 
   return e;
 }
 
+static ident_entry *create_symt_entry(parser *p, string original_name,
+                                      char linkage, int name_idx) {
+  return alloc_symt_entry(p, original_name, linkage,
+                          string_sprintf("%s_%d", original_name, name_idx));
+}
+
 static ident_entry *new_symt_entry(parser *p, string name, char linkage) {
-  return alloc_symt_entry(p, name, linkage, get_name());
+  return create_symt_entry(p, name, linkage, get_name());
 }
 
 static bool is_lvalue(expr *e) {
@@ -124,7 +130,7 @@ void resolve_func_call_expr(parser *p, expr *e) {
     after_error();
   }
 
-  e->v.func_call.name_idx = entry->name_idx;
+  e->v.func_call.name = e->v.func_call.name;
 }
 
 void resolve_expr(parser *p, expr *e) {
@@ -157,14 +163,14 @@ void resolve_expr(parser *p, expr *e) {
 
     break;
   case EXPR_VAR: {
-    ident_entry *entry = find_entry(p, e->v.var.name);
+    ident_entry *entry = find_entry(p, e->v.var.original_name);
     if (entry == NULL) {
-      fprintf(stderr, "undefined var %s (%d:%d-%d:%d)\n", e->v.var.name,
-              e->pos.line_start, e->pos.pos_start, e->pos.line_end,
-              e->pos.pos_end);
+      fprintf(stderr, "undefined var %s (%d:%d-%d:%d)\n",
+              e->v.var.original_name, e->pos.line_start, e->pos.pos_start,
+              e->pos.line_end, e->pos.pos_end);
       after_error();
     } else {
-      e->v.var.name_idx = entry->name_idx;
+      e->v.var.name = entry->name;
     }
 
     break;
@@ -392,15 +398,11 @@ void enter_func(parser *p, decl *f) {
   }
 
   if (e == NULL) {
-    ident_entry *e2 = ht_get(p->funcs_ht, f->v.func.name);
-
-    e = e2 == NULL ? new_symt_entry(p, f->v.func.name, true)
-                   : alloc_symt_entry(p, f->v.func.name, true, e2->name_idx);
+    e = alloc_symt_entry(p, f->v.func.name, true, f->v.func.name);
 
     ht_set(p->ident_ht_list_head, f->v.func.name, e);
-    ht_set(p->funcs_ht, f->v.func.name, e);
   }
-  f->v.func.name_idx = e->name_idx;
+  f->v.func.name = f->v.func.name;
 
   enter_scope(p);
 }
@@ -436,10 +438,8 @@ void exit_func_with_body(parser *p, decl *f) {
   ht_destroy(p->gotos_to_check_ht);
 }
 
-ident_entry *resolve_global_var_decl(parser *p, string name, ast_pos pos) {
-  ident_entry *e = ht_get(p->ident_ht_list_head, name); // check only curr scope
-  ident_entry *new_e =
-      alloc_symt_entry(p, name, true, e != NULL ? e->name_idx : get_name());
+ident_entry *resolve_filescope_var_decl(parser *p, string name, ast_pos pos) {
+  ident_entry *new_e = alloc_symt_entry(p, name, true, name);
 
   const char *new_key = ht_set(p->ident_ht_list_head, name, new_e);
   assert(new_key);
@@ -473,11 +473,7 @@ ident_entry *resolve_local_var_decl(parser *p, string name, ast_pos pos,
   }
 
   if (sc == SC_EXTERN) {
-
-    ident_entry *e = find_entry(p, name);
-
-    ident_entry *new_e =
-        alloc_symt_entry(p, name, true, e != NULL ? e->name_idx : get_name());
+    ident_entry *new_e = alloc_symt_entry(p, name, true, name);
     const char *new_key = ht_set(p->ident_ht_list_head, name, new_e);
     assert(new_key);
 
@@ -497,7 +493,7 @@ ident_entry *resolve_local_var_decl(parser *p, string name, ast_pos pos,
 ident_entry *resolve_var_decl(parser *p, string name, ast_pos pos, char param,
                               sct sc) {
   if (scope == 0)
-    return resolve_global_var_decl(p, name, pos);
+    return resolve_filescope_var_decl(p, name, pos);
   if (param)
     return resolve_param(p, name, pos);
   else

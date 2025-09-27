@@ -74,9 +74,7 @@ void init_parser(parser *p, lexer *l) {
   vec_push_back(arenas_to_free, &p->symbol_arena);
 
   p->ident_ht_list_head = ht_create();
-  p->funcs_ht = ht_create();
 
-  vec_push_back(tables_to_destroy, p->funcs_ht);
   vec_push_back(tables_to_destroy, p->ident_ht_list_head);
 
   advance(p); // for after_next
@@ -144,7 +142,7 @@ static expr *parse_unary_expr(parser *p) {
 
 static expr *parse_var_expr(parser *p) {
   expr *e = alloc_expr(p, EXPR_VAR);
-  e->v.var.name = expect(p, TOK_IDENT)->v.ident;
+  e->v.var.original_name = expect(p, TOK_IDENT)->v.ident;
   return e;
 }
 
@@ -732,15 +730,16 @@ ident_entry *resolve_var_decl(parser *p, string name, ast_pos pos, char param,
 static void parse_params(parser *p, func_decl *f) {
   if (p->next.token == TOK_VOID) {
     expect(p, TOK_VOID);
-    f->params = NULL;
+    f->params_names = NULL;
+    f->original_params = NULL;
     f->params_len = 0;
     return;
   }
 
   VEC(string) params;
-  VEC(void *) params_idxs;
+  VEC(string) params_new_names;
   vec_init(params);
-  vec_init(params_idxs);
+  vec_init(params_new_names);
 
   ast_pos pos;
   tok_pos start = expect(p, TOK_INT)->pos;
@@ -748,10 +747,8 @@ static void parse_params(parser *p, func_decl *f) {
   CONVERT_POS(start, end, pos);
 
   vec_push_back(params, p->curr.v.ident);
-  vec_push_back(params_idxs,
-                (void *)((intptr_t)resolve_var_decl(p, p->curr.v.ident, pos,
-                                                    true, SC_NONE)
-                             ->name_idx));
+  vec_push_back(params_new_names,
+                resolve_var_decl(p, p->curr.v.ident, pos, true, SC_NONE)->name);
 
   while (p->next.token != TOK_RPAREN) {
     start = expect(p, TOK_COMMA)->pos;
@@ -760,16 +757,15 @@ static void parse_params(parser *p, func_decl *f) {
     CONVERT_POS(start, end, pos);
 
     vec_push_back(params, p->curr.v.ident);
-    vec_push_back(params_idxs,
-                  (void *)(intptr_t)(resolve_var_decl(p, p->curr.v.ident, pos,
-                                                      true, SC_NONE)
-                                         ->name_idx));
+    vec_push_back(
+        params_new_names,
+        resolve_var_decl(p, p->curr.v.ident, pos, true, SC_NONE)->name);
   }
 
   f->params_len = params.size;
 
-  vec_move_into_arena(&ptr_arena, params, string, f->params);
-  vec_move_into_arena(&ptr_arena, params_idxs, void *, f->params_idxs);
+  vec_move_into_arena(&ptr_arena, params, string, f->original_params);
+  vec_move_into_arena(&ptr_arena, params_new_names, string, f->params_names);
 
   vec_free(params);
 }
@@ -877,13 +873,13 @@ static decl *parse_decl(parser *p) {
 
   } else {
     res = alloc_decl(p, DECL_VAR);
-    res->v.var.name = ident;
+    res->v.var.original_name = ident;
 
     ast_pos pos;
     CONVERT_POS(start, tmp_end, pos);
 
     ident_entry *e = resolve_var_decl(p, ident, pos, false, sc);
-    res->v.var.name_idx = e->name_idx;
+    res->v.var.name = e->name;
     res->scope = e->scope;
 
     if (p->next.token == TOK_ASSIGN) {
