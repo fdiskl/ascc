@@ -132,14 +132,13 @@ struct _assignment {
 
 struct _func_call_expr {
   string name;
-  int name_idx;
   expr **args;
   size_t args_len;
 };
 
 struct _var_expr {
-  string name;  // name in src
-  int name_idx; // idx representing name
+  string name;
+  string original_name;
 };
 
 struct _expr {
@@ -306,18 +305,18 @@ typedef enum {
 } declt;
 
 struct _var_decl {
-  string name;  // name in src
-  int name_idx; // unique idx representing name
-  expr *init;   // NULL if not present
+  string name;
+  string original_name;
+  expr *init; // NULL if not present
 };
 
 struct _func_decl {
   string name;
-  int name_idx;
-  stmt *bs;       // NULL if prototype, otherwise block_stmt
-  string *params; // NULL if void
-  void *
-      *params_idxs; // NULL if void, actually not ptrs but ints casted as void*
+  stmt *bs; // NULL if prototype, otherwise block_stmt
+  string
+      *params_names; // NULL if void, actually not ptrs but ints casted as void*
+
+  string *original_params; // NULL if void
   size_t params_len;
   // todo: return type, arg type
 };
@@ -380,7 +379,7 @@ struct _loop_resolve_info {
 typedef struct _ident_entry ident_entry;
 struct _ident_entry {
   string name;
-  int name_idx;
+  string original_name;
   char has_linkage;
   int scope;
 };
@@ -406,7 +405,6 @@ struct _parser {
   ht *ident_ht_list_head;
   ht *labels_ht;
   ht *gotos_to_check_ht;
-  ht *funcs_ht;
   arena symbol_arena;
   VEC(loop_resolve_info) stack_loop_resolve_info;
 };
