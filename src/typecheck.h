@@ -63,7 +63,7 @@ struct _sym_table_attrs {
 
 struct _sym_table_entry {
   string original_name;
-  int name_idx;
+  string name;
   decl *ref; // can be NULL too
   type *t;
   attrs a;
