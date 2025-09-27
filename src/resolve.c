@@ -130,7 +130,7 @@ void resolve_func_call_expr(parser *p, expr *e) {
     after_error();
   }
 
-  e->v.func_call.name = e->v.func_call.name;
+  e->v.func_call.name = entry->name;
 }
 
 void resolve_expr(parser *p, expr *e) {
