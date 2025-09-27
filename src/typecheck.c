@@ -73,7 +73,7 @@ static void typecheck_fn_call_expr(checker *c, expr *e) {
     fprintf(stderr,
             "invalid arg count when calling %s, expected %d, got %zu, "
             "(%d:%d-%d:%d)\n",
-            e->v.var.original_name, entry->t->v.fntype.param_count,
+            e->v.func_call.name, entry->t->v.fntype.param_count,
             e->v.func_call.args_len, e->pos.line_start, e->pos.pos_start,
             e->pos.line_end, e->pos.pos_end);
 
