@@ -62,9 +62,9 @@ static void typecheck_expr(checker *c, expr *e);
 static void typecheck_fn_call_expr(checker *c, expr *e) {
   syme *entry = ht_get(c->st, e->v.var.name);
   if (entry->t->t != TYPE_FN) {
-    fprintf(stderr, "var name used as variable %s, (%d:%d-%d:%d)\n",
-            e->v.var.name, e->pos.line_start, e->pos.pos_start, e->pos.line_end,
-            e->pos.pos_end);
+    fprintf(stderr, "variable used as function %s (%d:%d-%d:%d)\n",
+            entry->original_name, e->pos.line_start, e->pos.pos_start,
+            e->pos.line_end, e->pos.pos_end);
 
     after_error();
   }
@@ -73,7 +73,7 @@ static void typecheck_fn_call_expr(checker *c, expr *e) {
     fprintf(stderr,
             "invalid arg count when calling %s, expected %d, got %zu, "
             "(%d:%d-%d:%d)\n",
-            e->v.var.name, entry->t->v.fntype.param_count,
+            e->v.var.original_name, entry->t->v.fntype.param_count,
             e->v.func_call.args_len, e->pos.line_start, e->pos.pos_start,
             e->pos.line_end, e->pos.pos_end);
 
@@ -316,18 +316,7 @@ static void typecheck_filescope_var_decl(checker *c, decl *d) {
       after_error();
     }
 
-    if (old->a.t != ATTR_STATIC) {
-      ast_pos new_pos = d->pos;
-      ast_pos old_pos = old->ref->pos;
-      fprintf(stderr,
-              " %s (%d:%d-%d:%d), old decl at "
-              "%d:%d-%d:%d\n",
-              d->v.var.name, new_pos.line_start, new_pos.pos_start,
-              new_pos.line_end, new_pos.pos_end, old_pos.line_start,
-              old_pos.pos_start, old_pos.line_end, old_pos.pos_end);
-
-      after_error();
-    }
+    assert(old->a.t == ATTR_STATIC);
 
     if (d->sc == SC_EXTERN) {
       global = old->a.v.s.global;
@@ -338,7 +327,7 @@ static void typecheck_filescope_var_decl(checker *c, decl *d) {
           stderr,
           "conflicting variable linkage for var %s (%d:%d-%d:%d), old decl at "
           "%d:%d-%d:%d\n",
-          d->v.var.name, new_pos.line_start, new_pos.pos_start,
+          d->v.var.original_name, new_pos.line_start, new_pos.pos_start,
           new_pos.line_end, new_pos.pos_end, old_pos.line_start,
           old_pos.pos_start, old_pos.line_end, old_pos.pos_end);
 
@@ -353,7 +342,7 @@ static void typecheck_filescope_var_decl(checker *c, decl *d) {
                 "conflicting file scope declarations for var %s (%d:%d-%d:%d), "
                 "old decl at "
                 "%d:%d-%d:%d\n",
-                d->v.var.name, new_pos.line_start, new_pos.pos_start,
+                d->v.var.original_name, new_pos.line_start, new_pos.pos_start,
                 new_pos.line_end, new_pos.pos_end, old_pos.line_start,
                 old_pos.pos_start, old_pos.line_end, old_pos.pos_end);
 
@@ -386,7 +375,7 @@ static void typecheck_local_var_decl(checker *c, decl *d) {
       fprintf(
           stderr,
           "initializer on local extern variable declaration %s (%d:%d-%d:%d)\n",
-          d->v.var.name, pos.line_start, pos.pos_start, pos.line_end,
+          d->v.var.original_name, pos.line_start, pos.pos_start, pos.line_end,
           pos.pos_end);
 
       after_error();
@@ -400,7 +389,7 @@ static void typecheck_local_var_decl(checker *c, decl *d) {
         fprintf(stderr,
                 "function %s redeclared as var (%d:%d-%d:%d), old decl at "
                 "%d:%d-%d:%d\n",
-                d->v.var.name, old_pos.line_start, old_pos.pos_start,
+                d->v.var.original_name, old_pos.line_start, old_pos.pos_start,
                 old_pos.line_end, old_pos.pos_end, new_pos.line_start,
                 new_pos.pos_start, new_pos.line_end, new_pos.pos_end);
 
