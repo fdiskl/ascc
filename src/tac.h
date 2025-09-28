@@ -69,7 +69,7 @@ struct _tac_val {
 
   union {
     uint64_t intv;
-    int var_idx;
+    string var;
   } v;
 };
 
@@ -98,8 +98,7 @@ struct _tac_instr {
 
 struct _tac_func {
   string name;
-  int idx;
-  void **params;
+  string *params;
   size_t params_len;
   taci *firsti;
 

@@ -78,7 +78,7 @@ static x86_op operand_from_tac_val(tacv v) {
   case TACV_CONST:
     return new_x86_imm(v.v.intv);
   case TACV_VAR:
-    return new_x86_pseudo(v.v.var_idx);
+    // return new_x86_pseudo(v.v.var_idx);
   }
   UNREACHABLE();
 }

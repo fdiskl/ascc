@@ -88,7 +88,7 @@ static void fprint_val(FILE *f, tacv *v) {
     fprintf(f, "%llu", (unsigned long long)v->v.intv);
     break;
   case TACV_VAR:
-    fprintf(f, "v%d", v->v.var_idx);
+    fprintf(f, "%s", v->v.var);
     break;
   default:
     UNREACHABLE();
@@ -192,7 +192,8 @@ void fprint_taci(FILE *f, taci *i) {
     fprintf(f, " -> L%d", i->label_idx);
     break;
   case TAC_CALL:
-    fprintf(f, "call %s[%d] (", i->v.call.name, i->label_idx);
+    fprint_val(f, &i->dst);
+    fprintf(f, " = call %s(", i->v.call.name);
     if (i->v.call.args != NULL)
       fprint_val(f, &i->v.call.args[0]);
     for (int j = 1; j < i->v.call.args_len; ++j) {
@@ -205,11 +206,11 @@ void fprint_taci(FILE *f, taci *i) {
 }
 
 void print_tac_func(tacf *f) {
-  printf("func %s[%d] (", f->name, f->idx);
+  printf("func %s(", f->name);
   if (f->params != NULL) {
-    printf("v%d", (int)(intptr_t)f->params[0]);
+    printf("%s", f->params[0]);
     for (int i = 1; i < f->params_len; ++i)
-      printf(", v%d", (int)(intptr_t)f->params[i]);
+      printf(", %s", f->params[i]);
   }
   printf("):\n");
 

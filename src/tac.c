@@ -4,11 +4,12 @@
 #include "common.h"
 #include "driver.h"
 #include "parser.h"
+#include "strings.h"
 #include "vec.h"
 #include <stdint.h>
 #include <stdio.h>
 
-// TODO: make so with DEBUG_INFO flags we save var names for debugging
+static int tmp_var_counter = 0;
 
 void init_tacgen(tacgen *tg) {
   INIT_ARENA(&tg->taci_arena, taci);
@@ -20,11 +21,10 @@ void init_tacgen(tacgen *tg) {
   vec_push_back(arenas_to_free, &tg->tacv_arena);
 }
 
-static tacf *alloc_tacf(tacgen *tg, string name, int idx) {
+static tacf *alloc_tacf(tacgen *tg, string name) {
   tacf *res = ARENA_ALLOC_OBJ(&tg->tacf_arena, tacf);
   res->next = NULL;
   res->name = name;
-  res->idx = idx;
   return res;
 }
 
@@ -58,14 +58,14 @@ extern int var_name_idx_counter; // defined in resolve.c
 static tacv new_tmp() {
   tacv v;
   v.t = TACV_VAR;
-  v.v.var_idx = ++var_name_idx_counter;
+  v.v.var = string_sprintf("t_%d", ++tmp_var_counter);
   return v;
 }
 
-static tacv new_var(int idx) {
+static tacv new_var(string name) {
   tacv v;
   v.t = TACV_VAR;
-  v.v.var_idx = idx;
+  v.v.var = string_sprintf("_%s", name);
   return v;
 }
 
@@ -309,7 +309,6 @@ static tacv gen_tac_from_func_call_expr(tacgen *tg, func_call_expr fe) {
 
   taci *i = insert_taci(tg, TAC_CALL);
   i->dst = new_tmp();
-  // i->label_idx = fe.name_idx; FIXME
   i->v.call.name = fe.name;
 
   if (fe.args != NULL) {
@@ -335,7 +334,7 @@ static tacv gen_tac_from_expr(tacgen *tg, expr *e) {
     return gen_tac_from_assignment_expr(tg, e->v.assignment);
     break;
   case EXPR_VAR:
-    // return new_var(e->v.var.name_idx); FIXME
+    return new_var(e->v.var.name);
     break;
   case EXPR_TERNARY:
     return gen_tac_from_ternary_expr(tg, e->v.ternary);
@@ -545,16 +544,12 @@ static void gen_tac_from_stmt(tacgen *tg, stmt *s) {
 }
 
 static tacf *gen_tac_from_func_decl(tacgen *tg, func_decl fd) {
+  tmp_var_counter = 0;
   if (fd.bs == NULL)
     return NULL;
-  // tacf *res = alloc_tacf(tg, fd.name, fd.name_idx); FIXME
-  // if (fd.params != NULL) { FIXME
-  //   res->params = fd.params_idxs; FIXME
-  //   res->params_len = fd.params_len; FIXME
-  // } else { FIXME
-  //   res->params = NULL; FIXME
-  //   res->params_len = 0; FIXME
-  // } FIXME
+  tacf *res = alloc_tacf(tg, fd.name);
+  res->params = fd.params_names;
+  res->params_len = fd.params_len;
 
   tg->head = tg->tail = NULL;
 
@@ -564,18 +559,18 @@ static tacf *gen_tac_from_func_decl(tacgen *tg, func_decl fd) {
   taci *ret_at_end = insert_taci(tg, TAC_RET);
   ret_at_end->v.s.src1 = new_const(0);
 
-  // res->firsti = tg->head; FIXME
+  res->firsti = tg->head;
 
-  // return res; FIXME
+  return res;
 }
 
 static void gen_tac_from_var_decl(tacgen *tg, var_decl vd) {
   if (vd.init != NULL) {
-    // tacv dst = new_var(vd.name_idx); FIXME
+    tacv dst = new_var(vd.name);
     tacv src = gen_tac_from_expr(tg, vd.init);
 
     taci *cpy = insert_taci(tg, TAC_CPY);
-    // cpy->dst = dst; FIXME
+    cpy->dst = dst;
     cpy->v.s.src1 = src;
   }
 }
