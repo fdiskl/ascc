@@ -1,9 +1,11 @@
 
+#include "parser.h"
 #include "strings.h"
 #include "table.h"
 #include "x86.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 static int max_offset = 0;
 static int offset = 0;
@@ -12,39 +14,14 @@ static ht *offset_table;
 // defined in x86.c
 x86_instr *alloc_x86_instr(x86_asm_gen *ag, int op);
 
-#ifdef PRINT_VARS_LAYOUT_X86
-ht *names_table;
-
-typedef struct {
-  const char *key;
-  void *value;
-} kv_pair;
-
-static int cmp_varnames(const void *a, const void *b) {
-  const kv_pair *ka = a;
-  const kv_pair *kb = b;
-
-  // skip leading 'v' and convert rest to int
-  // assumes form of 'v%d'
-  int ia = atoi(ka->key + 1);
-  int ib = atoi(kb->key + 1);
-
-  return ia - ib;
-}
-#endif
-
 // TODO: register allocation, graph coloring etc.
 static void fix_pseudo_op(x86_op *op) {
   if (op->t != X86_OP_PSEUDO)
     return;
 
-#ifdef PRINT_VARS_LAYOUT_X86
-  int pseudo_idx = op->v.pseudo_idx;
-#endif
-
   op->t = X86_OP_STACK;
 
-  void *e = ht_get_int(offset_table, op->v.pseudo_idx);
+  void *e = ht_get(offset_table, op->v.pseudo);
   if (e != NULL) {
     int d = (int)(intptr_t)e;
     if (d > max_offset)
@@ -54,16 +31,10 @@ static void fix_pseudo_op(x86_op *op) {
     offset += 4;
     if (offset > max_offset)
       max_offset = offset;
-    ht_set_int(offset_table, op->v.pseudo_idx, (void *)(intptr_t)offset);
+    ht_set(offset_table, op->v.pseudo, (void *)(intptr_t)offset);
 
     op->v.stack_offset = offset;
   }
-
-#ifdef PRINT_VARS_LAYOUT_X86
-  char buf[128];
-  snprintf(buf, sizeof(buf), "v%d", pseudo_idx);
-  ht_set(names_table, buf, (void *)((intptr_t)op->v.stack_offset));
-#endif
 
   if (op->v.stack_offset > max_offset)
     max_offset = op->v.stack_offset;
@@ -108,82 +79,71 @@ static void fix_pseudo_for_instr(x86_instr *i) {
   }
 }
 
+#ifdef PRINT_VARS_LAYOUT_X86
+typedef struct _tmp tmp_entry;
+struct _tmp {
+  int offset;
+  const char *name;
+};
+
+int tmp_entry_cmp(const void *a, const void *b) {
+  tmp_entry *aa = (tmp_entry *)a;
+  tmp_entry *bb = (tmp_entry *)b;
+
+  return aa->offset < bb->offset;
+}
+
+#endif
+
 int fix_pseudo_for_func(x86_asm_gen *ag, x86_func *f) {
   max_offset = 0;
   offset = 0;
 
-  offset_table = ht_create_int();
-
-#ifdef PRINT_VARS_LAYOUT_X86
-  names_table = ht_create();
-#endif
+  offset_table = ht_create();
 
   for (x86_instr *i = f->first; i != NULL; i = i->next)
     fix_pseudo_for_instr(i);
 
 #ifdef PRINT_VARS_LAYOUT_X86
+  x86_instr *head = alloc_x86_instr(ag, X86_COMMENT);
+  head->v.comment = new_string("---- vars layout ----");
+  head->prev = NULL;
+  x86_instr *tail = head;
 
-  hti it = ht_iterator(names_table);
-  int count = 0;
+  hti it = ht_iterator(offset_table);
+
+  VEC(tmp_entry) arr;
+  vec_init(arr);
   while (ht_next(&it)) {
-    ++count;
+    tmp_entry val;
+    val.name = it.key;
+    val.offset = (int)(intptr_t)it.value;
+    vec_push_back(arr, val);
   }
 
-  kv_pair *arr = malloc(count * sizeof(kv_pair));
+  qsort(arr.data, arr.size, sizeof(tmp_entry), tmp_entry_cmp);
 
-  size_t idx = 0;
-  it = ht_iterator(names_table); // start new iteration
-  while (ht_next(&it)) {
-    arr[idx].key = it.key;
-    arr[idx].value = it.value;
-    idx++;
+  vec_foreach(tmp_entry, arr, it) {
+    x86_instr *c = alloc_x86_instr(ag, X86_COMMENT);
+    c->v.comment = string_sprintf("%s: %d", it->name, it->offset);
+    c->prev = tail;
+    tail->next = c;
+    tail = c;
   }
 
-  qsort(arr, count, sizeof(kv_pair), cmp_varnames);
+  x86_instr *c = alloc_x86_instr(ag, X86_COMMENT);
+  c->v.comment = new_string("--------------------");
+  c->prev = tail;
+  tail->next = c;
+  tail = c;
 
-  x86_instr *line1 = alloc_x86_instr(ag, X86_COMMENT);
-  x86_instr *line2 = alloc_x86_instr(ag, X86_COMMENT);
-
-  line1->v.comment = string_sprintf(
-      " ---------------------------\n\t# --- local var locations ---");
-  line2->v.comment = string_sprintf(
-      " ---------------------------\n\t# ---------------------------\n");
-
-  line1->prev = NULL;
-  line1->next = NULL;
-  line2->prev = NULL;
-  line2->next = NULL;
-
-  x86_instr *head = line1;
-  x86_instr *tail = line1;
-
-  for (size_t j = 0; j < count; j++) {
-    x86_instr *i = alloc_x86_instr(ag, X86_COMMENT);
-    i->v.comment = string_sprintf(" %s: -%d(%%rbp)", arr[j].key,
-                                  (int)((intptr_t)arr[j].value));
-
-    i->next = NULL;
-    i->prev = tail;
-    tail->next = i;
-    tail = i;
-  }
-
-  free(arr);
-
-  line2->prev = tail;
-  tail->next = line2;
-  tail = line2;
-
-  if (f->first != NULL) {
-    tail->next = f->first;
-    f->first->prev = tail;
-  }
+  f->first->prev = tail;
+  tail->next = f->first;
   f->first = head;
 
-  ht_destroy(names_table);
 #endif
 
   ht_destroy(offset_table);
 
-  return (max_offset + 15) & ~15;
+  return (max_offset + 15) & ~15; // round to 16
 }
