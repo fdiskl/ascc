@@ -9,6 +9,8 @@
 #include "typecheck.h"
 #include "vec.h"
 #include <stdint.h>
+#include <stdio.h>
+#include <string.h>
 
 static int tmp_var_counter = 0;
 
@@ -568,8 +570,18 @@ static tac_top_level *gen_tac_from_func_decl(tacgen *tg, func_decl fd) {
   if (fd.bs == NULL)
     return NULL;
   tac_top_level *res = alloc_tacf(tg, fd.name);
-  res->v.f.params = fd.params_names;
-  res->v.f.params_len = fd.params_len;
+  if (fd.params_names == NULL) {
+    res->v.f.params = NULL;
+    res->v.f.params_len = 0;
+  } else {
+    extern arena ptr_arena; // main.c
+    res->v.f.params = ARENA_ALLOC_ARRAY(&ptr_arena, string, fd.params_len);
+    res->v.f.params_len = fd.params_len;
+
+    for (int i = 0; i < res->v.f.params_len; ++i) {
+      res->v.f.params[i] = string_sprintf("_%s", fd.params_names[i]);
+    }
+  }
 
   tg->head = tg->tail = NULL;
 
@@ -584,6 +596,7 @@ static tac_top_level *gen_tac_from_func_decl(tacgen *tg, func_decl fd) {
   syme *e = ht_get(tg->st, res->v.f.name);
   assert(e);
   assert(e->a.t == ATTR_FUNC);
+
   res->v.f.global = e->a.v.f.global;
 
   return res;
