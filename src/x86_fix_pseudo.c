@@ -21,7 +21,7 @@ static void fix_pseudo_op(x86_op *op, sym_table st) {
     return;
 
   syme *se = ht_get(st, op->v.pseudo);
-  if (se != NULL) {
+  if (se != NULL && se->a.t == ATTR_STATIC) {
     op->t = X86_OP_DATA;
     op->v.data = se->name;
     return;
