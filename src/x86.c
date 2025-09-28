@@ -335,7 +335,9 @@ static void gen_asm_from_call(x86_asm_gen *ag, taci *i) {
     mov->v.binary.src = operand_from_tac_val(i->v.call.args[j]);
   }
 
+  int stack_args = 0;
   for (int j = i->v.call.args_len - 1; j > 5; --j) {
+    ++stack_args;
     x86_op op = operand_from_tac_val(i->v.call.args[j]);
 
     if (op.t == X86_OP_REG || op.t == X86_OP_IMM)
@@ -350,7 +352,7 @@ static void gen_asm_from_call(x86_asm_gen *ag, taci *i) {
 
   x86_instr *call = insert_x86_instr(ag, X86_CALL, i);
   call->v.call.str_label = i->v.call.name;
-  padding += 8 * (i->v.call.args_len - 6);
+  padding += 8 * stack_args;
   if (padding != 0)
     insert_x86_instr(ag, X86_DEALLOC_STACK, i)->v.bytes_to_alloc = padding;
 
