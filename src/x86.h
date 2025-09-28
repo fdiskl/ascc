@@ -5,10 +5,13 @@
 #include "strings.h"
 #include "tac.h"
 #include "typecheck.h"
+#include <stdint.h>
 typedef struct _x86_instr x86_instr;
 typedef struct _x86_asm_gen x86_asm_gen;
 typedef struct _x86_op x86_op;
 typedef struct _x86_func x86_func;
+typedef struct _x86_static_var x86_static_var;
+typedef struct _x86_top_level x86_top_level;
 
 // Automatically enable ASM_DONT_FIX_INSTRUCTIONS if ASM_DONT_FIX_PSEUDO is
 // enabled. (see common.h)
@@ -91,7 +94,7 @@ struct _x86_op {
   x86_op_t t;
   union {
     uint64_t imm;
-    int pseudo_idx;
+    string pseudo;
     int stack_offset;
     x86_reg reg;
   } v;
@@ -132,21 +135,35 @@ struct _x86_func {
   string name;
   x86_instr *first;
   x86_func *next;
+  bool global;
+};
+
+struct _x86_static_var {
+  string name;
+  bool global;
+  uint64_t v;
+};
+
+struct _x86_top_level {
+  bool is_func;
+  union {
+    x86_func f;
+    x86_static_var v;
+  } v;
+  x86_top_level *next;
 };
 
 struct _x86_asm_gen {
   arena instr_arena;
-  arena func_arena;
-
-  sym_table sym_table;
+  arena top_level_arena;
 
   x86_instr *head; // head of instr linked list for curr func
   x86_instr *tail; // tail of instr linked list for curr func
 };
 
-void init_x86_asm_gen(x86_asm_gen *ag, sym_table st);
+void init_x86_asm_gen(x86_asm_gen *ag);
 
-x86_func *gen_asm(x86_asm_gen *ag, tacf *tac_first_f);
+x86_top_level *gen_asm(x86_asm_gen *ag, tac_top_level *tac_first_top_level);
 
 // replaces pseudo instructions, is called by gen_asm
 // returns amount of bytes to be allocated for locals
@@ -155,6 +172,6 @@ int fix_pseudo_for_func(x86_asm_gen *ag, x86_func *f);
 // fixes invalid instructions, is called by gen_asm
 void fix_instructions_for_func(x86_asm_gen *ag, x86_func *f);
 
-void emit_x86(FILE *w, x86_func *first_func);
+void emit_x86(FILE *w, x86_top_level *first_top_level);
 
 #endif

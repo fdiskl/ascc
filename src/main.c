@@ -151,9 +151,9 @@ int main(int argc, char *argv[]) {
   }
 
   x86_asm_gen ag;
-  init_x86_asm_gen(&ag, st);
+  init_x86_asm_gen(&ag);
 
-  x86_func *x86_prog = gen_asm(&ag, &tac_prog->v.f); // FIXME
+  x86_top_level *x86_prog = gen_asm(&ag, tac_prog);
 
   if (opts.dof == DOF_CODEGEN) {
     // TODO: print mb

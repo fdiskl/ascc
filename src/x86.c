@@ -10,14 +10,12 @@
 #include <assert.h>
 #include <stdint.h>
 
-void init_x86_asm_gen(x86_asm_gen *ag, sym_table st) {
+void init_x86_asm_gen(x86_asm_gen *ag) {
   INIT_ARENA(&ag->instr_arena, x86_instr);
-  INIT_ARENA(&ag->func_arena, x86_func);
+  INIT_ARENA(&ag->top_level_arena, x86_top_level);
 
   vec_push_back(arenas_to_free, &ag->instr_arena);
-  vec_push_back(arenas_to_free, &ag->func_arena);
-
-  ag->sym_table = st;
+  vec_push_back(arenas_to_free, &ag->top_level_arena);
 }
 
 x86_instr *alloc_x86_instr(x86_asm_gen *ag, int op) {
@@ -44,11 +42,12 @@ static x86_instr *insert_x86_instr(x86_asm_gen *ag, int op, taci *origin) {
   return i;
 }
 
-static x86_func *alloc_x86_func(x86_asm_gen *ag, string name) {
-  x86_func *res = ARENA_ALLOC_OBJ(&ag->func_arena, x86_func);
+static x86_top_level *alloc_x86_func(x86_asm_gen *ag, string name) {
+  x86_top_level *res = ARENA_ALLOC_OBJ(&ag->top_level_arena, x86_top_level);
   res->next = NULL;
-  res->name = name;
-  res->first = NULL;
+  res->is_func = true;
+  res->v.f.name = name;
+  res->v.f.first = NULL;
   return res;
 }
 
@@ -66,10 +65,10 @@ static x86_op new_x86_reg(x86_reg reg) {
   return op;
 }
 
-static x86_op new_x86_pseudo(int idx) {
+static x86_op new_x86_pseudo(string name) {
   x86_op op;
   op.t = X86_OP_PSEUDO;
-  op.v.pseudo_idx = idx;
+  op.v.pseudo = name;
   return op;
 }
 
@@ -78,7 +77,7 @@ static x86_op operand_from_tac_val(tacv v) {
   case TACV_CONST:
     return new_x86_imm(v.v.intv);
   case TACV_VAR:
-    // return new_x86_pseudo(v.v.var_idx);
+    return new_x86_pseudo(v.v.var);
   }
   UNREACHABLE();
 }
@@ -351,14 +350,6 @@ static void gen_asm_from_call(x86_asm_gen *ag, taci *i) {
   x86_instr *mov = insert_x86_instr(ag, X86_MOV, i);
   mov->v.binary.dst = dst;
   mov->v.binary.src = new_x86_reg(X86_AX);
-
-  syme *e = ht_get_int(ag->sym_table, i->label_idx);
-  assert(e);
-  assert(e->a.t == ATTR_FUNC);
-  if (e->a.v.f.defined)
-    call->v.call.plt = 0;
-  else
-    call->v.call.plt = 1;
 }
 
 static void gen_asm_from_instr(x86_asm_gen *ag, taci *i) {
@@ -427,8 +418,8 @@ static void gen_asm_from_instr(x86_asm_gen *ag, taci *i) {
   }
 }
 
-static x86_func *gen_asm_from_func(x86_asm_gen *ag, tacf *f) {
-  x86_func *func = alloc_x86_func(ag, f->name);
+static x86_top_level *gen_asm_from_func(x86_asm_gen *ag, tacf *f) {
+  x86_top_level *func = alloc_x86_func(ag, f->name);
   ag->head = NULL;
   ag->tail = NULL;
 
@@ -437,7 +428,7 @@ static x86_func *gen_asm_from_func(x86_asm_gen *ag, tacf *f) {
     x86_instr *mov = insert_x86_instr(ag, X86_MOV, NULL);
     x86_op op;
     op.t = X86_OP_PSEUDO;
-    op.v.pseudo_idx = (int)(intptr_t)f->params[i];
+    op.v.pseudo = f->params[i];
     mov->v.binary.dst = op;
     mov->v.binary.src = new_x86_reg(arg_regs[i]);
   }
@@ -446,7 +437,7 @@ static x86_func *gen_asm_from_func(x86_asm_gen *ag, tacf *f) {
     x86_instr *mov = insert_x86_instr(ag, X86_MOV, NULL);
     x86_op op;
     op.t = X86_OP_PSEUDO;
-    op.v.pseudo_idx = (int)(intptr_t)f->params[i];
+    op.v.pseudo = f->params[i];
     x86_op op2;
     op2.t = X86_OP_STACK;
     op2.v.stack_offset = (i - 5) * -8 - 8;
@@ -457,30 +448,35 @@ static x86_func *gen_asm_from_func(x86_asm_gen *ag, tacf *f) {
   for (taci *i = f->firsti; i != NULL; i = i->next)
     gen_asm_from_instr(ag, i);
 
-  func->first = ag->head;
+  func->v.f.first = ag->head;
   return func;
 }
 
-x86_func *gen_asm(x86_asm_gen *ag, tacf *tac_first_f) {
-  x86_func *head = NULL;
-  x86_func *tail = NULL;
-  for (tacf *f = tac_first_f; f != NULL; f = NULL) { // FIXME: post
-    x86_func *res = gen_asm_from_func(ag, f);
+x86_top_level *gen_asm(x86_asm_gen *ag, tac_top_level *tac_first_top_level) {
+  x86_top_level *head = NULL;
+  x86_top_level *tail = NULL;
+  for (tac_top_level *tl = tac_first_top_level; tl != NULL; tl = tl->next) {
+    x86_top_level *res;
+    if (tl->is_func) {
+      res = gen_asm_from_func(ag, &tl->v.f);
 
 // 2 step fix
 #ifndef ASM_DONT_FIX_PSEUDO
-    x86_instr *i = alloc_x86_instr(ag, X86_ALLOC_STACK);
+      x86_instr *i = alloc_x86_instr(ag, X86_ALLOC_STACK);
 
-    i->next = res->first;
-    res->first = i;
-    i->next->prev = i;
+      i->next = res->v.f.first;
+      res->v.f.first = i;
+      i->next->prev = i;
 
-    i->v.bytes_to_alloc = fix_pseudo_for_func(ag, res);
+      i->v.bytes_to_alloc = fix_pseudo_for_func(ag, &res->v.f);
 #endif
 
 #ifndef ASM_DONT_FIX_INSTRUCTIONS
-    fix_instructions_for_func(ag, res);
+      fix_instructions_for_func(ag, &res->v.f);
 #endif
+    } else {
+      TODO();
+    }
 
     res->next = NULL;
     if (head == NULL)
