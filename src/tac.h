@@ -90,6 +90,7 @@ struct _tac_instr {
       tacv *args;
       size_t args_len;
       string name;
+      bool plt;
     } call;
   } v;
 

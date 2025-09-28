@@ -193,7 +193,7 @@ void fprint_taci(FILE *f, taci *i) {
     break;
   case TAC_CALL:
     fprint_val(f, &i->dst);
-    fprintf(f, " = call %s(", i->v.call.name);
+    fprintf(f, " = call%s %s(", i->v.call.plt ? "@plt" : "", i->v.call.name);
     if (i->v.call.args != NULL)
       fprint_val(f, &i->v.call.args[0]);
     for (int j = 1; j < i->v.call.args_len; ++j) {

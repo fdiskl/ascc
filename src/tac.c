@@ -323,6 +323,14 @@ static tacv gen_tac_from_func_call_expr(tacgen *tg, func_call_expr fe) {
   i->dst = new_tmp();
   i->v.call.name = fe.name;
 
+  syme *e = ht_get(tg->st, fe.name);
+  assert(e);
+  assert(e->a.t == ATTR_FUNC);
+  if (e->a.v.f.defined)
+    i->v.call.plt = 0;
+  else
+    i->v.call.plt = 1;
+
   if (fe.args != NULL) {
     i->v.call.args_len = v.size;
     vec_move_into_arena(&tg->tacv_arena, v, tacv, i->v.call.args);
