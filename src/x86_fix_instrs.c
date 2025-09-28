@@ -4,6 +4,8 @@
 #include <assert.h>
 #include <stdio.h>
 
+static bool is_mem(int t) { return t == X86_OP_STACK || t == X86_OP_DATA; }
+
 static void fix_instr(x86_asm_gen *ag, x86_instr *i);
 
 static x86_op new_r10() {
@@ -63,7 +65,7 @@ static void insert_after_x86_instr(x86_asm_gen *ag, x86_instr *i,
 }
 
 static void fix_both_ops_mem(x86_asm_gen *ag, x86_instr *i) {
-  if (i->v.binary.dst.t == X86_OP_STACK && i->v.binary.src.t == X86_OP_STACK) {
+  if (is_mem(i->v.binary.dst.t) && is_mem(i->v.binary.src.t)) {
 
     x86_instr *mov = alloc_x86_instr(ag, X86_MOV);
     mov->v.binary.src = i->v.binary.src;
@@ -87,7 +89,7 @@ static void fix_idiv(x86_asm_gen *ag, x86_instr *i) {
 static void fix_mult(x86_asm_gen *ag, x86_instr *i) {
   assert(i->op == X86_MULT);
 
-  if (i->v.binary.dst.t == X86_OP_STACK) {
+  if (is_mem(i->v.binary.dst.t)) {
     x86_instr *mov_before = alloc_x86_instr(ag, X86_MOV);
     x86_instr *mov_after = alloc_x86_instr(ag, X86_MOV);
 

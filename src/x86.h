@@ -51,6 +51,7 @@ typedef enum {
   X86_OP_REG,
   X86_OP_PSEUDO,
   X86_OP_STACK,
+  X86_OP_DATA,
 } x86_op_t;
 
 typedef enum {
@@ -95,6 +96,7 @@ struct _x86_op {
   union {
     uint64_t imm;
     string pseudo;
+    string data;
     int stack_offset;
     x86_reg reg;
   } v;
@@ -163,11 +165,12 @@ struct _x86_asm_gen {
 
 void init_x86_asm_gen(x86_asm_gen *ag);
 
-x86_top_level *gen_asm(x86_asm_gen *ag, tac_top_level *tac_first_top_level);
+x86_top_level *gen_asm(x86_asm_gen *ag, tac_top_level *tac_first_top_level,
+                       sym_table st);
 
 // replaces pseudo instructions, is called by gen_asm
 // returns amount of bytes to be allocated for locals
-int fix_pseudo_for_func(x86_asm_gen *ag, x86_func *f);
+int fix_pseudo_for_func(x86_asm_gen *ag, x86_func *f, sym_table st);
 
 // fixes invalid instructions, is called by gen_asm
 void fix_instructions_for_func(x86_asm_gen *ag, x86_func *f);

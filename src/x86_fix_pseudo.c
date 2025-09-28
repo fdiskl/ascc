@@ -2,6 +2,7 @@
 #include "parser.h"
 #include "strings.h"
 #include "table.h"
+#include "typecheck.h"
 #include "x86.h"
 #include <stdint.h>
 #include <stdio.h>
@@ -15,9 +16,16 @@ static ht *offset_table;
 x86_instr *alloc_x86_instr(x86_asm_gen *ag, int op);
 
 // TODO: register allocation, graph coloring etc.
-static void fix_pseudo_op(x86_op *op) {
+static void fix_pseudo_op(x86_op *op, sym_table st) {
   if (op->t != X86_OP_PSEUDO)
     return;
+
+  syme *se = ht_get(st, op->v.pseudo);
+  if (se != NULL) {
+    op->t = X86_OP_DATA;
+    op->v.data = se->name;
+    return;
+  }
 
   op->t = X86_OP_STACK;
 
@@ -40,7 +48,7 @@ static void fix_pseudo_op(x86_op *op) {
     max_offset = op->v.stack_offset;
 }
 
-static void fix_pseudo_for_instr(x86_instr *i) {
+static void fix_pseudo_for_instr(x86_instr *i, sym_table st) {
   switch (i->op) {
   case X86_NOT:
   case X86_NEG:
@@ -48,7 +56,7 @@ static void fix_pseudo_for_instr(x86_instr *i) {
   case X86_INC:
   case X86_DEC:
   case X86_PUSH:
-    fix_pseudo_op(&i->v.unary.src);
+    fix_pseudo_op(&i->v.unary.src, st);
     break;
   case X86_MOV:
   case X86_ADD:
@@ -60,11 +68,11 @@ static void fix_pseudo_for_instr(x86_instr *i) {
   case X86_SHL:
   case X86_SAR:
   case X86_CMP:
-    fix_pseudo_op(&i->v.binary.src);
-    fix_pseudo_op(&i->v.binary.dst);
+    fix_pseudo_op(&i->v.binary.src, st);
+    fix_pseudo_op(&i->v.binary.dst, st);
     break;
   case X86_SETCC:
-    fix_pseudo_op(&i->v.setcc.op);
+    fix_pseudo_op(&i->v.setcc.op, st);
     break;
   case X86_RET:
   case X86_ALLOC_STACK:
@@ -95,14 +103,14 @@ int tmp_entry_cmp(const void *a, const void *b) {
 
 #endif
 
-int fix_pseudo_for_func(x86_asm_gen *ag, x86_func *f) {
+int fix_pseudo_for_func(x86_asm_gen *ag, x86_func *f, sym_table st) {
   max_offset = 0;
   offset = 0;
 
   offset_table = ht_create();
 
   for (x86_instr *i = f->first; i != NULL; i = i->next)
-    fix_pseudo_for_instr(i);
+    fix_pseudo_for_instr(i, st);
 
 #ifdef PRINT_VARS_LAYOUT_X86
   x86_instr *head = alloc_x86_instr(ag, X86_COMMENT);
@@ -110,8 +118,8 @@ int fix_pseudo_for_func(x86_asm_gen *ag, x86_func *f) {
   head->prev = NULL;
   x86_instr *tail = head;
 
+  // get all entries from offset table
   hti it = ht_iterator(offset_table);
-
   VEC(tmp_entry) arr;
   vec_init(arr);
   while (ht_next(&it)) {
@@ -121,11 +129,26 @@ int fix_pseudo_for_func(x86_asm_gen *ag, x86_func *f) {
     vec_push_back(arr, val);
   }
 
+  // sort entries
   qsort(arr.data, arr.size, sizeof(tmp_entry), tmp_entry_cmp);
 
+  // print entries
   vec_foreach(tmp_entry, arr, it) {
     x86_instr *c = alloc_x86_instr(ag, X86_COMMENT);
-    c->v.comment = string_sprintf("%s: %d", it->name, it->offset);
+    c->v.comment = string_sprintf(" %s: -%d(%%rbp)", it->name, it->offset);
+    c->prev = tail;
+    tail->next = c;
+    tail = c;
+  }
+
+  // print static vars
+  it = ht_iterator(st);
+  while (ht_next(&it)) {
+    syme *e = it.value;
+    if (e->a.t != ATTR_STATIC)
+      continue;
+    x86_instr *c = alloc_x86_instr(ag, X86_COMMENT);
+    c->v.comment = string_sprintf(" %s: %s(%%rsp)", it.key, it.key);
     c->prev = tail;
     tail->next = c;
     tail = c;

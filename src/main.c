@@ -153,7 +153,7 @@ int main(int argc, char *argv[]) {
   x86_asm_gen ag;
   init_x86_asm_gen(&ag);
 
-  x86_top_level *x86_prog = gen_asm(&ag, tac_prog);
+  x86_top_level *x86_prog = gen_asm(&ag, tac_prog, st);
 
   if (opts.dof == DOF_CODEGEN) {
     // TODO: print mb

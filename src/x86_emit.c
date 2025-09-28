@@ -165,6 +165,9 @@ static void emit_x86_op(FILE *w, x86_op op, int size) {
     else
       fprintf(w, "%d(%%rbp)", -op.v.stack_offset);
     break;
+  case X86_OP_DATA:
+    fprintf(w, "%s(%%rip)", op.v.data);
+    break;
   }
 }
 
@@ -305,9 +308,16 @@ static void emit_x86_instr(FILE *w, x86_instr *i) {
   }
 }
 
+static void emit_x86_global(FILE *w, bool global, string name) {
+  if (global) {
+    fprintf(w, "\t.globl %s\n", name);
+  }
+}
+
 static void emit_x86_func(FILE *w, x86_func *f) {
   fprintf(w, "# Start of function %s\n", f->name);
-  fprintf(w, "\t.globl %s\n", f->name);
+  emit_x86_global(w, f->global, f->name);
+  fprintf(w, "\t.text\n");
   fprintf(w, "%s:\n", f->name);
   fprintf(w, "\t# func prologue \n");
   fprintf(w, "\tpushq %%rbp\n");
@@ -320,12 +330,28 @@ static void emit_x86_func(FILE *w, x86_func *f) {
   fprintf(w, "# End of function %s\n\n", f->name);
 }
 
+static void emit_x86_static_var(FILE *w, x86_static_var *sv) {
+  emit_x86_global(w, sv->global, sv->name);
+  if (sv->v == 0)
+    fprintf(w, "\t.bss\n");
+  else
+    fprintf(w, "\t.data\n");
+
+  fprintf(w, "\t.balign 4\n");
+  fprintf(w, "%s:\n", sv->name);
+
+  if (sv->v == 0)
+    fprintf(w, "\t.zero 4\n");
+  else
+    fprintf(w, "\t.long %llu\n", (long long unsigned)sv->v);
+}
+
 void emit_x86(FILE *w, x86_top_level *tl) {
   for (; tl != NULL; tl = tl->next)
     if (tl->is_func)
       emit_x86_func(w, &tl->v.f);
     else
-      TODO();
+      emit_x86_static_var(w, &tl->v.v);
 
 #ifndef _WIN32
   fprintf(w, ".section .note.GNU-stack,\"\",@progbits\n");
