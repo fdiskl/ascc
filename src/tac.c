@@ -14,7 +14,12 @@
 
 static int tmp_var_counter = 0;
 
+static ht *var_map; // used to store if var name alr used
+
 void init_tacgen(tacgen *tg, sym_table st) {
+  var_map = ht_create();
+  vec_push_back(tables_to_destroy, var_map);
+
   INIT_ARENA(&tg->taci_arena, taci);
   INIT_ARENA(&tg->tac_top_level_arena, tac_top_level);
   INIT_ARENA(&tg->tacv_arena, tacv);
@@ -70,16 +75,25 @@ static tacv new_const(uint64_t c) {
 extern int var_name_idx_counter; // defined in resolve.c
 
 static tacv new_tmp() {
+  static char buf[256];
+  int e;
+  // not rly elegant, FIXME
+  do {
+    sprintf(buf, "t_%d", ++tmp_var_counter);
+    e = (int)(intptr_t)ht_get(var_map, buf);
+  } while (e);
+
   tacv v;
   v.t = TACV_VAR;
-  v.v.var = string_sprintf("t_%d", ++tmp_var_counter);
+  string name = new_string(buf);
+  v.v.var = name;
   return v;
 }
 
 static tacv new_var(string name) {
   tacv v;
   v.t = TACV_VAR;
-  v.v.var = string_sprintf("_%s", name);
+  v.v.var = string_sprintf("%s", name);
   return v;
 }
 
@@ -570,18 +584,8 @@ static tac_top_level *gen_tac_from_func_decl(tacgen *tg, func_decl fd) {
   if (fd.bs == NULL)
     return NULL;
   tac_top_level *res = alloc_tacf(tg, fd.name);
-  if (fd.params_names == NULL) {
-    res->v.f.params = NULL;
-    res->v.f.params_len = 0;
-  } else {
-    extern arena ptr_arena; // main.c
-    res->v.f.params = ARENA_ALLOC_ARRAY(&ptr_arena, string, fd.params_len);
-    res->v.f.params_len = fd.params_len;
-
-    for (int i = 0; i < res->v.f.params_len; ++i) {
-      res->v.f.params[i] = string_sprintf("_%s", fd.params_names[i]);
-    }
-  }
+  res->v.f.params = fd.params_names;
+  res->v.f.params_len = fd.params_len;
 
   tg->head = tg->tail = NULL;
 
@@ -630,10 +634,17 @@ static void gen_tac_from_decl(tacgen *tg, decl *d) {
 }
 
 tac_top_level *gen_tac(tacgen *tg, program *p) {
+  // write all var names into map
+  for (decl *d = p; d != NULL; d = d->next) {
+    if (d->t == DECL_VAR)
+      ht_set(var_map, d->v.var.name, (void *)(intptr_t)1);
+    if (d->t == DECL_FUNC) // funcs too just in case
+      ht_set(var_map, d->v.func.name, (void *)(intptr_t)1);
+  }
+
   tac_top_level *head = NULL;
   tac_top_level *tail = NULL;
-  decl *d;
-  for (d = p; d != NULL; d = d->next) {
+  for (decl *d = p; d != NULL; d = d->next) {
     if (d->t != DECL_FUNC)
       continue;
     tac_top_level *f = gen_tac_from_func_decl(tg, d->v.func);
