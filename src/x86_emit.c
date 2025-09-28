@@ -157,7 +157,7 @@ static void emit_x86_op(FILE *w, x86_op op, int size) {
     emit_x86_reg(w, op.v.reg, size);
     break;
   case X86_OP_PSEUDO:
-    fprintf(w, "PSEUDO(%d)", op.v.pseudo_idx);
+    fprintf(w, "PSEUDO(%s)", op.v.pseudo);
     break;
   case X86_OP_STACK:
     if (op.v.stack_offset > 0)
@@ -320,9 +320,12 @@ static void emit_x86_func(FILE *w, x86_func *f) {
   fprintf(w, "# End of function %s\n\n", f->name);
 }
 
-void emit_x86(FILE *w, x86_func *f) {
-  for (; f != NULL; f = f->next)
-    emit_x86_func(w, f);
+void emit_x86(FILE *w, x86_top_level *tl) {
+  for (; tl != NULL; tl = tl->next)
+    if (tl->is_func)
+      emit_x86_func(w, &tl->v.f);
+    else
+      TODO();
 
 #ifndef _WIN32
   fprintf(w, ".section .note.GNU-stack,\"\",@progbits\n");
