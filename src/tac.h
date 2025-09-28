@@ -3,10 +3,12 @@
 
 #include "arena.h"
 #include "parser.h"
+#include "typecheck.h"
 #include <stdint.h>
 typedef struct _tac_instr taci;
 typedef struct _tac_val tacv;
 typedef struct _tac_func tacf;
+typedef struct _tac_static_var tac_static_var;
 
 typedef struct _tacgen tacgen;
 
@@ -96,28 +98,46 @@ struct _tac_instr {
   taci *next;
 };
 
+typedef struct _tac_top_level tac_top_level;
+
+struct _tac_static_var {
+  string name;
+  bool global;
+  uint64_t v;
+};
+
 struct _tac_func {
   string name;
+  bool global;
   string *params;
   size_t params_len;
   taci *firsti;
+};
 
-  tacf *next;
+struct _tac_top_level {
+  bool is_func;
+  union {
+    tac_static_var v;
+    tacf f;
+  } v;
+  tac_top_level *next;
 };
 
 struct _tacgen {
   arena taci_arena;
-  arena tacf_arena;
+  arena tac_top_level_arena;
   arena tacv_arena;
+
+  sym_table st;
 
   taci *head; // head of instr linked list of curr func
   taci *tail; // tail of instr linked list of curr func
 };
 
-void init_tacgen(tacgen *tg);
-tacf *gen_tac(tacgen *tg, program *p);
+void init_tacgen(tacgen *tg, sym_table st);
+tac_top_level *gen_tac(tacgen *tg, program *p);
 
-void print_tac(tacf *first);
+void print_tac(tac_top_level *first);
 void fprint_taci(FILE *f, taci *i);
 const char *tacop_str(tacop op);
 

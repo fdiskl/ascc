@@ -140,9 +140,9 @@ int main(int argc, char *argv[]) {
   }
 
   tacgen tg;
-  init_tacgen(&tg);
+  init_tacgen(&tg, st);
 
-  tacf *tac_prog = gen_tac(&tg, parsed_ast);
+  tac_top_level *tac_prog = gen_tac(&tg, parsed_ast);
 
   if (opts.dof == DOF_TAC) {
     print_tac(tac_prog);
@@ -153,7 +153,7 @@ int main(int argc, char *argv[]) {
   x86_asm_gen ag;
   init_x86_asm_gen(&ag, st);
 
-  x86_func *x86_prog = gen_asm(&ag, tac_prog);
+  x86_func *x86_prog = gen_asm(&ag, &tac_prog->v.f); // FIXME
 
   if (opts.dof == DOF_CODEGEN) {
     // TODO: print mb

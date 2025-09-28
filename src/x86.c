@@ -464,7 +464,7 @@ static x86_func *gen_asm_from_func(x86_asm_gen *ag, tacf *f) {
 x86_func *gen_asm(x86_asm_gen *ag, tacf *tac_first_f) {
   x86_func *head = NULL;
   x86_func *tail = NULL;
-  for (tacf *f = tac_first_f; f != NULL; f = f->next) {
+  for (tacf *f = tac_first_f; f != NULL; f = NULL) { // FIXME: post
     x86_func *res = gen_asm_from_func(ag, f);
 
 // 2 step fix

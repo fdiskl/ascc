@@ -205,8 +205,11 @@ void fprint_taci(FILE *f, taci *i) {
   }
 }
 
-void print_tac_func(tacf *f) {
-  printf("func %s(", f->name);
+static void print_tac_func(tacf *f) {
+  if (f->global)
+    printf("global func %s(", f->name);
+  else
+    printf("func %s(", f->name);
   if (f->params != NULL) {
     printf("%s", f->params[0]);
     for (int i = 1; i < f->params_len; ++i)
@@ -221,9 +224,20 @@ void print_tac_func(tacf *f) {
   }
 }
 
-void print_tac(tacf *f) {
-  for (; f != NULL; f = f->next) {
-    print_tac_func(f);
+static void print_tac_static_var(tac_static_var *sv) {
+  if (sv->global)
+    printf("global static %s = %llu", sv->name, (long long unsigned)sv->v);
+  else
+    printf("static %s = %llu", sv->name, (long long unsigned)sv->v);
+}
+
+void print_tac(tac_top_level *tl) {
+  for (; tl != NULL; tl = tl->next) {
+    if (tl->is_func) {
+      print_tac_func(&tl->v.f);
+    } else {
+      print_tac_static_var(&tl->v.v);
+    }
     printf("\n");
   }
 }

@@ -5,26 +5,38 @@
 #include "driver.h"
 #include "parser.h"
 #include "strings.h"
+#include "table.h"
+#include "typecheck.h"
 #include "vec.h"
 #include <stdint.h>
-#include <stdio.h>
 
 static int tmp_var_counter = 0;
 
-void init_tacgen(tacgen *tg) {
+void init_tacgen(tacgen *tg, sym_table st) {
   INIT_ARENA(&tg->taci_arena, taci);
-  INIT_ARENA(&tg->tacf_arena, tacf);
+  INIT_ARENA(&tg->tac_top_level_arena, tac_top_level);
   INIT_ARENA(&tg->tacv_arena, tacv);
 
   vec_push_back(arenas_to_free, &tg->taci_arena);
-  vec_push_back(arenas_to_free, &tg->tacf_arena);
+  vec_push_back(arenas_to_free, &tg->tac_top_level_arena);
   vec_push_back(arenas_to_free, &tg->tacv_arena);
+
+  tg->st = st;
 }
 
-static tacf *alloc_tacf(tacgen *tg, string name) {
-  tacf *res = ARENA_ALLOC_OBJ(&tg->tacf_arena, tacf);
+static tac_top_level *alloc_static_var(tacgen *tg, string name) {
+  tac_top_level *res = ARENA_ALLOC_OBJ(&tg->tac_top_level_arena, tac_top_level);
   res->next = NULL;
-  res->name = name;
+  res->is_func = false;
+  res->v.v.name = name;
+  return res;
+}
+
+static tac_top_level *alloc_tacf(tacgen *tg, string name) {
+  tac_top_level *res = ARENA_ALLOC_OBJ(&tg->tac_top_level_arena, tac_top_level);
+  res->next = NULL;
+  res->is_func = true;
+  res->v.f.name = name;
   return res;
 }
 
@@ -543,13 +555,13 @@ static void gen_tac_from_stmt(tacgen *tg, stmt *s) {
   }
 }
 
-static tacf *gen_tac_from_func_decl(tacgen *tg, func_decl fd) {
+static tac_top_level *gen_tac_from_func_decl(tacgen *tg, func_decl fd) {
   tmp_var_counter = 0;
   if (fd.bs == NULL)
     return NULL;
-  tacf *res = alloc_tacf(tg, fd.name);
-  res->params = fd.params_names;
-  res->params_len = fd.params_len;
+  tac_top_level *res = alloc_tacf(tg, fd.name);
+  res->v.f.params = fd.params_names;
+  res->v.f.params_len = fd.params_len;
 
   tg->head = tg->tail = NULL;
 
@@ -559,12 +571,22 @@ static tacf *gen_tac_from_func_decl(tacgen *tg, func_decl fd) {
   taci *ret_at_end = insert_taci(tg, TAC_RET);
   ret_at_end->v.s.src1 = new_const(0);
 
-  res->firsti = tg->head;
+  res->v.f.firsti = tg->head;
+
+  syme *e = ht_get(tg->st, res->v.f.name);
+  assert(e);
+  assert(e->a.t == ATTR_FUNC);
+  res->v.f.global = e->a.v.f.global;
 
   return res;
 }
 
-static void gen_tac_from_var_decl(tacgen *tg, var_decl vd) {
+static void gen_tac_from_var_decl(tacgen *tg, decl *d) {
+  if (d->sc != SC_NONE || d->scope == 0) // we don't generate tac for file scope
+                                         // vars, and local extern/static ones
+    return;
+  var_decl vd = d->v.var;
+
   if (vd.init != NULL) {
     tacv dst = new_var(vd.name);
     tacv src = gen_tac_from_expr(tg, vd.init);
@@ -581,19 +603,19 @@ static void gen_tac_from_decl(tacgen *tg, decl *d) {
     gen_tac_from_func_decl(tg, d->v.func);
     break;
   case DECL_VAR:
-    gen_tac_from_var_decl(tg, d->v.var);
+    gen_tac_from_var_decl(tg, d);
     break;
   }
 }
 
-tacf *gen_tac(tacgen *tg, program *p) {
-  tacf *head = NULL;
-  tacf *tail = NULL;
+tac_top_level *gen_tac(tacgen *tg, program *p) {
+  tac_top_level *head = NULL;
+  tac_top_level *tail = NULL;
   decl *d;
   for (d = p; d != NULL; d = d->next) {
     if (d->t != DECL_FUNC)
       continue;
-    tacf *f = gen_tac_from_func_decl(tg, d->v.func);
+    tac_top_level *f = gen_tac_from_func_decl(tg, d->v.func);
     if (f == NULL)
       continue;
     if (head == NULL)
@@ -601,6 +623,33 @@ tacf *gen_tac(tacgen *tg, program *p) {
     else
       tail->next = f;
     tail = f;
+  }
+
+  hti it = ht_iterator(tg->st);
+  while (ht_next(&it)) {
+    syme *e = it.value;
+    if (e->a.t == ATTR_STATIC) {
+      switch (e->a.v.s.init.t) {
+      case INIT_TENTATIVE: {
+        tac_top_level *sv = alloc_static_var(tg, e->name);
+        sv->v.v.global = e->a.v.s.global;
+        sv->v.v.v = 0;
+        tail->next = sv;
+        tail = sv;
+        break;
+      }
+      case INIT_INITIAL: {
+        tac_top_level *sv = alloc_static_var(tg, e->name);
+        sv->v.v.global = e->a.v.s.global;
+        sv->v.v.v = e->a.v.s.init.v;
+        tail->next = sv;
+        tail = sv;
+        break;
+      }
+      case INIT_NOINIT:
+        continue;
+      }
+    }
   }
 
   return head;
