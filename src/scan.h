@@ -33,12 +33,27 @@ void next(lexer *l, token *t);
 void print_token(const token *t);
 const char *token_name(int token);
 
+typedef enum {
+  INT_SUFF_NONE,
+  INT_SUFF_L,
+  INT_SUFF_LL,
+  INT_SUFF_U,
+  INT_SUFF_UL,
+  INT_SUFF_ULL,
+} int_literal_suffix;
+
+typedef struct _int_literal int_literal;
+struct _int_literal {
+  uint64_t v;
+  int_literal_suffix suff;
+};
+
 struct _token {
   int token; // token type
   union {
-    uint64_t int_val; // for TOK_INTLIT
-    string s_val;     // for TOK_STRLIT
-    string ident;     // for TOK_IDENT
+    int_literal int_lit; // for TOK_INTLIT
+    string s_val;        // for TOK_STRLIT
+    string ident;        // for TOK_IDENT
   } v;
   tok_pos pos;
 };
@@ -123,6 +138,7 @@ enum {
 
   // literals
   TOK_INTLIT,
+  TOK_LONGLIT,
   TOK_STRLIT,
 
   // structural

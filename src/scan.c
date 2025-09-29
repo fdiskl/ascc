@@ -135,17 +135,82 @@ static int chrpos(char *s, int c) {
   return (p ? p - s : -1);
 }
 
-static uint64_t scan_int(lexer *l, char c) {
+static int_literal_suffix convert_suff(const char *s, int line, int pos) {
+  char u = false, l = false, ll = false;
+
+  for (int i = 0; s[i]; i++) {
+    if (s[i] == 'u' || s[i] == 'U') {
+      if (u)
+        goto invalid; // duplicate
+      u = true;
+    } else if (s[i] == 'l' || s[i] == 'L') {
+      if (!l)
+        l = s[i];
+      else if (!ll) {
+        if (l != s[i]) {
+          goto invalid;
+        }
+        ll = s[i];
+      } else
+        goto invalid; // more than two L's
+    }
+  }
+
+  if (ll && u)
+    return INT_SUFF_ULL;
+  if (ll)
+    return INT_SUFF_LL;
+  if (l && u)
+    return INT_SUFF_UL;
+  if (l)
+    return INT_SUFF_L;
+  if (u)
+    return INT_SUFF_U;
+  return INT_SUFF_NONE;
+
+invalid:
+  printf("invalid integer suffix '%s' on line %d, pos %d\n", s, line, pos);
+  after_error();
+  return INT_SUFF_NONE;
+}
+
+static void scan_int(lexer *l, char c, token *t) {
+  uint64_t val = 0;
+  int k = 0;
+
+  // Convert each character into an int value
+  while ((k = chrpos("0123456789", c)) >= 0) {
+    val = val * 10 + k;
+    c = next_char(l);
+  }
+
+  static char suffix_buf[4]; // max len is 3, ULL
+  suffix_buf[0] = suffix_buf[1] = suffix_buf[2] = suffix_buf[3] = INT_SUFF_NONE;
+  int n = 0;
+
+  if (isalpha(c) && !((c == 'u' || c == 'U' || c == 'l' || c == 'L'))) {
+    printf("invalid identifier on line %d, pos %d\n", l->line, l->pos);
+    after_error();
+  }
+
+  while (c == 'u' || c == 'U' || c == 'l' || c == 'L') {
+    if (n < 3)
+      suffix_buf[n++] = c;
+    c = next_char(l);
+  }
+  suffix_buf[n] = '\0';
+
+  putback(l, c);
+  t->v.int_lit.v = val;
+  t->v.int_lit.suff = convert_suff(suffix_buf, l->line, l->pos);
+}
+
+static uint64_t scan_simple_int(lexer *l, char c) {
   uint64_t val = 0;
   int k = 0;
 
   // Convert each character into an int value
   while (1) {
-    if (isalpha(c) || c == '_') {
-      printf("invalid identifier starting with num on line %d", l->line);
-      after_error();
-    }
-
     if ((k = chrpos("0123456789", c)) < 0)
       break;
     val = val * 10 + k;
@@ -165,7 +230,7 @@ static char handle_preprocessor_directive(lexer *l) {
     printf("invalid preprocessor directive, expected digit, found %c\n", c);
     after_error();
   }
-  l->line = scan_int(l, c);
+  l->line = scan_simple_int(l, c);
   next_char(l); // skip ' '
   if (!match_char(l, '"')) {
     printf("invalid preprocessor directive, expected '\"', found %c\n", c);
@@ -187,7 +252,7 @@ static char handle_preprocessor_directive(lexer *l) {
   return c;
 }
 
-size_t scan_ident(lexer *l, char c) {
+static size_t scan_ident(lexer *l, char c) {
   size_t i = 0;
 
   while (isalpha(c) || isdigit(c) || c == '_') {
@@ -390,7 +455,7 @@ void next(lexer *l, token *t) {
   default:
     if (isdigit(c)) {
       t->token = TOK_INTLIT;
-      t->v.int_val = scan_int(l, c);
+      scan_int(l, c, t);
       break;
     } else if (isalpha(c) || c == '_') {
       scan_ident(l, c);

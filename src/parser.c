@@ -104,7 +104,7 @@ static decl *alloc_decl(parser *p, int t) {
 
 static expr *parse_int_const_expr(parser *p) {
   expr *e = alloc_expr(p, EXPR_INT_CONST);
-  e->v.intc.v = expect(p, TOK_INTLIT)->v.int_val;
+  e->v.intc.v = expect(p, TOK_INTLIT)->v.int_lit.v;
   return e;
 }
 

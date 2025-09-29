@@ -174,6 +174,23 @@ const char *token_name(int token) {
   }
 }
 
+static const char *suff_name(int_literal_suffix suff) {
+  switch (suff) {
+  case INT_SUFF_NONE:
+    return "none";
+  case INT_SUFF_L:
+    return "l";
+  case INT_SUFF_LL:
+    return "ll";
+  case INT_SUFF_U:
+    return "u";
+  case INT_SUFF_UL:
+    return "ul";
+  case INT_SUFF_ULL:
+    return "uul";
+  }
+}
+
 void print_token(const token *t) {
   printf("[%s:%d:%3d:%3d] ", t->pos.filename, t->pos.line, t->pos.start_pos,
          t->pos.end_pos);
@@ -183,7 +200,8 @@ void print_token(const token *t) {
 
   switch (t->token) {
   case TOK_INTLIT:
-    printf(" (%llu)", (unsigned long long)t->v.int_val);
+    printf(" (%llu) (%s)", (unsigned long long)t->v.int_lit.v,
+           suff_name(t->v.int_lit.suff));
     break;
   case TOK_STRLIT:
     printf(" (\"%s\")", t->v.s_val);
