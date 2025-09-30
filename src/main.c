@@ -131,25 +131,23 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
-  tacgen tg;
-  init_tacgen(&tg, st);
-
-  tac_top_level *tac_prog = gen_tac(&tg, &parsed_ast);
+  tac_program tac_prog = gen_tac(&parsed_ast, &st);
 
   free_program(&parsed_ast); // at this point AST is not needed
 
   if (opts.dof == DOF_TAC) {
-    print_tac(tac_prog);
-    // TODO: free
+    print_tac(&tac_prog);
     free_sym_table(&st);
+    free_tac(&tac_prog);
     return 0;
   }
 
   x86_asm_gen ag;
   init_x86_asm_gen(&ag);
 
-  x86_top_level *x86_prog = gen_asm(&ag, tac_prog, st);
+  x86_top_level *x86_prog = gen_asm(&ag, &tac_prog, st);
   free_sym_table(&st);
+  free_tac(&tac_prog);
 
   if (opts.dof == DOF_CODEGEN) {
     // TODO: print mb

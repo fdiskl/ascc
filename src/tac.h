@@ -125,20 +125,28 @@ struct _tac_top_level {
 };
 
 struct _tacgen {
-  arena taci_arena;
-  arena tac_top_level_arena;
-  arena tacv_arena;
+  arena *taci_arena;          // should be freed after asm is created
+  arena *tac_top_level_arena; // should be freed after asm is created
+  arena *tacv_arena;          // should be freed after asm is created
 
-  sym_table st;
+  sym_table *st;
 
   taci *head; // head of instr linked list of curr func
   taci *tail; // tail of instr linked list of curr func
 };
 
-void init_tacgen(tacgen *tg, sym_table st);
-tac_top_level *gen_tac(tacgen *tg, program *p);
+typedef struct _tac_program tac_program;
+struct _tac_program {
+  arena *taci_arena;          // will be freed by free_tac_program
+  arena *tac_top_level_arena; // will be freed by free_tac_program
+  arena *tacv_arena;          // will be freed by free_tac_program
 
-void print_tac(tac_top_level *first);
+  tac_top_level *first;
+};
+
+tac_program gen_tac(program *p, sym_table *st);
+void free_tac(tac_program *prog);
+void print_tac(tac_program *prog);
 void fprint_taci(FILE *f, taci *i);
 const char *tacop_str(tacop op);
 

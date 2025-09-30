@@ -1,3 +1,4 @@
+#include "arena.h"
 #include "common.h"
 #include "tac.h"
 #include <stdint.h>
@@ -231,8 +232,8 @@ static void print_tac_static_var(tac_static_var *sv) {
     printf("static %s = %llu", sv->name, (long long unsigned)sv->v);
 }
 
-void print_tac(tac_top_level *tl) {
-  for (; tl != NULL; tl = tl->next) {
+void print_tac(tac_program *prog) {
+  for (tac_top_level *tl = prog->first; tl != NULL; tl = tl->next) {
     if (tl->is_func) {
       print_tac_func(&tl->v.f);
     } else {

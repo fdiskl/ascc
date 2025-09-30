@@ -2,7 +2,6 @@
 #include "arena.h"
 #include "assert.h"
 #include "common.h"
-#include "driver.h"
 #include "parser.h"
 #include "strings.h"
 #include "table.h"
@@ -16,23 +15,20 @@ static int tmp_var_counter = 0;
 
 static ht *var_map; // used to store if var name alr used
 
-void init_tacgen(tacgen *tg, sym_table st) {
+static void init_tacgen(tacgen *tg, sym_table *st) {
   var_map = ht_create();
-  vec_push_back(tables_to_destroy, var_map);
 
-  INIT_ARENA(&tg->taci_arena, taci);
-  INIT_ARENA(&tg->tac_top_level_arena, tac_top_level);
-  INIT_ARENA(&tg->tacv_arena, tacv);
-
-  vec_push_back(arenas_to_free, &tg->taci_arena);
-  vec_push_back(arenas_to_free, &tg->tac_top_level_arena);
-  vec_push_back(arenas_to_free, &tg->tacv_arena);
+  NEW_ARENA(tg->taci_arena, taci);
+  NEW_ARENA(tg->tac_top_level_arena, tac_top_level);
+  NEW_ARENA(tg->tacv_arena, tacv);
 
   tg->st = st;
 }
 
+static void free_tacgen(tacgen *tg) { ht_destroy(var_map); }
+
 static tac_top_level *alloc_static_var(tacgen *tg, string name) {
-  tac_top_level *res = ARENA_ALLOC_OBJ(&tg->tac_top_level_arena, tac_top_level);
+  tac_top_level *res = ARENA_ALLOC_OBJ(tg->tac_top_level_arena, tac_top_level);
   res->next = NULL;
   res->is_func = false;
   res->v.v.name = name;
@@ -40,7 +36,7 @@ static tac_top_level *alloc_static_var(tacgen *tg, string name) {
 }
 
 static tac_top_level *alloc_tacf(tacgen *tg, string name) {
-  tac_top_level *res = ARENA_ALLOC_OBJ(&tg->tac_top_level_arena, tac_top_level);
+  tac_top_level *res = ARENA_ALLOC_OBJ(tg->tac_top_level_arena, tac_top_level);
   res->next = NULL;
   res->is_func = true;
   res->v.f.name = name;
@@ -48,7 +44,7 @@ static tac_top_level *alloc_tacf(tacgen *tg, string name) {
 }
 
 static taci *alloc_taci(tacgen *tg, int op) {
-  taci *res = ARENA_ALLOC_OBJ(&tg->taci_arena, taci);
+  taci *res = ARENA_ALLOC_OBJ(tg->taci_arena, taci);
   res->op = op;
   res->next = NULL;
   return res;
@@ -339,7 +335,7 @@ static tacv gen_tac_from_func_call_expr(tacgen *tg, func_call_expr fe) {
   i->dst = new_tmp();
   i->v.call.name = fe.name;
 
-  syme *e = ht_get(tg->st, fe.name);
+  syme *e = ht_get(tg->st->t, fe.name);
   assert(e);
   assert(e->a.t == ATTR_FUNC);
   if (e->a.v.f.defined)
@@ -349,7 +345,7 @@ static tacv gen_tac_from_func_call_expr(tacgen *tg, func_call_expr fe) {
 
   if (fe.args != NULL) {
     i->v.call.args_len = v.size;
-    vec_move_into_arena(&tg->tacv_arena, v, tacv, i->v.call.args);
+    vec_move_into_arena(tg->tacv_arena, v, tacv, i->v.call.args);
   } else {
     i->v.call.args_len = 0;
     i->v.call.args = NULL;
@@ -597,7 +593,7 @@ static tac_top_level *gen_tac_from_func_decl(tacgen *tg, func_decl fd) {
 
   res->v.f.firsti = tg->head;
 
-  syme *e = ht_get(tg->st, res->v.f.name);
+  syme *e = ht_get(tg->st->t, res->v.f.name);
   assert(e);
   assert(e->a.t == ATTR_FUNC);
 
@@ -633,9 +629,17 @@ static void gen_tac_from_decl(tacgen *tg, decl *d) {
   }
 }
 
-tac_top_level *gen_tac(tacgen *tg, program *p) {
+tac_program gen_tac(program *p, sym_table *st) {
+  tacgen tg;
+  tac_program res;
+  init_tacgen(&tg, st);
+
+  res.tac_top_level_arena = tg.tac_top_level_arena;
+  res.taci_arena = tg.taci_arena;
+  res.tacv_arena = tg.tacv_arena;
+
   // write all var names into map
-  for (decl *d = p; d != NULL; d = d->next) {
+  for (decl *d = p->first_decl; d != NULL; d = d->next) {
     if (d->t == DECL_VAR)
       ht_set(var_map, d->v.var.name, (void *)(intptr_t)1);
     if (d->t == DECL_FUNC) // funcs too just in case
@@ -644,10 +648,10 @@ tac_top_level *gen_tac(tacgen *tg, program *p) {
 
   tac_top_level *head = NULL;
   tac_top_level *tail = NULL;
-  for (decl *d = p; d != NULL; d = d->next) {
+  for (decl *d = p->first_decl; d != NULL; d = d->next) {
     if (d->t != DECL_FUNC)
       continue;
-    tac_top_level *f = gen_tac_from_func_decl(tg, d->v.func);
+    tac_top_level *f = gen_tac_from_func_decl(&tg, d->v.func);
     if (f == NULL)
       continue;
     if (head == NULL)
@@ -657,13 +661,13 @@ tac_top_level *gen_tac(tacgen *tg, program *p) {
     tail = f;
   }
 
-  hti it = ht_iterator(tg->st);
+  hti it = ht_iterator(tg.st->t);
   while (ht_next(&it)) {
     syme *e = it.value;
     if (e->a.t == ATTR_STATIC) {
       switch (e->a.v.s.init.t) {
       case INIT_TENTATIVE: {
-        tac_top_level *sv = alloc_static_var(tg, e->name);
+        tac_top_level *sv = alloc_static_var(&tg, e->name);
         sv->v.v.global = e->a.v.s.global;
         sv->v.v.v = 0;
         tail->next = sv;
@@ -671,7 +675,7 @@ tac_top_level *gen_tac(tacgen *tg, program *p) {
         break;
       }
       case INIT_INITIAL: {
-        tac_top_level *sv = alloc_static_var(tg, e->name);
+        tac_top_level *sv = alloc_static_var(&tg, e->name);
         sv->v.v.global = e->a.v.s.global;
         sv->v.v.v = e->a.v.s.init.v;
         tail->next = sv;
@@ -684,5 +688,13 @@ tac_top_level *gen_tac(tacgen *tg, program *p) {
     }
   }
 
-  return head;
+  res.first = head;
+
+  return res;
+}
+
+void free_tac(tac_program *prog) {
+  destroy_arena(prog->tac_top_level_arena);
+  destroy_arena(prog->taci_arena);
+  destroy_arena(prog->tacv_arena);
 }
