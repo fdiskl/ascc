@@ -536,3 +536,8 @@ void print_sym_table(sym_table *st) {
     print_syme(it.key, e);
   }
 }
+
+void free_sym_table(sym_table *st) {
+  destroy_arena(st->entry_arena);
+  destroy_arena(st->types_arena);
+}

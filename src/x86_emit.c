@@ -346,8 +346,8 @@ static void emit_x86_static_var(FILE *w, x86_static_var *sv) {
     fprintf(w, "\t.long %llu\n", (long long unsigned)sv->v);
 }
 
-void emit_x86(FILE *w, x86_top_level *tl) {
-  for (; tl != NULL; tl = tl->next)
+void emit_x86(FILE *w, x86_program *prog) {
+  for (x86_top_level *tl = prog->first; tl != NULL; tl = tl->next)
     if (tl->is_func)
       emit_x86_func(w, &tl->v.f);
     else

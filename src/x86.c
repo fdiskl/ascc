@@ -11,15 +11,12 @@
 #include <stdint.h>
 
 void init_x86_asm_gen(x86_asm_gen *ag) {
-  INIT_ARENA(&ag->instr_arena, x86_instr);
-  INIT_ARENA(&ag->top_level_arena, x86_top_level);
-
-  vec_push_back(arenas_to_free, &ag->instr_arena);
-  vec_push_back(arenas_to_free, &ag->top_level_arena);
+  NEW_ARENA(ag->instr_arena, x86_instr);
+  NEW_ARENA(ag->top_level_arena, x86_top_level);
 }
 
 x86_instr *alloc_x86_instr(x86_asm_gen *ag, int op) {
-  x86_instr *res = ARENA_ALLOC_OBJ(&ag->instr_arena, x86_instr);
+  x86_instr *res = ARENA_ALLOC_OBJ(ag->instr_arena, x86_instr);
   res->next = NULL;
   res->prev = NULL;
   res->op = op;
@@ -43,7 +40,7 @@ static x86_instr *insert_x86_instr(x86_asm_gen *ag, int op, taci *origin) {
 }
 
 static x86_top_level *alloc_x86_func(x86_asm_gen *ag, string name) {
-  x86_top_level *res = ARENA_ALLOC_OBJ(&ag->top_level_arena, x86_top_level);
+  x86_top_level *res = ARENA_ALLOC_OBJ(ag->top_level_arena, x86_top_level);
   res->next = NULL;
   res->is_func = true;
   res->v.f.name = name;
@@ -52,7 +49,7 @@ static x86_top_level *alloc_x86_func(x86_asm_gen *ag, string name) {
 }
 
 static x86_top_level *alloc_x86_static_var(x86_asm_gen *ag, string name) {
-  x86_top_level *res = ARENA_ALLOC_OBJ(&ag->top_level_arena, x86_top_level);
+  x86_top_level *res = ARENA_ALLOC_OBJ(ag->top_level_arena, x86_top_level);
   res->next = NULL;
   res->is_func = false;
   res->v.v.name = name;
@@ -470,31 +467,38 @@ x86_top_level *gen_asm_from_static_var(x86_asm_gen *ag, tac_static_var *sv) {
   return res;
 }
 
-x86_top_level *gen_asm(x86_asm_gen *ag, tac_top_level *tac_first_top_level,
-                       sym_table st) {
+x86_program gen_asm(tac_program *prog, sym_table st) {
+  x86_program res;
+  x86_asm_gen ag;
+
+  init_x86_asm_gen(&ag);
+
+  res.top_level_arena = ag.top_level_arena;
+  res.instr_arena = ag.instr_arena;
+
   x86_top_level *head = NULL;
   x86_top_level *tail = NULL;
-  for (tac_top_level *tl = tac_first_top_level; tl != NULL; tl = tl->next) {
+  for (tac_top_level *tl = prog->first; tl != NULL; tl = tl->next) {
     x86_top_level *res;
     if (tl->is_func) {
-      res = gen_asm_from_func(ag, &tl->v.f);
+      res = gen_asm_from_func(&ag, &tl->v.f);
 
 // 2 step fix
 #ifndef ASM_DONT_FIX_PSEUDO
-      x86_instr *i = alloc_x86_instr(ag, X86_ALLOC_STACK);
+      x86_instr *i = alloc_x86_instr(&ag, X86_ALLOC_STACK);
 
       i->next = res->v.f.first;
       res->v.f.first = i;
       i->next->prev = i;
 
-      i->v.bytes_to_alloc = fix_pseudo_for_func(ag, &res->v.f, st);
+      i->v.bytes_to_alloc = fix_pseudo_for_func(&ag, &res->v.f, st);
 #endif
 
 #ifndef ASM_DONT_FIX_INSTRUCTIONS
-      fix_instructions_for_func(ag, &res->v.f);
+      fix_instructions_for_func(&ag, &res->v.f);
 #endif
     } else {
-      res = gen_asm_from_static_var(ag, &tl->v.v);
+      res = gen_asm_from_static_var(&ag, &tl->v.v);
     }
 
     res->next = NULL;
@@ -505,5 +509,12 @@ x86_top_level *gen_asm(x86_asm_gen *ag, tac_top_level *tac_first_top_level,
     tail = res;
   }
 
-  return head;
+  res.first = head;
+
+  return res;
+}
+
+void free_x86_program(x86_program *p) {
+  destroy_arena(p->instr_arena);
+  destroy_arena(p->top_level_arena);
 }

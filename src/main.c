@@ -142,31 +142,29 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
-  x86_asm_gen ag;
-  init_x86_asm_gen(&ag);
-
-  x86_top_level *x86_prog = gen_asm(&ag, &tac_prog, st);
+  x86_program x86_prog = gen_asm(&tac_prog, st);
   free_sym_table(&st);
-  free_tac(&tac_prog);
 
   if (opts.dof == DOF_CODEGEN) {
-    // TODO: print mb
-    // TODO: free
+    free_tac(&tac_prog);
+    free_x86_program(&x86_prog);
     return 0;
   }
 
   FILE *asm_file = fopen(asm_file_path, "w");
 
-  emit_x86(asm_file, x86_prog);
+  emit_x86(asm_file, &x86_prog);
   fclose(asm_file);
-  free_arena(&str_arena);
-  free_arena(&ptr_arena);
-
 #ifdef DEBUG_INFO
   printf("-------asm  res-------\n");
-  emit_x86(stdout, x86_prog);
+  emit_x86(stdout, &x86_prog);
   printf("----------------------\n");
 #endif
+
+  free_tac(&tac_prog); // only after emittion, bc fprint_taci is used in emit
+  free_arena(&str_arena);
+  free_arena(&ptr_arena);
+  free_x86_program(&x86_prog);
 
   if (opts.dof == DOF_S) {
     // TODO: free

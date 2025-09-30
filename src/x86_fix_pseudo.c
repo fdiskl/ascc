@@ -20,7 +20,7 @@ static void fix_pseudo_op(x86_op *op, sym_table st) {
   if (op->t != X86_OP_PSEUDO)
     return;
 
-  syme *se = ht_get(st, op->v.pseudo);
+  syme *se = ht_get(st.t, op->v.pseudo);
   if (se != NULL && se->a.t == ATTR_STATIC) {
     op->t = X86_OP_DATA;
     op->v.data = se->name;
@@ -142,7 +142,7 @@ int fix_pseudo_for_func(x86_asm_gen *ag, x86_func *f, sym_table st) {
   }
 
   // print static vars
-  it = ht_iterator(st);
+  it = ht_iterator(st.t);
   while (ht_next(&it)) {
     syme *e = it.value;
     if (e->a.t != ATTR_STATIC)

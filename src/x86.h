@@ -156,17 +156,23 @@ struct _x86_top_level {
 };
 
 struct _x86_asm_gen {
-  arena instr_arena;
-  arena top_level_arena;
+  arena *instr_arena;
+  arena *top_level_arena;
 
   x86_instr *head; // head of instr linked list for curr func
   x86_instr *tail; // tail of instr linked list for curr func
 };
 
-void init_x86_asm_gen(x86_asm_gen *ag);
+typedef struct _x86_program x86_program;
+struct _x86_program {
+  arena *instr_arena;     // will be freed by free_x86_program
+  arena *top_level_arena; // will be freed by free_x86_program
+  x86_top_level *first;
+};
 
-x86_top_level *gen_asm(x86_asm_gen *ag, tac_top_level *tac_first_top_level,
-                       sym_table st);
+x86_program gen_asm(tac_program *tac_prog, sym_table st);
+
+void free_x86_program(x86_program *p);
 
 // replaces pseudo instructions, is called by gen_asm
 // returns amount of bytes to be allocated for locals
@@ -175,6 +181,6 @@ int fix_pseudo_for_func(x86_asm_gen *ag, x86_func *f, sym_table st);
 // fixes invalid instructions, is called by gen_asm
 void fix_instructions_for_func(x86_asm_gen *ag, x86_func *f);
 
-void emit_x86(FILE *w, x86_top_level *first_top_level);
+void emit_x86(FILE *w, x86_program *prog);
 
 #endif
