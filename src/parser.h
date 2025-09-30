@@ -412,8 +412,8 @@ struct _parser {
 
   // for resolve.c
   ht *ident_ht_list_head;  // can be freed after parse is done
-  ht *labels_ht;           // can be freed after parse is done
-  ht *gotos_to_check_ht;   // can be freed after parse is done
+  ht *labels_ht;           // is freed after every func is resolved
+  ht *gotos_to_check_ht;   // is freed after every func is resolved
   arena ident_entry_arena; // can be freed after parse is done
   VEC(loop_resolve_info)
   stack_loop_resolve_info; // can be freed after parse is done

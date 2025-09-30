@@ -76,6 +76,13 @@ static void init_parser(parser *p, lexer *l) {
   advance(p); // for next
 }
 
+static void free_parser(parser *p) {
+  for (ht *h = p->ident_ht_list_head; h != NULL; h = ht_get_next_table(h))
+    ht_destroy(h);
+
+  free_arena(&p->ident_entry_arena);
+}
+
 static expr *alloc_expr(parser *p, int t) {
   expr *e = ARENA_ALLOC_OBJ(p->expr_arena, expr);
   e->t = t;
@@ -915,6 +922,8 @@ program parse(lexer *l) {
   res.expr_arena = p.expr_arena;
   res.stmt_arena = p.stmt_arena;
   res.bi_arena = p.bi_arena;
+
+  free_parser(&p);
 
   return res;
 }

@@ -58,7 +58,7 @@ void check_for_constant_expr(expr *e) {
   if (!is_constant_expr(e)) {
     fprintf(stderr, "expected constant expr (%d:%d-%d:%d)\n", e->pos.line_start,
             e->pos.pos_start, e->pos.line_end, e->pos.pos_end);
-    after_error();
+    exit(1);
   } // TODO: add more const exprs
 }
 
@@ -73,7 +73,7 @@ void resolve_label_stmt(parser *p, stmt *s) {
     fprintf(stderr, "duplicate label %s (%d:%d-%d:%d)\n", s->v.label.label,
             s->pos.line_start, s->pos.pos_start, s->pos.line_end,
             s->pos.pos_end);
-    after_error();
+    exit(1);
   }
 
   ht_set(p->labels_ht, s->v.label.label,
@@ -92,18 +92,12 @@ void enter_scope(parser *p) {
   ht *t = ht_create();
   ht_set_next_table(t, p->ident_ht_list_head);
   p->ident_ht_list_head = t;
-
-  vec_push_back(tables_to_destroy, t);
 }
 
 void exit_scope(parser *p) {
   --scope;
   ht *tmp = p->ident_ht_list_head;
   p->ident_ht_list_head = ht_get_next_table(tmp);
-
-  vec_pop_back(tables_to_destroy); // FIXME, will work for now, but isn't a good
-                                   // idea, in future make so parser stores
-                                   // indexes and free's by them
 
   ht_destroy(tmp);
 }
@@ -127,7 +121,7 @@ void resolve_func_call_expr(parser *p, expr *e) {
     fprintf(stderr, "call to undeclared func %s (%d:%d-%d:%d)\n",
             e->v.func_call.name, e->pos.line_start, e->pos.pos_start,
             e->pos.line_end, e->pos.pos_end);
-    after_error();
+    exit(1);
   }
 
   e->v.func_call.name = entry->name;
@@ -143,7 +137,7 @@ void resolve_expr(parser *p, expr *e) {
         (!is_lvalue(e->v.u.e))) {
       fprintf(stderr, "invalid lvalue (%d:%d-%d:%d)\n", e->pos.line_start,
               e->pos.pos_start, e->pos.line_end, e->pos.pos_end);
-      after_error();
+      exit(1);
     }
     resolve_expr(p, e->v.u.e);
     break;
@@ -155,7 +149,7 @@ void resolve_expr(parser *p, expr *e) {
     if (!is_lvalue(e->v.assignment.l)) {
       fprintf(stderr, "invalid lvalue (%d:%d-%d:%d)\n", e->pos.line_start,
               e->pos.pos_start, e->pos.line_end, e->pos.pos_end);
-      after_error();
+      exit(1);
     }
 
     resolve_expr(p, e->v.assignment.l);
@@ -168,7 +162,7 @@ void resolve_expr(parser *p, expr *e) {
       fprintf(stderr, "undefined var %s (%d:%d-%d:%d)\n",
               e->v.var.original_name, e->pos.line_start, e->pos.pos_start,
               e->pos.line_end, e->pos.pos_end);
-      after_error();
+      exit(1);
     } else {
       e->v.var.name = entry->name;
     }
@@ -214,7 +208,7 @@ void resolve_break_stmt(parser *p, stmt *s) {
             s->pos.line_start, s->pos.pos_start, s->pos.line_end,
             s->pos.pos_end);
 
-    after_error();
+    exit(1);
   }
 
   loop_resolve_info *i =
@@ -239,7 +233,7 @@ void resolve_continue_stmt(parser *p, stmt *s) {
             s->pos.line_start, s->pos.pos_start, s->pos.line_end,
             s->pos.pos_end);
 
-    after_error();
+    exit(1);
   }
 
   loop_resolve_info *i = &p->stack_loop_resolve_info.data[loop_idx];
@@ -256,7 +250,7 @@ void resolve_case_stmt(parser *p, stmt *s) {
             s->pos.line_start, s->pos.pos_start, s->pos.line_end,
             s->pos.pos_end);
 
-    after_error();
+    exit(1);
   }
 
   loop_resolve_info *i = &p->stack_loop_resolve_info.data[switch_idx];
@@ -271,7 +265,7 @@ void resolve_case_stmt(parser *p, stmt *s) {
         old->pos.pos_end, s->pos.line_start, s->pos.pos_start, s->pos.line_end,
         s->pos.pos_end);
 
-    after_error();
+    exit(1);
   }
 
   ht_set(i->v.s.cases, key, (void *)s);
@@ -286,7 +280,7 @@ void resolve_default_stmt(parser *p, stmt *s) {
             s->pos.line_start, s->pos.pos_start, s->pos.line_end,
             s->pos.pos_end);
 
-    after_error();
+    exit(1);
   }
 
   loop_resolve_info *i = &p->stack_loop_resolve_info.data[switch_idx];
@@ -298,7 +292,7 @@ void resolve_default_stmt(parser *p, stmt *s) {
             old->pos.pos_end, s->pos.line_start, s->pos.pos_start,
             s->pos.line_end, s->pos.pos_end);
 
-    after_error();
+    exit(1);
   }
 
   i->v.s.default_stmt = s;
@@ -394,7 +388,7 @@ void enter_func(parser *p, decl *f) {
             f->v.func.name, f->pos.line_start, f->pos.pos_start,
             f->pos.line_end, f->pos.pos_end);
 
-    after_error();
+    exit(1);
   }
 
   if (e == NULL) {
@@ -423,7 +417,7 @@ void exit_func_with_body(parser *p, decl *f) {
       fprintf(stderr, "goto to undeclared label '%s'\n",
               it.key); // would be nice to add location info, but i am too lazy.
                        // TODO ig
-      after_error();
+      exit(1);
     }
 
     stmt *s = (stmt *)it.value;
@@ -452,7 +446,7 @@ ident_entry *resolve_param(parser *p, string name, ast_pos pos) {
   if (e != NULL) {
     fprintf(stderr, "duplicate param declaration with name %s (%d:%d-%d:%d)",
             name, pos.line_start, pos.pos_start, pos.line_end, pos.pos_end);
-    after_error();
+    exit(1);
   }
   ident_entry *new_e = new_symt_entry(p, name, false);
 
@@ -469,7 +463,7 @@ ident_entry *resolve_local_var_decl(parser *p, string name, ast_pos pos,
     fprintf(stderr,
             "conflicting local declarations with name %s (%d:%d-%d:%d)\n", name,
             pos.line_start, pos.pos_start, pos.line_end, pos.pos_end);
-    after_error();
+    exit(1);
   }
 
   if (sc == SC_EXTERN) {
