@@ -12,7 +12,7 @@ typedef struct _checker checker;
 struct _checker {
   arena *syme_arena;
   arena *type_arena;
-  sym_table st;
+  ht *st;
 };
 
 static type *new_type(checker *c, int t) {
@@ -53,7 +53,7 @@ static void typecheck_var_expr(checker *c, expr *e) {
             e->v.var.name, e->pos.line_start, e->pos.pos_start, e->pos.line_end,
             e->pos.pos_end);
 
-    after_error();
+    exit(1);
   }
 }
 
@@ -66,7 +66,7 @@ static void typecheck_fn_call_expr(checker *c, expr *e) {
             entry->original_name, e->pos.line_start, e->pos.pos_start,
             e->pos.line_end, e->pos.pos_end);
 
-    after_error();
+    exit(1);
   }
 
   if (entry->t->v.fntype.param_count != e->v.func_call.args_len) {
@@ -77,7 +77,7 @@ static void typecheck_fn_call_expr(checker *c, expr *e) {
             e->v.func_call.args_len, e->pos.line_start, e->pos.pos_start,
             e->pos.line_end, e->pos.pos_end);
 
-    after_error();
+    exit(1);
   }
 
   for (int i = 0; i < e->v.func_call.args_len; ++i) {
@@ -160,7 +160,7 @@ static void typecheck_stmt(checker *c, stmt *s) {
                 "Can't use storage class in for loop init declaration "
                 "%d:%d-%d:%d\n",
                 pos.line_start, pos.pos_start, pos.line_end, pos.pos_end);
-        after_error();
+        exit(1);
       }
       typecheck_decl(c, s->v.for_stmt.init_d);
     } else if (s->v.for_stmt.init_e)
@@ -194,11 +194,8 @@ static void typecheck_stmt(checker *c, stmt *s) {
 static void init_checker(checker *c) {
   NEW_ARENA(c->syme_arena, syme);
   NEW_ARENA(c->type_arena, type);
-  vec_push_back(arenas_to_destroy, c->syme_arena);
-  vec_push_back(arenas_to_destroy, c->type_arena);
 
   c->st = ht_create();
-  vec_push_back(tables_to_destroy, c->st);
 }
 
 static void typecheck_func_decl(checker *c, decl *d) {
@@ -217,7 +214,7 @@ static void typecheck_func_decl(checker *c, decl *d) {
             "(%d:%d-%d:%d)\n",
             d->v.func.name, curr.line_start, curr.pos_start, curr.line_end,
             curr.pos_end);
-    after_error();
+    exit(1);
   }
 
   if (e != NULL) {
@@ -230,7 +227,7 @@ static void typecheck_func_decl(checker *c, decl *d) {
               d->v.func.name, curr.line_start, curr.pos_start, curr.line_end,
               curr.pos_end, old.line_start, old.pos_start, old.line_end,
               old.pos_end);
-      after_error();
+      exit(1);
     }
     assert(e->a.t == ATTR_FUNC);
     alr_defined = e->a.v.f.defined;
@@ -243,7 +240,7 @@ static void typecheck_func_decl(checker *c, decl *d) {
               d->v.func.name, curr.line_start, curr.pos_start, curr.line_end,
               curr.pos_end, old.line_start, old.pos_start, old.line_end,
               old.pos_end);
-      after_error();
+      exit(1);
     }
 
     if (e->a.v.f.global && d->sc == SC_STATIC) {
@@ -255,7 +252,7 @@ static void typecheck_func_decl(checker *c, decl *d) {
               d->v.func.name, curr.line_start, curr.pos_start, curr.line_end,
               curr.pos_end, old.line_start, old.pos_start, old.line_end,
               old.pos_end);
-      after_error();
+      exit(1);
     }
 
     global = e->a.v.f.global;
@@ -313,7 +310,7 @@ static void typecheck_filescope_var_decl(checker *c, decl *d) {
               new_pos.line_end, new_pos.pos_end, old_pos.line_start,
               old_pos.pos_start, old_pos.line_end, old_pos.pos_end);
 
-      after_error();
+      exit(1);
     }
 
     assert(old->a.t == ATTR_STATIC);
@@ -331,7 +328,7 @@ static void typecheck_filescope_var_decl(checker *c, decl *d) {
           new_pos.line_end, new_pos.pos_end, old_pos.line_start,
           old_pos.pos_start, old_pos.line_end, old_pos.pos_end);
 
-      after_error();
+      exit(1);
     }
 
     if (old->a.v.s.init.t == INIT_INITIAL) {
@@ -346,7 +343,7 @@ static void typecheck_filescope_var_decl(checker *c, decl *d) {
                 new_pos.line_end, new_pos.pos_end, old_pos.line_start,
                 old_pos.pos_start, old_pos.line_end, old_pos.pos_end);
 
-        after_error();
+        exit(1);
       }
 
       else {
@@ -378,7 +375,7 @@ static void typecheck_local_var_decl(checker *c, decl *d) {
           d->v.var.original_name, pos.line_start, pos.pos_start, pos.line_end,
           pos.pos_end);
 
-      after_error();
+      exit(1);
     }
     syme *old = ht_get(c->st, d->v.var.name);
     if (old != NULL) {
@@ -393,7 +390,7 @@ static void typecheck_local_var_decl(checker *c, decl *d) {
                 old_pos.line_end, old_pos.pos_end, new_pos.line_start,
                 new_pos.pos_start, new_pos.line_end, new_pos.pos_end);
 
-        after_error();
+        exit(1);
       }
       return;
     } else {
@@ -466,14 +463,18 @@ static void typecheck_decl(checker *c, decl *d) {
   }
 }
 
-ht *typecheck(program *p) {
+sym_table typecheck(program *p) {
+  sym_table st;
   checker c;
   init_checker(&c);
-  decl *d = p;
+  decl *d = p->first_decl;
   for (; d != NULL; d = d->next)
     typecheck_decl(&c, d);
 
-  return c.st;
+  st.t = c.st;
+  st.entry_arena = c.syme_arena;
+  st.types_arena = c.type_arena;
+  return st;
 }
 
 static const char *type_name(type *t) {
@@ -525,8 +526,8 @@ static void print_syme(const char *name, syme *e) {
   printf("\n");
 }
 
-void print_sym_table(sym_table st) {
-  hti it = ht_iterator(st);
+void print_sym_table(sym_table *st) {
+  hti it = ht_iterator(st->t);
 
   printf("-- SYM TABLE --\n");
 

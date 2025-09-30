@@ -125,9 +125,9 @@ int main(int argc, char *argv[]) {
   if (opts.dof == DOF_VALIDATE) {
     print_program(&parsed_ast);
     printf("\n");
-    print_sym_table(st);
+    print_sym_table(&st);
     free_program(&parsed_ast);
-    // TODO: free any parser allocated arenas
+    free_sym_table(&st);
     return 0;
   }
 
@@ -141,6 +141,7 @@ int main(int argc, char *argv[]) {
   if (opts.dof == DOF_TAC) {
     print_tac(tac_prog);
     // TODO: free
+    free_sym_table(&st);
     return 0;
   }
 
@@ -148,6 +149,7 @@ int main(int argc, char *argv[]) {
   init_x86_asm_gen(&ag);
 
   x86_top_level *x86_prog = gen_asm(&ag, tac_prog, st);
+  free_sym_table(&st);
 
   if (opts.dof == DOF_CODEGEN) {
     // TODO: print mb
@@ -156,8 +158,6 @@ int main(int argc, char *argv[]) {
   }
 
   FILE *asm_file = fopen(asm_file_path, "w");
-  // NOTE: we dont add this file to cleanup array files to close and do it
-  // mannualy, because it should be done before assembler
 
   emit_x86(asm_file, x86_prog);
   fclose(asm_file);

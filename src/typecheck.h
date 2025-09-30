@@ -4,7 +4,7 @@
 #include "parser.h"
 
 typedef struct _sym_table_entry syme;
-typedef ht *sym_table;
+typedef struct _sym_table sym_table;
 
 typedef struct _type type;
 
@@ -69,7 +69,14 @@ struct _sym_table_entry {
   attrs a;
 };
 
+struct _sym_table {
+  ht *t;
+  arena *entry_arena; // will be freed by free_sym_table
+  arena *types_arena; // will be freed by free_sym_table
+};
+
 sym_table typecheck(program *p);
-void print_sym_table(sym_table st);
+void print_sym_table(sym_table *st);
+void free_sym_table(sym_table *st);
 
 #endif
