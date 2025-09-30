@@ -30,37 +30,4 @@ struct _driver_options {
 
 void parse_driver_options(driver_options *d, int argc, char *argv[]);
 
-/*
- *
- * For errors
- *
- */
-
-// TODO: its still is a good idea to free arenas where they are not needed.
-
-// vectors below are initialized in parse_driver_options func
-
-VEC_T(files_to_close_t, FILE *);
-extern files_to_close_t files_to_close;
-
-VEC_T(files_to_delete_t, char *);
-extern files_to_delete_t files_to_delete;
-
-VEC_T(arenas_to_free_t, arena *);
-extern arenas_to_free_t arenas_to_free;
-
-VEC_T(arenas_to_destroy_t, arena *);
-extern arenas_to_destroy_t arenas_to_destroy;
-
-VEC_T(tables_to_destroy_t, ht *);
-extern tables_to_destroy_t tables_to_destroy;
-
-// function that should be invoked after any fatal error
-// to free arenas, close/delete files etc
-// (WILL terminate program)
-void after_error();
-
-// same as after_error, but WONT terminate program
-void after_success();
-
 #endif

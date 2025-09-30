@@ -41,12 +41,6 @@ void parse_driver_options(driver_options *d, int argc, char *argv[]) {
   d->output = NULL;
   d->input = NULL;
 
-  vec_init(files_to_close);
-  vec_init(files_to_delete);
-  vec_init(arenas_to_free);
-  vec_init(arenas_to_destroy);
-  vec_init(tables_to_destroy);
-
   // i=0 for program name :)
   for (int i = 1; i < argc; ++i) {
     assert(strlen(argv[i]) > 1);
@@ -168,28 +162,3 @@ static void print_driver_options(const driver_options *d) {
   printf("Stage      : %s\n", dof_to_string(d->dof));
   printf("----------------------\n");
 }
-
-void after_success() {
-  vec_foreach(FILE *, files_to_close, it) fclose(*it);
-  vec_foreach(char *, files_to_delete, it) remove(*it);
-  vec_foreach(arena *, arenas_to_free, it) free_arena(*it);
-  vec_foreach(arena *, arenas_to_destroy, it) destroy_arena(*it);
-  vec_foreach(ht *, tables_to_destroy, it) ht_destroy(*it);
-
-  vec_free(files_to_close);
-  vec_free(files_to_delete);
-  vec_free(arenas_to_free);
-  vec_free(arenas_to_destroy);
-  vec_free(tables_to_destroy);
-}
-
-void after_error() {
-  after_success();
-  exit(1);
-}
-
-files_to_close_t files_to_close;
-files_to_delete_t files_to_delete;
-arenas_to_free_t arenas_to_free;
-arenas_to_destroy_t arenas_to_destroy;
-tables_to_destroy_t tables_to_destroy;

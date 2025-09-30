@@ -76,7 +76,7 @@ static char skip_whitespaces(lexer *l) {
           c = next_char(l);
           if (c == EOF) {
             fprintf(stderr, "unterminated block comment on line %d\n", l->line);
-            after_error();
+            exit(1);
           }
           if (prev == '*' && c == '/')
             break;
@@ -102,7 +102,7 @@ static string scan_string(lexer *l) {
   while ((c = next_char(l)) != '"' && c != EOF) {
     if (i >= IDENT_BUF_LEN - 1) {
       fprintf(stderr, "string literal is too long, on line %d\n", l->line);
-      after_error();
+      exit(1);
     }
 
     l->ident_buf[i++] = c;
@@ -110,7 +110,7 @@ static string scan_string(lexer *l) {
 
   if (c != '"') {
     fprintf(stderr, "unterminated string literal, on line %d\n", l->line);
-    after_error();
+    exit(1);
   }
 
   l->ident_buf[i] = '\0';
@@ -170,7 +170,7 @@ static int_literal_suffix convert_suff(const char *s, int line, int pos) {
 
 invalid:
   printf("invalid integer suffix '%s' on line %d, pos %d\n", s, line, pos);
-  after_error();
+  exit(1);
   return INT_SUFF_NONE;
 }
 
@@ -190,7 +190,7 @@ static void scan_int(lexer *l, char c, token *t) {
 
   if (isalpha(c) && !((c == 'u' || c == 'U' || c == 'l' || c == 'L'))) {
     printf("invalid identifier on line %d, pos %d\n", l->line, l->pos);
-    after_error();
+    exit(1);
   }
 
   while (c == 'u' || c == 'U' || c == 'l' || c == 'L') {
@@ -228,13 +228,13 @@ static char handle_preprocessor_directive(lexer *l) {
   c = next_char(l);
   if (!isdigit(c)) {
     printf("invalid preprocessor directive, expected digit, found %c\n", c);
-    after_error();
+    exit(1);
   }
   l->line = scan_simple_int(l, c);
   next_char(l); // skip ' '
   if (!match_char(l, '"')) {
     printf("invalid preprocessor directive, expected '\"', found %c\n", c);
-    after_error();
+    exit(1);
   }
 
   // read file name
@@ -258,7 +258,7 @@ static size_t scan_ident(lexer *l, char c) {
   while (isalpha(c) || isdigit(c) || c == '_') {
     if (IDENT_BUF_LEN - 1 == i) {
       fprintf(stderr, "identifier is too long, on line %d\n", l->line);
-      after_error();
+      exit(1);
     } else if (i < IDENT_BUF_LEN - 1)
       l->ident_buf[i++] = c;
     c = next_char(l);
@@ -468,7 +468,7 @@ void next(lexer *l, token *t) {
       break;
     }
     fprintf(stderr, "invalid character on line %d, pos %d", l->line, l->pos);
-    after_error();
+    exit(1);
     break;
   }
 
