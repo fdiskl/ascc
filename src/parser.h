@@ -12,7 +12,7 @@ typedef struct _decl decl;
 typedef struct _stmt stmt;
 typedef struct _expr expr;
 
-typedef decl program;
+typedef struct _ast_program program;
 
 typedef struct _parser parser;
 
@@ -375,6 +375,15 @@ struct _loop_resolve_info {
   } v;
 };
 
+struct _ast_program {
+  arena *decl_arena; // will be freed by free_program
+  arena *stmt_arena; // will be freed by free_program
+  arena *expr_arena; // will be freed by free_program
+  arena *bi_arena;   // will be freed by free_program
+
+  decl *first_decl;
+};
+
 // -- for reolve.c --
 typedef struct _ident_entry ident_entry;
 struct _ident_entry {
@@ -396,21 +405,22 @@ struct _parser {
   token next;
   token after_next;
 
-  arena decl_arena;
-  arena stmt_arena;
-  arena expr_arena;
-  arena bi_arena;
+  arena *decl_arena; // should be alive till tac gen is finished
+  arena *stmt_arena; // should be alive till tac gen is finished
+  arena *expr_arena; // should be alive till tac gen is finished
+  arena *bi_arena;   // should be alive till tac gen is finished
 
   // for resolve.c
-  ht *ident_ht_list_head;
-  ht *labels_ht;
-  ht *gotos_to_check_ht;
-  arena symbol_arena;
-  VEC(loop_resolve_info) stack_loop_resolve_info;
+  ht *ident_ht_list_head;  // can be freed after parse is done
+  ht *labels_ht;           // can be freed after parse is done
+  ht *gotos_to_check_ht;   // can be freed after parse is done
+  arena ident_entry_arena; // can be freed after parse is done
+  VEC(loop_resolve_info)
+  stack_loop_resolve_info; // can be freed after parse is done
 };
 
-void init_parser(parser *p, lexer *l);
-program *parse(parser *p);
+program parse(lexer *l);
+void free_program(program *p);
 
 void print_program(program *p);
 

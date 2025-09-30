@@ -417,4 +417,4 @@ static void print_decl(decl *d, int indent) {
     print_decl(d->next, indent);
 }
 
-void print_program(program *p) { print_decl(p, 0); }
+void print_program(program *p) { print_decl(p->first_decl, 0); }

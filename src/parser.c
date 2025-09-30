@@ -56,47 +56,40 @@ static token *expect(parser *p, int t) {
   fprintf(stderr, "expected %s, found %s at [%d:%d:%d]\n", token_name(t),
           token_name(p->next.token), p->next.pos.line, p->next.pos.start_pos,
           p->next.pos.end_pos);
-  after_error();
+  exit(1);
   return NULL;
 }
 
-void init_parser(parser *p, lexer *l) {
+static void init_parser(parser *p, lexer *l) {
   p->l = l;
 
-  INIT_ARENA(&p->decl_arena, decl);
-  INIT_ARENA(&p->stmt_arena, stmt);
-  INIT_ARENA(&p->expr_arena, expr);
-  INIT_ARENA(&p->bi_arena, block_item);
-  INIT_ARENA(&p->symbol_arena, ident_entry);
+  NEW_ARENA(p->decl_arena, decl);
+  NEW_ARENA(p->stmt_arena, stmt);
+  NEW_ARENA(p->expr_arena, expr);
+  NEW_ARENA(p->bi_arena, block_item);
 
-  vec_push_back(arenas_to_free, &p->decl_arena);
-  vec_push_back(arenas_to_free, &p->stmt_arena);
-  vec_push_back(arenas_to_free, &p->expr_arena);
-  vec_push_back(arenas_to_free, &p->bi_arena);
-  vec_push_back(arenas_to_free, &p->symbol_arena);
+  INIT_ARENA(&p->ident_entry_arena, ident_entry);
 
   p->ident_ht_list_head = ht_create();
-
-  vec_push_back(tables_to_destroy, p->ident_ht_list_head);
 
   advance(p); // for after_next
   advance(p); // for next
 }
 
 static expr *alloc_expr(parser *p, int t) {
-  expr *e = ARENA_ALLOC_OBJ(&p->expr_arena, expr);
+  expr *e = ARENA_ALLOC_OBJ(p->expr_arena, expr);
   e->t = t;
   return e;
 }
 
 static stmt *alloc_stmt(parser *p, int t) {
-  stmt *s = ARENA_ALLOC_OBJ(&p->stmt_arena, stmt);
+  stmt *s = ARENA_ALLOC_OBJ(p->stmt_arena, stmt);
   s->t = t;
   return s;
 }
 
 static decl *alloc_decl(parser *p, int t) {
-  decl *d = ARENA_ALLOC_OBJ(&p->decl_arena, decl);
+  decl *d = ARENA_ALLOC_OBJ(p->decl_arena, decl);
   d->next = NULL;
   d->t = t;
   return d;
@@ -231,7 +224,7 @@ static expr *parse_factor(parser *p) {
     fprintf(stderr, "invalid token found %s (%d:%d:%d)\n",
             token_name(p->next.token), p->next.pos.line, p->next.pos.start_pos,
             p->next.pos.end_pos); // FIXME: idk, dont really like how it is
-    after_error();
+    exit(1);
     return NULL;
   }
 
@@ -453,7 +446,7 @@ static stmt *parse_block_stmt(parser *p) {
   exit_scope(p);
 
   s->v.block.items_len = items_tmp.size;
-  vec_move_into_arena(&p->bi_arena, items_tmp, block_item, s->v.block.items);
+  vec_move_into_arena(p->bi_arena, items_tmp, block_item, s->v.block.items);
 
   vec_free(items_tmp);
 
@@ -578,7 +571,7 @@ static stmt *parse_for_stmt(parser *p) {
                 "function declaration are not permitted in for loop init "
                 "(%d:%d-%d:%d)\n",
                 pos.line_start, pos.pos_start, pos.line_end, pos.pos_end);
-        after_error();
+        exit(1);
       }
       goto after_semi;
     } else
@@ -796,13 +789,13 @@ static sct parse_type_and_storage_class(parser *p) {
     vec_free(types);
     vec_free(scs);
     fprintf(stderr, "invalid type specifier\n");
-    after_error();
+    exit(1);
   }
   if (scs.size > 1) {
     vec_free(types);
     vec_free(scs);
     fprintf(stderr, "invalid storage class specifier\n");
-    after_error();
+    exit(1);
   }
 
   sct res;
@@ -860,7 +853,7 @@ static decl *parse_decl(parser *p) {
     stmt *s;
     res->v.func.bs = s = alloc_stmt(p, STMT_BLOCK);
     s->v.block.items_len = items_tmp.size;
-    vec_move_into_arena(&p->bi_arena, items_tmp, block_item, s->v.block.items);
+    vec_move_into_arena(p->bi_arena, items_tmp, block_item, s->v.block.items);
 
     vec_free(items_tmp);
 
@@ -899,12 +892,16 @@ static decl *parse_decl(parser *p) {
   return res;
 }
 
-program *parse(parser *p) {
+program parse(lexer *l) {
+  parser p;
+  init_parser(&p, l);
+  program res;
+
   decl *head = NULL;
   decl *tail = NULL;
 
-  while (p->next.token != TOK_EOF) {
-    decl *d = parse_decl(p);
+  while (p.next.token != TOK_EOF) {
+    decl *d = parse_decl(&p);
     if (head == NULL)
       head = d;
     else
@@ -913,5 +910,18 @@ program *parse(parser *p) {
     tail = d;
   }
 
-  return head;
+  res.first_decl = head;
+  res.decl_arena = p.decl_arena;
+  res.expr_arena = p.expr_arena;
+  res.stmt_arena = p.stmt_arena;
+  res.bi_arena = p.bi_arena;
+
+  return res;
+}
+
+void free_program(program *p) {
+  destroy_arena(p->decl_arena);
+  destroy_arena(p->expr_arena);
+  destroy_arena(p->bi_arena);
+  destroy_arena(p->stmt_arena);
 }

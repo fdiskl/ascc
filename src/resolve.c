@@ -27,7 +27,7 @@ static int get_name() { return ++var_name_idx_counter; }
 
 static ident_entry *alloc_symt_entry(parser *p, string original_name,
                                      char linkage, string name) {
-  ident_entry *e = ARENA_ALLOC_OBJ(&p->symbol_arena, ident_entry);
+  ident_entry *e = ARENA_ALLOC_OBJ(&p->ident_entry_arena, ident_entry);
   e->has_linkage = linkage;
   e->original_name = original_name;
   e->name = name;

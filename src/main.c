@@ -28,10 +28,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   INIT_ARENA(&str_arena, char);
-  vec_push_back(arenas_to_free, &str_arena);
-
   INIT_ARENA(&ptr_arena, void *);
-  vec_push_back(arenas_to_free, &ptr_arena);
 
   driver_options opts;
   parse_driver_options(&opts, argc, argv);
@@ -78,7 +75,6 @@ int main(int argc, char *argv[]) {
 #else
     if (status == -1) {
       fprintf(stderr, "system failed");
-      after_error();
       return 1;
     }
 
@@ -87,22 +83,17 @@ int main(int argc, char *argv[]) {
       if (exit_code != 0) {
         fprintf(stderr, "gcc preprocessor failed with exit code %d\n",
                 exit_code);
-        after_error();
         return exit_code;
       }
     } else if (WIFSIGNALED(status)) {
       fprintf(stderr, "gcc preprocessor terminated by signal %d\n",
               WTERMSIG(status));
-      after_error();
       return 1;
     }
 #endif
   }
 
   FILE *in_file = fopen(preprocessor_file_path, "r");
-
-  vec_push_back(files_to_close, in_file);
-  vec_push_back(files_to_delete, preprocessor_file_path);
 
   lexer l;
   init_lexer(&l, in_file);
@@ -114,39 +105,42 @@ int main(int argc, char *argv[]) {
       print_token(&t);
     } while (t.token != TOK_EOF);
 
-    after_success();
+    // lexer doesn't need to be freed
     return 0;
   }
 
-  parser p;
-  init_parser(&p, &l);
+  program parsed_ast = parse(&l);
 
-  program *parsed_ast = parse(&p);
+  fclose(in_file);
+  remove(preprocessor_file_path);
 
   if (opts.dof == DOF_PARSE) {
-    print_program(parsed_ast);
-    after_success();
+    print_program(&parsed_ast);
+    free_program(&parsed_ast);
     return 0;
   }
 
-  sym_table st = typecheck(parsed_ast);
+  sym_table st = typecheck(&parsed_ast); // TODO: free this too
 
   if (opts.dof == DOF_VALIDATE) {
-    print_program(parsed_ast);
+    print_program(&parsed_ast);
     printf("\n");
     print_sym_table(st);
-    after_success();
+    free_program(&parsed_ast);
+    // TODO: free any parser allocated arenas
     return 0;
   }
 
   tacgen tg;
   init_tacgen(&tg, st);
 
-  tac_top_level *tac_prog = gen_tac(&tg, parsed_ast);
+  tac_top_level *tac_prog = gen_tac(&tg, &parsed_ast);
+
+  free_program(&parsed_ast); // at this point AST is not needed
 
   if (opts.dof == DOF_TAC) {
     print_tac(tac_prog);
-    after_success();
+    // TODO: free
     return 0;
   }
 
@@ -157,7 +151,7 @@ int main(int argc, char *argv[]) {
 
   if (opts.dof == DOF_CODEGEN) {
     // TODO: print mb
-    after_success();
+    // TODO: free
     return 0;
   }
 
@@ -167,6 +161,8 @@ int main(int argc, char *argv[]) {
 
   emit_x86(asm_file, x86_prog);
   fclose(asm_file);
+  free_arena(&str_arena);
+  free_arena(&ptr_arena);
 
 #ifdef DEBUG_INFO
   printf("-------asm  res-------\n");
@@ -175,11 +171,9 @@ int main(int argc, char *argv[]) {
 #endif
 
   if (opts.dof == DOF_S) {
-    after_success();
+    // TODO: free
     return 0;
   }
-
-  vec_push_back(files_to_delete, asm_file_path);
 
   if (opts.dof == DOF_C) {
     char cmd[1024];
@@ -191,7 +185,6 @@ int main(int argc, char *argv[]) {
 #else
     if (status == -1) {
       fprintf(stderr, "system failed");
-      after_error();
       return 1;
     }
 
@@ -200,19 +193,19 @@ int main(int argc, char *argv[]) {
       if (exit_code != 0) {
         fprintf(stderr, "gas (using gcc) failed with exit code %d\n",
                 exit_code);
-        after_error();
         return exit_code;
       }
     } else if (WIFSIGNALED(status)) {
       fprintf(stderr, "gas (using gcc) terminated by signal %d\n",
               WTERMSIG(status));
-      after_error();
       return 1;
     }
 
 #endif
 
-    after_success();
+    remove(asm_file_path);
+
+    // TODO: free
     return 0;
   }
 
@@ -234,7 +227,6 @@ int main(int argc, char *argv[]) {
 #else
     if (status == -1) {
       fprintf(stderr, "system failed");
-      after_error();
       return 1;
     }
 
@@ -243,13 +235,11 @@ int main(int argc, char *argv[]) {
       if (exit_code != 0) {
         fprintf(stderr, "gas (using gcc) failed with exit code %d\n",
                 exit_code);
-        after_error();
         return exit_code;
       }
     } else if (WIFSIGNALED(status)) {
       fprintf(stderr, "gas (using gcc) terminated by signal %d\n",
               WTERMSIG(status));
-      after_error();
       return 1;
     }
 
@@ -261,7 +251,8 @@ int main(int argc, char *argv[]) {
   printf("Done in %.9f seconds\n", end - start);
 #endif
 
-  after_success();
+  remove(asm_file_path);
+  // TODO: free everything
   return 0;
 }
 
