@@ -4,8 +4,8 @@
 program = Program(decl*)
 block_item = D(decl) | S(statement)
 decl = var_decl | func_decl
-var_decl = Var(identifier name, expr? init, storage_class?)
-func_decl = Func(identifier name, identifier* params, block_item* body, storage_class?)
+var_decl = Var(identifier name, expr? init, type var_type, storage_class?)
+func_decl = Func(identifier name, identifier* params, block_item* body, type func_type, storage_class?)
 storage_class = Static | Extern
 for_init = V(var_decl) | E(expr)
 statement = Return(expr) | Block(block_item*) | Expr(expr)
@@ -17,11 +17,15 @@ statement = Return(expr) | Block(block_item*) | Expr(expr)
           | Case(constant_expr, statement) | Default(statement)
           | Switch(expr cond, statement body)
           | FuncCall(identifier name, expr* args)
-constant_expr = Constant(int) | Unary(unop, constant_expr)
-              | Binary(binop constant_expr) | Conditional(constant_expr condition, expr then, expr else)
+constant_expr = Constant(const)
+              | Unary(unop, constant_expr)
+              | Binary(binop constant_expr)
+              | Conditional(constant_expr condition, constant_expr then, constant_expr else)
+              | Cast(type target, constant_expr e)
 expr = Constant(int) | Var(identifier) | Unary(unop, expr)
      | Binary(binop, expr) | Assignment(assignment_op, exp, exp)
      | Conditional(expr condition, expr then, expr else)
+     | Cast(type target, expr)
 unop = Complement | Negate | Not
      | PrefixInc | PrefixDec | PostifxInc | PostfixDec
 binop = Add | Sub | Mul | Div | Mod
@@ -31,9 +35,11 @@ assignment_op =  Assign | AddAssign | SubAssign | MulAssign
                | DivAssign | ModAssign
                | BitwiseAndAssgin | BitwiseOrAssign
                | XorAssign | LshiftAssign | RshiftAssign
+const = ConstInt(int) | ConstLong(int)
+type = Int | Long | FuncType(type *params, type ret)
 ```
 
-(For now `constant_expr = Constant(int)` because it requires expr eval which will be implemented after types are added)
+(For now compiler actually uses `constant_expr = const` because it requires expr eval which will be implemented after types are added)
 
 # Formal grammar
 
@@ -43,8 +49,8 @@ assignment_op =  Assign | AddAssign | SubAssign | MulAssign
 <decl> ::= <var_decl> | <func_decl>
 <var_decl> ::= {<specifier>}+ <identifier> [ "=" <expr> ] ";"
 <func_decl> ::= {<specifier>}+ <identifier> "(" <params> ")" ( ("{" {<block_item>} "}") | ";" )
-<specifier> ::= "int" | "extern" | "static"
-<params> ::= "void" | "int" <identifier> {"," "int" <identifier>}
+<specifier> ::= <type_specifier> | "extern" | "static"
+<params> ::= "void" | { <type_specifier> }+ <identifier> {"," { <type_specifier> }+ <identifier>}
 <for-init> ::= <var_decl> | <func_decl>
 <statement> ::= "return" <expr> | "{" {<block_item>} "}" | <expr> ";" | ";"
             | "if" "(" <expr> ")" <statement> [ "else" <statement> ]
@@ -56,7 +62,8 @@ assignment_op =  Assign | AddAssign | SubAssign | MulAssign
             | "case" <expr> ":" <statement> | "default" ":" <statement>
             | "switch" "(" <expr> ")" <statement>
 <expr> ::= <factor> | <expr> <binop> <expr> | <expr> "?" <expr> ":" <expr>
-<factor> ::= <int> | <identifier> | <unary> | "(" <expr> ")"
+<factor> ::= <const> | "(" { <type_specifier> }+ ")" <factor>
+         | <identifier> | <unary> | "(" <expr> ")"
          | <identifier> "(" [ <expr> {"," <expr>} ] ")"
 <unary> ::= <prefix-unary> | <postfix-unary>
 <prefix-unary> ::= <prefix-unop> <factor>
@@ -65,8 +72,10 @@ assignment_op =  Assign | AddAssign | SubAssign | MulAssign
         | "&" | "|" | "^" | "<<" | ">>"
         | "&&" | "||" | "==" | "!=" | "<" | ">" | "<=" | ">="
         | "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^=" | "<<=" ">>="
+<type_specifier> ::= "int" | "long"
 <prefix-unop> ::= "-" | "~" | "!" | "++" | "--"
 <postfix-unop> ::= "++" | "--"
 <identifier> ::= ? ident token ?
 <int> ::= ? int literal token ?
+<long> ::= ? long literal token ?
 ```

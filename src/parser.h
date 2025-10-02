@@ -5,6 +5,7 @@
 #include "scan.h"
 #include "strings.h"
 #include "table.h"
+#include "type.h"
 #include "vec.h"
 #include <stdint.h>
 
@@ -42,6 +43,7 @@ typedef struct _assignment assignment;
 typedef struct _var_expr var_expr;
 typedef struct _ternary_expr ternary_expr;
 typedef struct _func_call_expr func_call_expr;
+typedef struct _cast_expr cast_expr;
 
 typedef enum {
   EXPR_INT_CONST,
@@ -51,7 +53,13 @@ typedef enum {
   EXPR_VAR,
   EXPR_TERNARY,
   EXPR_FUNC_CALL,
+  EXPR_CAST,
 } exprt;
+
+struct _cast_expr {
+  type *tp;
+  expr *e;
+};
 
 struct _ternary_expr {
   expr *cond;
@@ -59,7 +67,13 @@ struct _ternary_expr {
   expr *elze;
 };
 
+typedef enum {
+  CONST_INT,
+  CONST_LONG,
+} constt;
+
 struct _int_const {
+  constt t;
   uint64_t v;
 };
 
@@ -152,7 +166,9 @@ struct _expr {
     var_expr var;
     ternary_expr ternary;
     func_call_expr func_call;
+    cast_expr cast;
   } v;
+  type *tp; // NULL at parse, has type after typecheck
 };
 
 /*
@@ -330,6 +346,7 @@ struct _decl {
     func_decl func;
     var_decl var;
   } v;
+  type *tp;
   decl *next; // NULL if decl is not global
 };
 
