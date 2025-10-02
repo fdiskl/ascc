@@ -1,14 +1,17 @@
 #include "parser.h"
 #include "arena.h"
 #include "common.h"
-#include "driver.h"
 #include "scan.h"
 #include "table.h"
+#include "type.h"
 #include "vec.h"
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+
+// TODO RN: types in params, return types
 
 // TODO: location for block stmt
 
@@ -86,6 +89,7 @@ static void free_parser(parser *p) {
 static expr *alloc_expr(parser *p, int t) {
   expr *e = ARENA_ALLOC_OBJ(p->expr_arena, expr);
   e->t = t;
+  e->tp = NULL;
   return e;
 }
 
@@ -104,7 +108,29 @@ static decl *alloc_decl(parser *p, int t) {
 
 static expr *parse_int_const_expr(parser *p) {
   expr *e = alloc_expr(p, EXPR_INT_CONST);
-  e->v.intc.v = expect(p, TOK_INTLIT)->v.int_lit.v;
+
+  int_literal v;
+
+  if (p->next.token == TOK_INTLIT)
+    v = expect(p, TOK_INTLIT)->v.int_lit;
+  else if (p->next.token == TOK_LONGLIT)
+    v = expect(p, TOK_LONGLIT)->v.int_lit;
+
+  e->v.intc.v = v.v;
+
+  if (v.v > (1ULL << 63) - 1) //  1ULL << 63 = 2^63
+  {
+    fprintf(stderr, "constant is too big (%d:%d:%d)\n", p->curr.pos.line,
+            p->curr.pos.start_pos, p->curr.pos.end_pos);
+    exit(1);
+  }
+
+  if (v.suff == INT_SUFF_NONE && v.suff >= (1ULL << 31) - 1) {
+    e->v.intc.t = CONST_INT;
+  } else {
+    e->v.intc.t = CONST_LONG;
+  }
+
   return e;
 }
 
@@ -772,8 +798,51 @@ static void parse_params(parser *p, func_decl *f) {
   vec_free(params);
 }
 
-static sct parse_type_and_storage_class(parser *p) {
-  VEC(int) types;
+VEC_T(type_vector_t, int);
+
+static type *parse_type(type_vector_t tokens) {
+  typet t;
+  switch (tokens.size) {
+  case 1:
+    if (tokens.data[0] == TOK_INT) {
+      t = TYPE_INT;
+      break;
+    }
+    if (tokens.data[1] == TOK_LONG) {
+      t = TYPE_LONG;
+      break;
+    }
+    goto fail;
+    break;
+  case 2:
+    if (tokens.data[0] == TOK_INT && tokens.data[1] == TOK_LONG) {
+      t = TYPE_LONG;
+      break;
+    }
+    if (tokens.data[0] == TOK_LONG && tokens.data[1] == TOK_INT) {
+      t = TYPE_LONG;
+      break;
+    }
+    goto fail;
+    break;
+  default:
+    goto fail;
+    break;
+  }
+
+  return new_type(t);
+
+fail: {
+  // TODO: location
+  fprintf(stderr, "invalid type\n");
+  exit(1);
+  return NULL;
+}
+}
+
+// returns storace class and write type into tp_ptr
+static sct parse_type_and_storage_class(parser *p, type **tp_ptr) {
+  type_vector_t types;
   VEC(int) scs;
   vec_init(types);
   vec_init(scs);
@@ -782,25 +851,19 @@ static sct parse_type_and_storage_class(parser *p) {
 
   while (p->next.token != TOK_IDENT &&
          (p->next.token == TOK_INT || p->next.token == TOK_STATIC ||
-          p->next.token == TOK_EXTERN)) {
+          p->next.token == TOK_EXTERN || p->next.token == TOK_LONG)) {
     advance(p);
 
-    if (p->curr.token == TOK_INT)
+    if (p->curr.token == TOK_INT || p->curr.token == TOK_LONG)
       vec_push_back(types, p->curr.token);
     else
       vec_push_back(scs, p->curr.token);
   }
 
-  // TODO: line info in err
-  if (types.size != 1) {
-    vec_free(types);
-    vec_free(scs);
-    fprintf(stderr, "invalid type specifier\n");
-    exit(1);
-  }
+  type *tp = parse_type(types);
+  *tp_ptr = tp;
+
   if (scs.size > 1) {
-    vec_free(types);
-    vec_free(scs);
     fprintf(stderr, "invalid storage class specifier\n");
     exit(1);
   }
@@ -820,7 +883,8 @@ static sct parse_type_and_storage_class(parser *p) {
 static decl *parse_decl(parser *p) {
   tok_pos start = p->next.pos;
 
-  sct sc = parse_type_and_storage_class(p);
+  type *tp = NULL;
+  sct sc = parse_type_and_storage_class(p, &tp);
   string ident = expect(p, TOK_IDENT)->v.ident;
   tok_pos tmp_end = p->curr.pos;
 
