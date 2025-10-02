@@ -11,12 +11,11 @@ typedef struct _checker checker;
 
 struct _checker {
   arena *syme_arena;
-  arena *type_arena;
   ht *st;
 };
 
-static type *new_type(checker *c, int t) {
-  type *res = ARENA_ALLOC_OBJ(c->type_arena, type);
+type *new_type(int t) {
+  type *res = ARENA_ALLOC_OBJ(types_arena, type);
   res->t = t;
   return res;
 }
@@ -193,13 +192,12 @@ static void typecheck_stmt(checker *c, stmt *s) {
 
 static void init_checker(checker *c) {
   NEW_ARENA(c->syme_arena, syme);
-  NEW_ARENA(c->type_arena, type);
 
   c->st = ht_create();
 }
 
 static void typecheck_func_decl(checker *c, decl *d) {
-  type *t = new_type(c, TYPE_FN);
+  type *t = new_type(TYPE_FN);
   t->v.fntype.param_count = d->v.func.params_len;
   char has_body = d->v.func.bs != NULL ? 1 : 0;
   char alr_defined = false;
@@ -270,7 +268,7 @@ static void typecheck_func_decl(checker *c, decl *d) {
 
   if (has_body) {
     for (int i = 0; i < d->v.func.params_len; ++i) {
-      add_to_symtable(c, new_type(c, TYPE_INT), d->v.func.params_names[i], NULL,
+      add_to_symtable(c, new_type(TYPE_INT), d->v.func.params_names[i], NULL,
                       local_a, d->v.func.original_params[i]);
     }
 
@@ -359,7 +357,7 @@ static void typecheck_filescope_var_decl(checker *c, decl *d) {
   a.v.s.global = global;
   a.v.s.init = iv;
 
-  add_to_symtable(c, new_type(c, TYPE_INT), d->v.var.name, d, a,
+  add_to_symtable(c, new_type(TYPE_INT), d->v.var.name, d, a,
                   d->v.var.original_name);
 }
 
@@ -398,7 +396,7 @@ static void typecheck_local_var_decl(checker *c, decl *d) {
       a.v.s.global = true;
       a.v.s.init.t = INIT_NOINIT;
 
-      add_to_symtable(c, new_type(c, TYPE_INT), d->v.var.name, d, a,
+      add_to_symtable(c, new_type(TYPE_INT), d->v.var.name, d, a,
                       d->v.var.original_name);
       return;
     }
@@ -428,7 +426,7 @@ static void typecheck_local_var_decl(checker *c, decl *d) {
   case SC_NONE: {
     a.t = ATTR_LOCAL;
     add_to_symtable(
-        c, new_type(c, TYPE_INT), d->v.var.name, d, a,
+        c, new_type(TYPE_INT), d->v.var.name, d, a,
         d->v.var.original_name); // important to do before typechecking expr
 
     if (d->v.var.init != NULL)
@@ -439,7 +437,7 @@ static void typecheck_local_var_decl(checker *c, decl *d) {
   } break;
   }
 
-  add_to_symtable(c, new_type(c, TYPE_INT), d->v.var.name, d, a,
+  add_to_symtable(c, new_type(TYPE_INT), d->v.var.name, d, a,
                   d->v.var.original_name);
 }
 
@@ -526,7 +524,7 @@ void print_sym_table(sym_table *st) {
 
 void free_sym_table(sym_table *st) { destroy_arena(st->entry_arena); }
 
-static const char *type_name(type *t) {
+const char *type_name(type *t) {
   // TODO: rewrite
   return "todo";
 }

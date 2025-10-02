@@ -16,7 +16,7 @@ typedef enum {
 struct _fn_type {
   type *return_type;
   type **params;
-  size_t param_count;
+  int param_count;
 };
 
 struct _type {
@@ -26,6 +26,7 @@ struct _type {
   } v;
 };
 
-static const char *type_name(type *t); // defined in typecheck.c
+const char *type_name(type *t); // defined in typecheck.c
+type *new_type(int t);          // defined in typecheck.c
 
 #endif

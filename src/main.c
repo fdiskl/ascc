@@ -5,6 +5,7 @@
 #include "scan.h"
 #include "strings.h"
 #include "tac.h"
+#include "type.h"
 #include "typecheck.h"
 #include "x86.h"
 #include <assert.h>
@@ -19,6 +20,8 @@
 double now_seconds();
 
 arena ptr_arena; // arena to allocate pointers (void*)
+
+arena *types_arena;
 
 static void replace_ext(const char *original, char *dst, const char *ext);
 
@@ -109,6 +112,7 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
+  NEW_ARENA(types_arena, type);
   program parsed_ast = parse(&l);
 
   fclose(in_file);
@@ -164,6 +168,7 @@ int main(int argc, char *argv[]) {
   free_tac(&tac_prog); // only after emittion, bc fprint_taci is used in emit
   free_arena(&str_arena);
   free_arena(&ptr_arena);
+  destroy_arena(types_arena);
   free_x86_program(&x86_prog);
 
   if (opts.dof == DOF_S) {
