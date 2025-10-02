@@ -473,20 +473,7 @@ sym_table typecheck(program *p) {
 
   st.t = c.st;
   st.entry_arena = c.syme_arena;
-  st.types_arena = c.type_arena;
   return st;
-}
-
-static const char *type_name(type *t) {
-  switch (t->t) {
-  case TYPE_INT:
-    return "int";
-  case TYPE_FN: {
-    static char buf[255];
-    sprintf(buf, "func(%d)", t->v.fntype.param_count);
-    return buf;
-  }
-  }
 }
 
 static void print_attr(attrs *a) {
@@ -537,7 +524,9 @@ void print_sym_table(sym_table *st) {
   }
 }
 
-void free_sym_table(sym_table *st) {
-  destroy_arena(st->entry_arena);
-  destroy_arena(st->types_arena);
+void free_sym_table(sym_table *st) { destroy_arena(st->entry_arena); }
+
+static const char *type_name(type *t) {
+  // TODO: rewrite
+  return "todo";
 }

@@ -1,4 +1,4 @@
-CC := clang
+CC := gcc
 BUILD ?= debug
 CFLAGS_COMMON := -Wall -Wextra -Wno-sign-compare
 LDFLAGS :=
