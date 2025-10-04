@@ -254,7 +254,7 @@ static expr *parse_factor(parser *p) {
       e = parse_var_expr(p);
     break;
   default:
-    fprintf(stderr, "invalid token found %s (%d:%d:%d)\n",
+    fprintf(stderr, "invalid token found - %s (%d:%d:%d)\n",
             token_name(p->next.token), p->next.pos.line, p->next.pos.start_pos,
             p->next.pos.end_pos); // FIXME: idk, dont really like how it is
     exit(1);
@@ -438,6 +438,7 @@ static bool is_decl(int toktype) {
   case TOK_INT:
   case TOK_STATIC:
   case TOK_EXTERN:
+  case TOK_LONG:
     return true;
   default:
     return false;
@@ -755,32 +756,40 @@ void exit_func_with_body(parser *p, decl *f); // resolve.c
 ident_entry *resolve_var_decl(parser *p, string name, ast_pos pos, char param,
                               sct sc); // resolve.c
 
-static void parse_params(parser *p, func_decl *f) {
+static type *parse_type(parser *p);
+
+static void parse_params(parser *p, func_decl *f, type *ft) {
   if (p->next.token == TOK_VOID) {
     expect(p, TOK_VOID);
     f->params_names = NULL;
     f->original_params = NULL;
     f->params_len = 0;
+    ft->v.fntype.params = NULL;
+    ft->v.fntype.param_count = 0;
     return;
   }
 
   VEC(string) params;
   VEC(string) params_new_names;
+  VEC(type *) params_types;
   vec_init(params);
   vec_init(params_new_names);
+  vec_init(params_types);
 
   ast_pos pos;
-  tok_pos start = expect(p, TOK_INT)->pos;
+  tok_pos start = p->next.pos;
+  type *param_type = parse_type(p);
   tok_pos end = expect(p, TOK_IDENT)->pos;
   CONVERT_POS(start, end, pos);
 
   vec_push_back(params, p->curr.v.ident);
   vec_push_back(params_new_names,
                 resolve_var_decl(p, p->curr.v.ident, pos, true, SC_NONE)->name);
+  vec_push_back(params_types, param_type);
 
   while (p->next.token != TOK_RPAREN) {
     start = expect(p, TOK_COMMA)->pos;
-    expect(p, TOK_INT);
+    type *param_type = parse_type(p);
     end = expect(p, TOK_IDENT)->pos;
     CONVERT_POS(start, end, pos);
 
@@ -788,19 +797,23 @@ static void parse_params(parser *p, func_decl *f) {
     vec_push_back(
         params_new_names,
         resolve_var_decl(p, p->curr.v.ident, pos, true, SC_NONE)->name);
+    vec_push_back(params_types, param_type);
   }
 
-  f->params_len = params.size;
+  ft->v.fntype.param_count = f->params_len = params.size;
 
   vec_move_into_arena(&ptr_arena, params, string, f->original_params);
   vec_move_into_arena(&ptr_arena, params_new_names, string, f->params_names);
+  vec_move_into_arena(&ptr_arena, params_types, type *, ft->v.fntype.params);
 
   vec_free(params);
+  vec_free(params_new_names);
+  vec_free(params_types);
 }
 
 VEC_T(type_vector_t, int);
 
-static type *parse_type(type_vector_t tokens) {
+static type *convert_type(type_vector_t tokens, tok_pos pos) {
   typet t;
   switch (tokens.size) {
   case 1:
@@ -808,7 +821,7 @@ static type *parse_type(type_vector_t tokens) {
       t = TYPE_INT;
       break;
     }
-    if (tokens.data[1] == TOK_LONG) {
+    if (tokens.data[0] == TOK_LONG) {
       t = TYPE_LONG;
       break;
     }
@@ -833,11 +846,28 @@ static type *parse_type(type_vector_t tokens) {
   return new_type(t);
 
 fail: {
-  // TODO: location
-  fprintf(stderr, "invalid type\n");
+  fprintf(stderr, "invalid type %d:%d\n", pos.line, pos.start_pos);
   exit(1);
   return NULL;
 }
+}
+
+static type *parse_type(parser *p) {
+  type_vector_t types;
+  vec_init(types);
+
+  tok_pos pos = p->next.pos;
+  while (p->next.token != TOK_IDENT &&
+         (p->next.token == TOK_INT || p->next.token == TOK_LONG)) {
+    advance(p);
+    vec_push_back(types, p->curr.token);
+  }
+
+  type *res = convert_type(types, pos);
+
+  vec_free(types);
+
+  return res;
 }
 
 // returns storace class and write type into tp_ptr
@@ -847,7 +877,7 @@ static sct parse_type_and_storage_class(parser *p, type **tp_ptr) {
   vec_init(types);
   vec_init(scs);
 
-  int i = 0;
+  tok_pos pos = p->next.pos;
 
   while (p->next.token != TOK_IDENT &&
          (p->next.token == TOK_INT || p->next.token == TOK_STATIC ||
@@ -860,7 +890,7 @@ static sct parse_type_and_storage_class(parser *p, type **tp_ptr) {
       vec_push_back(scs, p->curr.token);
   }
 
-  type *tp = parse_type(types);
+  type *tp = convert_type(types, pos);
   *tp_ptr = tp;
 
   if (scs.size > 1) {
@@ -898,7 +928,7 @@ static decl *parse_decl(parser *p) {
 
     expect(p, TOK_LPAREN);
 
-    parse_params(p, &res->v.func);
+    parse_params(p, &res->v.func, tp);
 
     expect(p, TOK_RPAREN);
 
