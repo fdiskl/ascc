@@ -178,7 +178,7 @@ void resolve_expr(parser *p, expr *e) {
     resolve_func_call_expr(p, e);
     break;
   case EXPR_CAST:
-    // TODO
+    resolve_expr(p, e->v.cast.e);
     break;
   }
 }
