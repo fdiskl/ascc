@@ -950,13 +950,16 @@ static decl *parse_decl(parser *p) {
   if (p->next.token == TOK_LPAREN) {
     res = alloc_decl(p, DECL_FUNC);
     res->v.func.name = ident;
-    res->tp = tp;
+
+    type *fn_tp = new_type(TYPE_FN);
+    fn_tp->v.fntype.return_type = tp;
+    res->tp = fn_tp;
 
     enter_func(p, res);
 
     expect(p, TOK_LPAREN);
 
-    parse_params(p, &res->v.func, tp);
+    parse_params(p, &res->v.func, fn_tp);
 
     expect(p, TOK_RPAREN);
 
