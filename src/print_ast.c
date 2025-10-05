@@ -1,5 +1,6 @@
 #include "common.h"
 #include "parser.h"
+#include "type.h"
 #include "vec.h"
 #include <stdint.h>
 #include <stdio.h>
@@ -198,6 +199,14 @@ static void print_expr(expr *e, int indent) {
       printf("(no args)\n");
     }
     return;
+  case EXPR_CAST: {
+    EMIT_TYPE_INTO_BUF(type_buf_for_print_ast, 256, e->v.cast.tp);
+    printf("CastExpr (%s)", type_buf_for_print_ast);
+    print_ast_pos(e->pos);
+    printf("\n");
+    print_expr(e->v.cast.e, indent + 1);
+    return;
+  }
   }
   UNREACHABLE();
 }
@@ -377,8 +386,11 @@ static void print_decl(decl *d, int indent) {
     printf("static ");
   }
   switch (d->t) {
-  case DECL_FUNC:
-    printf("FuncDecl (%s) (scp: %d)", d->v.func.name, d->scope);
+  case DECL_FUNC: {
+    EMIT_TYPE_INTO_BUF(type_buf_for_print_ast, 256, d->tp);
+
+    printf("FuncDecl (%s) (scp: %d) %s", d->v.func.name, d->scope,
+           type_buf_for_print_ast);
     print_ast_pos(d->pos);
     printf("\n");
     if (d->v.func.params_names != NULL && d->v.func.original_params != NULL) {
@@ -399,15 +411,18 @@ static void print_decl(decl *d, int indent) {
       printf("(no body)\n");
     }
     break;
+  }
 
-  case DECL_VAR:
-    printf("VarDecl (%s, %s) (scp: %d)", d->v.var.name, d->v.var.original_name,
-           d->scope);
+  case DECL_VAR: {
+    EMIT_TYPE_INTO_BUF(type_buf_for_print_ast, 256, d->tp);
+    printf("VarDecl (%s, %s) (scp: %d) %s", d->v.var.name,
+           d->v.var.original_name, d->scope, type_buf_for_print_ast);
     print_ast_pos(d->pos);
     printf("\n");
     if (d->v.var.init != NULL)
       print_expr(d->v.var.init, indent + 1);
     break;
+  }
 
   default:
     UNREACHABLE();
