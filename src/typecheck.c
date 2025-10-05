@@ -13,6 +13,7 @@ typedef struct _checker checker;
 struct _checker {
   arena *syme_arena;
   arena *expr_arena; // pulled from ast program, is not managed by checker
+  decl *curr_func;
   ht *st;
 };
 
@@ -241,10 +242,17 @@ static void typecheck_block(checker *c, block_item *arr, size_t len) {
   }
 }
 
+static void typecheck_return_stmt(checker *c, stmt *s) {
+  typecheck_expr(c, s->v.ret.e);
+  assert(c->curr_func->tp->t == TYPE_FN);
+  s->v.ret.e =
+      convert_to(c, s->v.ret.e, c->curr_func->tp->v.fntype.return_type);
+}
+
 static void typecheck_stmt(checker *c, stmt *s) {
   switch (s->t) {
   case STMT_RETURN:
-    typecheck_expr(c, s->v.ret.e);
+    typecheck_return_stmt(c, s);
     break;
   case STMT_BLOCK:
     typecheck_block(c, s->v.block.items, s->v.block.items_len);
@@ -314,6 +322,7 @@ static void init_checker(checker *c, arena *e_arena) {
 }
 
 static void typecheck_func_decl(checker *c, decl *d) {
+  c->curr_func = d;
   type *t = new_type(TYPE_FN);
   t->v.fntype.param_count = d->v.func.params_len;
   char has_body = d->v.func.bs != NULL ? 1 : 0;
@@ -392,6 +401,8 @@ static void typecheck_func_decl(checker *c, decl *d) {
     typecheck_block(c, d->v.func.bs->v.block.items,
                     d->v.func.bs->v.block.items_len);
   }
+
+  c->curr_func = NULL;
 }
 
 static void typecheck_filescope_var_decl(checker *c, decl *d) {
