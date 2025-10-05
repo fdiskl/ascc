@@ -2,6 +2,7 @@
 #define _ASCC_TYPE_H
 
 #include "arena.h"
+#include "strings.h"
 
 extern arena *types_arena;
 
@@ -26,7 +27,17 @@ struct _type {
   } v;
 };
 
-const char *type_name(type *t); // defined in typecheck.c
-type *new_type(int t);          // defined in typecheck.c
+#define EMIT_TYPE_INTO_BUF(buf_name, buf_len, type)                            \
+  static char buf_name[buf_len];                                               \
+  size_t pos = 0;                                                              \
+  emit_type_name_buf(buf_name, buf_len, &pos, type);
+
+void emit_type_name_buf(char *buf, size_t size, size_t *pos, type *t);
+
+// will allocate string for type name, should be used if names will be stored
+// long-term
+string *emit_type_name_str(type *t);
+
+type *new_type(int t); // defined in typecheck.c
 
 #endif

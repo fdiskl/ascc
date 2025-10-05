@@ -4,6 +4,7 @@
 #include "driver.h"
 #include "parser.h"
 #include "table.h"
+#include "type.h"
 #include <assert.h>
 #include <stdio.h>
 
@@ -502,11 +503,14 @@ static void print_attr(attrs *a) {
 }
 
 static void print_syme(const char *name, syme *e) {
+#define TYPE_BUF_LEN_FOR_PRINT_SYME 256
+  EMIT_TYPE_INTO_BUF(type_buf_for_print_syme, 256, e->t);
   if (e->ref != NULL)
-    printf("%s(%s) : %s, (%d:%d), ", name, e->original_name, type_name(e->t),
-           e->ref->pos.line_start, e->ref->pos.pos_start);
+    printf("%s(%s) : %s, (%d:%d), ", name, e->original_name,
+           type_buf_for_print_syme, e->ref->pos.line_start,
+           e->ref->pos.pos_start);
   else
-    printf("%s(%s): %s, ", name, e->original_name, type_name(e->t));
+    printf("%s(%s): %s, ", name, e->original_name, type_buf_for_print_syme);
   print_attr(&e->a);
   printf("\n");
 }
@@ -524,7 +528,37 @@ void print_sym_table(sym_table *st) {
 
 void free_sym_table(sym_table *st) { destroy_arena(st->entry_arena); }
 
-const char *type_name(type *t) {
-  // TODO: rewrite
-  return "todo";
+static void buf_write(char *buf, size_t size, size_t *pos, const char *s) {
+  size_t len = strlen(s);
+  if (*pos < size - 1) {
+    size_t copy_len = (len < size - 1 - *pos) ? len : (size - 1 - *pos);
+    memcpy(buf + *pos, s, copy_len);
+    *pos += copy_len;
+    buf[*pos] = '\0';
+  }
+}
+
+void emit_type_name_buf(char *buf, size_t size, size_t *pos, type *t) {
+  switch (t->t) {
+  case TYPE_INT:
+    buf_write(buf, size, pos, "int");
+    return;
+
+  case TYPE_LONG:
+    buf_write(buf, size, pos, "long");
+    return;
+
+  case TYPE_FN:
+    emit_type_name_buf(buf, size, pos, t->v.fntype.return_type);
+    buf_write(buf, size, pos, " (");
+    if (t->v.fntype.param_count >= 1) {
+      emit_type_name_buf(buf, size, pos, t->v.fntype.params[0]);
+      for (int i = 1; i < t->v.fntype.param_count; ++i) {
+        buf_write(buf, size, pos, ", ");
+        emit_type_name_buf(buf, size, pos, t->v.fntype.params[i]);
+      }
+    }
+    buf_write(buf, size, pos, ")");
+    return;
+  }
 }
