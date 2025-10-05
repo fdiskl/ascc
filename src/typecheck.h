@@ -3,6 +3,7 @@
 
 #include "parser.h"
 #include "type.h"
+#include <stdint.h>
 
 typedef struct _sym_table_entry syme;
 typedef struct _sym_table sym_table;
@@ -26,9 +27,21 @@ typedef enum {
   INIT_NOINIT,
 } init_value_t;
 
+typedef struct _initial_init initial_init;
+
+typedef enum {
+  INITIAL_INT,
+  INITIAL_LONG,
+} inital_init_t;
+
+struct _initial_init {
+  inital_init_t t;
+  uint64_t v;
+};
+
 struct _init_value {
   init_value_t t;
-  uint64_t v;
+  initial_init v;
 };
 
 struct _attr_static {
@@ -61,4 +74,6 @@ sym_table typecheck(program *p);
 void print_sym_table(sym_table *st);
 void free_sym_table(sym_table *st);
 
+initial_init convert_const(int_const original,
+                           type *convert_to); // convert_intc.c
 #endif

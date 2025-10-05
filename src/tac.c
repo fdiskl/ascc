@@ -677,7 +677,8 @@ tac_program gen_tac(program *p, sym_table *st) {
       case INIT_INITIAL: {
         tac_top_level *sv = alloc_static_var(&tg, e->name);
         sv->v.v.global = e->a.v.s.global;
-        sv->v.v.v = e->a.v.s.init.v;
+        // sv->v.v.v = e->a.v.s.init.v; FIXME
+        TODO();
         tail->next = sv;
         tail = sv;
         break;
@@ -689,6 +690,7 @@ tac_program gen_tac(program *p, sym_table *st) {
   }
 
   res.first = head;
+  free_tacgen(&tg);
 
   return res;
 }

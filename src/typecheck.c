@@ -152,6 +152,7 @@ static void typecheck_binary_expr(checker *c, expr *e) {
 
   if (bt == BINARY_OR || bt == BINARY_AND) {
     e->tp = new_type(TYPE_INT);
+    return;
   }
 
   type *common = get_common_type(e->v.b.l->tp, e->v.b.r->tp);
@@ -244,6 +245,7 @@ static void typecheck_block(checker *c, block_item *arr, size_t len) {
 
 static void typecheck_return_stmt(checker *c, stmt *s) {
   typecheck_expr(c, s->v.ret.e);
+  assert(c->curr_func != NULL);
   assert(c->curr_func->tp->t == TYPE_FN);
   s->v.ret.e =
       convert_to(c, s->v.ret.e, c->curr_func->tp->v.fntype.return_type);
@@ -304,8 +306,10 @@ static void typecheck_stmt(checker *c, stmt *s) {
     break;
   case STMT_LABEL:
     typecheck_stmt(c, s->v.label.s);
+    break;
   case STMT_DEFAULT:
     typecheck_stmt(c, s->v.default_stmt.s);
+    break;
   case STMT_BREAK:
   case STMT_NULL:
   case STMT_GOTO:
@@ -323,8 +327,7 @@ static void init_checker(checker *c, arena *e_arena) {
 
 static void typecheck_func_decl(checker *c, decl *d) {
   c->curr_func = d;
-  type *t = new_type(TYPE_FN);
-  t->v.fntype.param_count = d->v.func.params_len;
+  type *t = d->tp;
   char has_body = d->v.func.bs != NULL ? 1 : 0;
   char alr_defined = false;
   char global = d->sc != SC_STATIC;
@@ -415,7 +418,7 @@ static void typecheck_filescope_var_decl(checker *c, decl *d) {
     // FIXME: eval here, (or at some other stage but eval)
     {
       assert(d->v.var.init->t == EXPR_INT_CONST);
-      iv.v = d->v.var.init->v.intc.v;
+      iv.v = convert_const(d->v.var.init->v.intc, d->tp);
     }
   } else if (d->sc == SC_EXTERN)
     iv.t = INIT_NOINIT;
@@ -539,10 +542,13 @@ static void typecheck_local_var_decl(checker *c, decl *d) {
       // FIXME: eval here, (or at some other stage but eval)
       {
         assert(d->v.var.init->t == EXPR_INT_CONST);
-        iv.v = d->v.var.init->v.intc.v;
+        iv.v = convert_const(d->v.var.init->v.intc, d->tp);
       }
     } else {
-      iv.v = 0;
+      int_const tmp;
+      tmp.t = CONST_INT;
+      tmp.v = 0;
+      iv.v = convert_const(tmp, d->tp);
     }
 
     a.t = ATTR_STATIC;
@@ -615,7 +621,17 @@ static void print_attr(attrs *a) {
       printf("tentative");
       break;
     case INIT_INITIAL:
-      printf("initial(%llu)", (unsigned long long)a->v.s.init.v);
+      printf("initial(");
+      switch (a->v.s.init.v.t) {
+      case INITIAL_INT:
+        printf("int");
+        break;
+      case INITIAL_LONG:
+        printf("long");
+        break;
+      }
+
+      printf(") (%llu)", (long long unsigned)a->v.s.init.v.v);
       break;
     case INIT_NOINIT:
       printf("no init");
@@ -677,7 +693,7 @@ void emit_type_name_buf(char *buf, size_t size, size_t *pos, type *t) {
 
   case TYPE_FN:
     emit_type_name_buf(buf, size, pos, t->v.fntype.return_type);
-    buf_write(buf, size, pos, " (");
+    buf_write(buf, size, pos, "(");
     if (t->v.fntype.param_count >= 1) {
       emit_type_name_buf(buf, size, pos, t->v.fntype.params[0]);
       for (int i = 1; i < t->v.fntype.param_count; ++i) {
