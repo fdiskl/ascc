@@ -467,7 +467,7 @@ void next(lexer *l, token *t) {
       t->v.ident = new_string(l->ident_buf);
       break;
     }
-    fprintf(stderr, "invalid character on line %d, pos %d", l->line, l->pos);
+    fprintf(stderr, "invalid character on line %d, pos %d\n", l->line, l->pos);
     exit(1);
     break;
   }
