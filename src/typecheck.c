@@ -12,6 +12,7 @@ typedef struct _checker checker;
 
 struct _checker {
   arena *syme_arena;
+  arena *expr_arena; // pulled from ast program, is not managed by checker
   ht *st;
 };
 
@@ -55,6 +56,31 @@ static void typecheck_var_expr(checker *c, expr *e) {
 
     exit(1);
   }
+
+  e->tp = entry->t;
+}
+
+static type *get_common_type(type *t1, type *t2) {
+  // TODO, FIXME
+  // NOTE: won't work for funcs correctly
+  // its tmp
+  if (types_eq(t1, t2))
+    return new_type(t1->t);
+  else
+    return new_type(TYPE_LONG);
+}
+
+static expr *convert_to(checker *c, expr *e, type *t) {
+  if (types_eq(e->tp, t))
+    return e;
+
+  expr *res = ARENA_ALLOC_OBJ(c->expr_arena, expr);
+  res->t = EXPR_CAST;
+  res->v.cast.tp = res->tp = t;
+  res->pos = e->pos;
+  res->v.cast.e = e;
+
+  return res;
 }
 
 static void typecheck_expr(checker *c, expr *e);
@@ -82,34 +108,123 @@ static void typecheck_fn_call_expr(checker *c, expr *e) {
 
   for (int i = 0; i < e->v.func_call.args_len; ++i) {
     typecheck_expr(c, e->v.func_call.args[i]);
+    e->v.func_call.args[i] =
+        convert_to(c, e->v.func_call.args[i], entry->t->v.fntype.params[i]);
   }
+
+  e->tp = entry->t->v.fntype.return_type;
+}
+
+static void typecheck_const_expr(checker *c, expr *e) {
+  switch (e->v.intc.t) {
+  case CONST_INT:
+    e->tp = new_type(TYPE_INT);
+    break;
+  case CONST_LONG:
+    e->tp = new_type(TYPE_LONG);
+    break;
+  }
+}
+
+static void typecheck_cast_expr(checker *c, expr *e) {
+  typecheck_expr(c, e->v.cast.e);
+  e->tp = e->v.cast.tp;
+}
+
+static void typecheck_unary_expr(checker *c, expr *e) {
+  typecheck_expr(c, e->v.u.e);
+  switch (e->v.u.t) {
+  case UNARY_NOT:
+    e->tp = new_type(TYPE_INT);
+    return;
+  default:
+    e->tp = e->v.u.e->tp;
+    return;
+  }
+}
+
+static void typecheck_binary_expr(checker *c, expr *e) {
+  typecheck_expr(c, e->v.b.l);
+  typecheck_expr(c, e->v.b.r);
+
+  binaryt bt = e->v.b.t;
+
+  if (bt == BINARY_OR || bt == BINARY_AND) {
+    e->tp = new_type(TYPE_INT);
+  }
+
+  type *common = get_common_type(e->v.b.l->tp, e->v.b.r->tp);
+  e->v.b.l = convert_to(c, e->v.b.l, common);
+  e->v.b.r = convert_to(c, e->v.b.r, common);
+
+  switch (e->v.b.t) {
+  case BINARY_ADD:
+  case BINARY_SUB:
+  case BINARY_MUL:
+  case BINARY_DIV:
+  case BINARY_MOD:
+  case BINARY_BITWISE_AND:
+  case BINARY_BITWISE_OR:
+  case BINARY_XOR:
+  case BINARY_LSHIFT:
+  case BINARY_RSHIFT:
+    e->tp = common;
+    return;
+  case BINARY_EQ:
+  case BINARY_NE:
+  case BINARY_LT:
+  case BINARY_GT:
+  case BINARY_LE:
+  case BINARY_GE:
+    e->tp = new_type(TYPE_INT);
+    return;
+  case BINARY_AND:
+  case BINARY_OR:
+    UNREACHABLE();
+  }
+}
+
+static void typecheck_assignment_expr(checker *c, expr *e) {
+  typecheck_expr(c, e->v.assignment.l);
+  typecheck_expr(c, e->v.assignment.r);
+
+  e->v.assignment.r = convert_to(c, e->v.assignment.r, e->v.assignment.l->tp);
+  e->tp = e->v.assignment.l->tp;
+}
+
+static void typecheck_ternary_expr(checker *c, expr *e) {
+  typecheck_expr(c, e->v.ternary.cond);
+  typecheck_expr(c, e->v.ternary.then);
+  typecheck_expr(c, e->v.ternary.elze);
+
+  e->tp = new_type(TYPE_INT);
 }
 
 static void typecheck_expr(checker *c, expr *e) {
   switch (e->t) {
   case EXPR_INT_CONST:
+    typecheck_const_expr(c, e);
     break;
   case EXPR_UNARY:
-    typecheck_expr(c, e->v.u.e);
+    typecheck_unary_expr(c, e);
     break;
   case EXPR_BINARY:
-    typecheck_expr(c, e->v.b.l);
-    typecheck_expr(c, e->v.b.r);
+    typecheck_binary_expr(c, e);
     break;
   case EXPR_ASSIGNMENT:
-    typecheck_expr(c, e->v.assignment.l);
-    typecheck_expr(c, e->v.assignment.r);
+    typecheck_assignment_expr(c, e);
     break;
   case EXPR_TERNARY:
-    typecheck_expr(c, e->v.ternary.cond);
-    typecheck_expr(c, e->v.ternary.then);
-    typecheck_expr(c, e->v.ternary.elze);
+    typecheck_ternary_expr(c, e);
     break;
   case EXPR_VAR:
     typecheck_var_expr(c, e);
     break;
   case EXPR_FUNC_CALL:
     typecheck_fn_call_expr(c, e);
+    break;
+  case EXPR_CAST:
+    typecheck_cast_expr(c, e);
     break;
   }
 }
@@ -191,8 +306,9 @@ static void typecheck_stmt(checker *c, stmt *s) {
   }
 }
 
-static void init_checker(checker *c) {
+static void init_checker(checker *c, arena *e_arena) {
   NEW_ARENA(c->syme_arena, syme);
+  c->expr_arena = e_arena;
 
   c->st = ht_create();
 }
@@ -465,7 +581,7 @@ static void typecheck_decl(checker *c, decl *d) {
 sym_table typecheck(program *p) {
   sym_table st;
   checker c;
-  init_checker(&c);
+  init_checker(&c, p->expr_arena);
   decl *d = p->first_decl;
   for (; d != NULL; d = d->next)
     typecheck_decl(&c, d);
