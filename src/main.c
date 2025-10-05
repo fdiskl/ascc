@@ -25,6 +25,9 @@ arena *types_arena;
 
 static void replace_ext(const char *original, char *dst, const char *ext);
 
+// TODO: move case checking into typecheck, fold constant right there for normal
+// duplicate checking
+
 int main(int argc, char *argv[]) {
 #ifdef DEBUG_INFO
   double start = now_seconds();

@@ -65,7 +65,7 @@ void check_for_constant_expr(expr *e) {
 string hash_for_constant_expr(expr *e) {
   // anything if it will be unique
   check_for_constant_expr(e);
-  return string_sprintf("%d", e->v.intc); // for now only intc
+  return string_sprintf("%llu", e->v.intc.v); // for now only intc
 }
 
 void resolve_label_stmt(parser *p, stmt *s) {
