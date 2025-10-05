@@ -177,6 +177,9 @@ void resolve_expr(parser *p, expr *e) {
   case EXPR_FUNC_CALL:
     resolve_func_call_expr(p, e);
     break;
+  case EXPR_CAST:
+    // TODO
+    break;
   }
 }
 

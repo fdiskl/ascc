@@ -228,6 +228,26 @@ static expr *parse_func_call_expr(parser *p) {
   return e;
 }
 
+static type *parse_type(parser *p);
+
+static expr *parse_type_casting(parser *p) {
+  // lparen is already parsed
+
+  expr *res = alloc_expr(p, EXPR_CAST);
+
+  type *t = parse_type(p);
+
+  res->v.cast.tp = t;
+
+  expect(p, TOK_RPAREN);
+
+  res->v.cast.e = parse_factor(p);
+
+  return res;
+}
+
+static bool is_decl(int toktype);
+
 static expr *parse_factor(parser *p) {
   tok_pos start = p->next.pos;
   expr *e;
@@ -244,9 +264,16 @@ static expr *parse_factor(parser *p) {
     break;
   case TOK_LPAREN:
     expect(p, TOK_LPAREN);
-    e = parse_expr(p);
-    expect(p, TOK_RPAREN);
-    break;
+    if (is_decl(p->next.token)) {
+      // type casting
+      e = parse_type_casting(p);
+      break;
+    } else {
+      // just parens
+      e = parse_expr(p);
+      expect(p, TOK_RPAREN);
+      break;
+    }
   case TOK_IDENT:
     if (p->after_next.token == TOK_LPAREN)
       e = parse_func_call_expr(p);
@@ -923,6 +950,7 @@ static decl *parse_decl(parser *p) {
   if (p->next.token == TOK_LPAREN) {
     res = alloc_decl(p, DECL_FUNC);
     res->v.func.name = ident;
+    res->tp = tp;
 
     enter_func(p, res);
 
@@ -970,6 +998,7 @@ static decl *parse_decl(parser *p) {
   } else {
     res = alloc_decl(p, DECL_VAR);
     res->v.var.original_name = ident;
+    res->tp = tp;
 
     ast_pos pos;
     CONVERT_POS(start, tmp_end, pos);
