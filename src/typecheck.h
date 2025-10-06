@@ -73,6 +73,7 @@ struct _sym_table {
 sym_table typecheck(program *p);
 void print_sym_table(sym_table *st);
 void free_sym_table(sym_table *st);
+void label_loop(program *p); // loop-labeling.c
 
 initial_init convert_const(int_const original,
                            type *convert_to); // convert_intc.c

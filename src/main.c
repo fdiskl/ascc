@@ -128,6 +128,7 @@ int main(int argc, char *argv[]) {
   }
 
   sym_table st = typecheck(&parsed_ast); // TODO: free this too
+  label_loop(&parsed_ast);
 
   if (opts.dof == DOF_VALIDATE) {
     print_program(&parsed_ast);

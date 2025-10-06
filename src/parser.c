@@ -576,34 +576,29 @@ static stmt *parse_goto_stmt(parser *p) {
   return s;
 }
 
-void enter_loop(parser *p, stmt *s);
-void exit_loop(parser *p, stmt *s);
-void enter_switch(parser *p, stmt *s);
-void exit_switch(parser *p, stmt *s);
-
 static stmt *parse_while_stmt(parser *p) {
   stmt *s = alloc_stmt(p, STMT_WHILE);
   expect(p, TOK_WHILE);
   expect(p, TOK_LPAREN);
   s->v.while_stmt.cond = parse_expr(p);
   expect(p, TOK_RPAREN);
-  enter_loop(p, s);
   s->v.while_stmt.s = parse_stmt(p);
-  exit_loop(p, s);
+  s->v.while_stmt.break_label_idx = -1;
+  s->v.while_stmt.continue_label_idx = -1;
   return s;
 }
 
 static stmt *parse_do_while_stmt(parser *p) {
   stmt *s = alloc_stmt(p, STMT_DOWHILE);
   expect(p, TOK_DO);
-  enter_loop(p, s);
   s->v.dowhile_stmt.s = parse_stmt(p);
-  exit_loop(p, s);
   expect(p, TOK_WHILE);
   expect(p, TOK_LPAREN);
   s->v.dowhile_stmt.cond = parse_expr(p);
   expect(p, TOK_RPAREN);
   expect(p, TOK_SEMI);
+  s->v.dowhile_stmt.break_label_idx = -1;
+  s->v.dowhile_stmt.continue_label_idx = -1;
   return s;
 }
 
@@ -654,26 +649,21 @@ after_semi:
 
   expect(p, TOK_RPAREN);
 
-  enter_loop(p, s);
   s->v.for_stmt.s = parse_stmt(p);
   if (decl)
     exit_scope(p);
 
-  exit_loop(p, s);
+  s->v.for_stmt.break_label_idx = -1;
+  s->v.for_stmt.continue_label_idx = -1;
 
   return s;
 }
-
-void resolve_break_stmt(parser *p, stmt *s);
-void resolve_continue_stmt(parser *p, stmt *s);
-void resolve_case_stmt(parser *p, stmt *s);
-void resolve_default_stmt(parser *p, stmt *s);
 
 static stmt *parse_break_stmt(parser *p) {
   stmt *s = alloc_stmt(p, STMT_BREAK);
   expect(p, TOK_BREAK);
   expect(p, TOK_SEMI);
-  resolve_break_stmt(p, s);
+  s->v.break_stmt.idx = -1;
   return s;
 }
 
@@ -681,7 +671,7 @@ static stmt *parse_continue_stmt(parser *p) {
   stmt *s = alloc_stmt(p, STMT_CONTINUE);
   expect(p, TOK_CONTINUE);
   expect(p, TOK_SEMI);
-  resolve_continue_stmt(p, s);
+  s->v.continue_stmt.idx = -1;
   return s;
 }
 
@@ -691,7 +681,7 @@ static stmt *parse_case_stmt(parser *p) {
   s->v.case_stmt.e = parse_constant_expr(p);
   expect(p, TOK_COLON);
   s->v.case_stmt.s = parse_stmt(p);
-  resolve_case_stmt(p, s);
+  s->v.case_stmt.label_idx = -1;
   return s;
 }
 
@@ -700,7 +690,7 @@ static stmt *parse_default_stmt(parser *p) {
   expect(p, TOK_DEFAULT);
   expect(p, TOK_COLON);
   s->v.default_stmt.s = parse_stmt(p);
-  resolve_default_stmt(p, s);
+  s->v.default_stmt.label_idx = -1;
   return s;
 }
 
@@ -710,9 +700,9 @@ static stmt *parse_switch_stmt(parser *p) {
   expect(p, TOK_LPAREN);
   s->v.switch_stmt.e = parse_expr(p);
   expect(p, TOK_RPAREN);
-  enter_switch(p, s);
   s->v.switch_stmt.s = parse_stmt(p);
-  exit_switch(p, s);
+  s->v.switch_stmt.break_label_idx = -1;
+  s->v.switch_stmt.cases_len = 0;
   return s;
 }
 

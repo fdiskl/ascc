@@ -361,37 +361,6 @@ struct _block_item {
  *
  */
 
-// -- for resolve.c
-
-typedef enum {
-  LOOP_RESOLVE_LOOP,
-  LOOP_RESOLVE_SWITCH,
-} loop_resolve_info_t;
-
-typedef struct _loop_resolve_info loop_resolve_info;
-typedef struct _loop_resolve_info_loop loop_resolve_info_loop;
-typedef struct _loop_resolve_info_switch loop_resolve_info_switch;
-
-struct _loop_resolve_info_loop {
-  int break_idx;
-  int continue_idx;
-};
-
-struct _loop_resolve_info_switch {
-  int break_idx;
-  ht *cases; // expr hash -> case
-  stmt *default_stmt;
-};
-
-struct _loop_resolve_info {
-  loop_resolve_info_t t;
-  stmt *s;
-  union {
-    loop_resolve_info_loop l;
-    loop_resolve_info_switch s;
-  } v;
-};
-
 struct _ast_program {
   arena *decl_arena; // will be freed by free_program
   arena *stmt_arena; // will be freed by free_program
@@ -432,8 +401,6 @@ struct _parser {
   ht *labels_ht;           // is freed after every func is resolved
   ht *gotos_to_check_ht;   // is freed after every func is resolved
   arena ident_entry_arena; // can be freed after parse is done
-  VEC(loop_resolve_info)
-  stack_loop_resolve_info; // can be freed after parse is done
 };
 
 program parse(lexer *l);
