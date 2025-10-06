@@ -75,6 +75,7 @@ void print_sym_table(sym_table *st);
 void free_sym_table(sym_table *st);
 void label_loop(program *p); // loop-labeling.c
 
-initial_init convert_const(int_const original,
-                           type *convert_to); // convert_intc.c
+initial_init const_to_initial(int_const original); // convert_intc.c
+int_const convert_const(int_const original,
+                        type *convert_to); // convert_intc.c
 #endif

@@ -132,6 +132,7 @@ static void typecheck_fn_call_expr(checker *c, expr *e) {
 }
 
 static void typecheck_const_expr(checker *c, expr *e) {
+  // TODO: make so 2l is till int
   switch (e->v.intc.t) {
   case CONST_INT:
     e->tp = new_type(TYPE_INT);
@@ -433,7 +434,8 @@ static void typecheck_filescope_var_decl(checker *c, decl *d) {
     // FIXME: eval here, (or at some other stage but eval)
     {
       assert(d->v.var.init->t == EXPR_INT_CONST);
-      iv.v = convert_const(d->v.var.init->v.intc, d->tp);
+      d->v.var.init->v.intc = convert_const(d->v.var.init->v.intc, d->tp);
+      iv.v = const_to_initial(d->v.var.init->v.intc);
     }
   } else if (d->sc == SC_EXTERN)
     iv.t = INIT_NOINIT;
@@ -581,16 +583,17 @@ static void typecheck_local_var_decl(checker *c, decl *d) {
     iv.t = INIT_INITIAL;
     if (d->v.var.init != NULL) {
       check_for_constant_expr(d->v.var.init);
+      d->v.var.init->v.intc = convert_const(d->v.var.init->v.intc, d->tp);
       // FIXME: eval here, (or at some other stage but eval)
       {
         assert(d->v.var.init->t == EXPR_INT_CONST);
-        iv.v = convert_const(d->v.var.init->v.intc, d->tp);
+        iv.v = const_to_initial(d->v.var.init->v.intc);
       }
     } else {
       int_const tmp;
       tmp.t = CONST_INT;
       tmp.v = 0;
-      iv.v = convert_const(tmp, d->tp);
+      iv.v = const_to_initial(convert_const(tmp, d->tp));
     }
 
     a.t = ATTR_STATIC;

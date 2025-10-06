@@ -44,7 +44,7 @@ static void loop_resolve_stmt(loop_resolver *lr, stmt *s);
 static void loop_resolve_decl(loop_resolver *lr, decl *d);
 
 static void loop_resolve_block_stmt(loop_resolver *lr, stmt *s) {
-  for (int i = 0; i > s->v.block.items_len; ++i) {
+  for (int i = 0; i < s->v.block.items_len; ++i) {
     if (s->v.block.items[i].d != NULL)
       loop_resolve_decl(lr, s->v.block.items[i].d);
     else
@@ -97,8 +97,8 @@ static void loop_resolve_dowhile_stmt(loop_resolver *lr, stmt *s) {
 
 static void loop_resolve_for_stmt(loop_resolver *lr, stmt *s) {
   loop_resolve_info i = enter_loop(lr, s);
-  s->v.dowhile_stmt.break_label_idx = i.v.l.break_idx;
-  s->v.dowhile_stmt.continue_label_idx = i.v.l.continue_idx;
+  s->v.for_stmt.break_label_idx = i.v.l.break_idx;
+  s->v.for_stmt.continue_label_idx = i.v.l.continue_idx;
 
   loop_resolve_stmt(lr, s->v.for_stmt.s);
 
@@ -249,7 +249,8 @@ static void loop_resolve_case_stmt(loop_resolver *lr, stmt *s) {
 
   loop_resolve_info *i = &lr->stack_loop_resolve_info.data[switch_idx];
   assert(s->v.case_stmt.e->t == EXPR_INT_CONST); // TODO: eval here or smth
-  convert_const(s->v.case_stmt.e->v.intc, i->v.s.cond_type);
+  s->v.case_stmt.e->v.intc =
+      convert_const(s->v.case_stmt.e->v.intc, i->v.s.cond_type);
 
   string key = hash_for_constant_expr(s->v.case_stmt.e);
   stmt *old = (stmt *)ht_get(i->v.s.cases, key);
