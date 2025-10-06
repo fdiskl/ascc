@@ -59,8 +59,8 @@ static loop_resolve_info enter_loop(loop_resolver *lr, stmt *s) {
 
   i.t = LOOP_RESOLVE_LOOP;
   i.s = s;
-  int breakl = i.v.l.break_idx = ++label_idx_counter;
-  int continuel = i.v.l.continue_idx = ++label_idx_counter;
+  i.v.l.break_idx = ++label_idx_counter;
+  i.v.l.continue_idx = ++label_idx_counter;
 
   vec_push_back(lr->stack_loop_resolve_info, i);
 
@@ -68,9 +68,8 @@ static loop_resolve_info enter_loop(loop_resolver *lr, stmt *s) {
 }
 
 static void exit_loop(loop_resolver *lr, stmt *s) {
-  assert(lr->stack_loop_resolve_info.size >= 0 &&
-         lr->stack_loop_resolve_info.data[lr->stack_loop_resolve_info.size - 1]
-                 .s == s);
+  assert(lr->stack_loop_resolve_info.data[lr->stack_loop_resolve_info.size - 1]
+             .s == s);
 
   vec_pop_back(lr->stack_loop_resolve_info);
 }
@@ -119,9 +118,8 @@ static void loop_resolve_switch_stmt(loop_resolver *lr, stmt *s) {
 
   loop_resolve_stmt(lr, s->v.switch_stmt.s);
 
-  assert(lr->stack_loop_resolve_info.size >= 0 &&
-         lr->stack_loop_resolve_info.data[lr->stack_loop_resolve_info.size - 1]
-                 .s == s);
+  assert(lr->stack_loop_resolve_info.data[lr->stack_loop_resolve_info.size - 1]
+             .s == s);
   i = lr->stack_loop_resolve_info.data[lr->stack_loop_resolve_info.size - 1];
 
   vec_pop_back(lr->stack_loop_resolve_info);
@@ -233,6 +231,8 @@ static void loop_resolve_default_stmt(loop_resolver *lr, stmt *s) {
 
   i->v.s.default_stmt = s;
   s->v.default_stmt.label_idx = ++label_idx_counter;
+
+  loop_resolve_stmt(lr, s->v.default_stmt.s);
 }
 
 static void loop_resolve_case_stmt(loop_resolver *lr, stmt *s) {
@@ -268,6 +268,8 @@ static void loop_resolve_case_stmt(loop_resolver *lr, stmt *s) {
   ht_set(i->v.s.cases, key, (void *)s);
 
   s->v.case_stmt.label_idx = ++label_idx_counter;
+
+  loop_resolve_stmt(lr, s->v.case_stmt.s);
 }
 
 static void loop_resolve_stmt(loop_resolver *lr, stmt *s) {
