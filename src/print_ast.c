@@ -16,6 +16,14 @@ static void print_ast_pos(ast_pos p) {
 #endif
 }
 
+static void print_type_and_pos(type *t, ast_pos p) {
+  if (t != NULL) {
+    EMIT_TYPE_INTO_BUF(print_type_and_pos_buf, 256, t);
+    printf(" %s", print_type_and_pos_buf);
+  }
+  print_ast_pos(p);
+}
+
 static void print_indent(int indent) {
   for (int i = 0; i < indent; i++)
     printf("  ");
@@ -32,7 +40,7 @@ static void print_expr(expr *e, int indent) {
   switch (e->t) {
   case EXPR_INT_CONST:
     printf("IntConst (%llu)", (unsigned long long)e->v.intc.v);
-    print_ast_pos(e->pos);
+    print_type_and_pos(e->tp, e->pos);
     printf("\n");
     return;
 
@@ -62,7 +70,7 @@ static void print_expr(expr *e, int indent) {
       break;
     }
     printf(")");
-    print_ast_pos(e->pos);
+    print_type_and_pos(e->tp, e->pos);
     printf("\n");
     print_expr(e->v.u.e, indent + 1);
     return;
@@ -126,7 +134,7 @@ static void print_expr(expr *e, int indent) {
       break;
     }
     printf(")");
-    print_ast_pos(e->pos);
+    print_type_and_pos(e->tp, e->pos);
     printf("\n");
     print_expr(e->v.b.l, indent + 1);
     print_expr(e->v.b.r, indent + 1);
@@ -169,19 +177,19 @@ static void print_expr(expr *e, int indent) {
       break;
     }
     printf(")");
-    print_ast_pos(e->pos);
+    print_type_and_pos(e->tp, e->pos);
     printf("\n");
     print_expr(e->v.assignment.l, indent + 1);
     print_expr(e->v.assignment.r, indent + 1);
     return;
   case EXPR_VAR:
     printf("Var(%s, %s)", e->v.var.name, e->v.var.original_name);
-    print_ast_pos(e->pos);
+    print_type_and_pos(e->tp, e->pos);
     printf("\n");
     return;
   case EXPR_TERNARY:
     printf("TernaryExpr");
-    print_ast_pos(e->pos);
+    print_type_and_pos(e->tp, e->pos);
     printf("\n");
     print_expr(e->v.ternary.cond, indent + 1);
     print_expr(e->v.ternary.then, indent + 1);
@@ -189,7 +197,7 @@ static void print_expr(expr *e, int indent) {
     return;
   case EXPR_FUNC_CALL:
     printf("FuncCallExpr (%s)", e->v.func_call.name);
-    print_ast_pos(e->pos);
+    print_type_and_pos(e->tp, e->pos);
     printf("\n");
     if (e->v.func_call.args != NULL)
       for (int i = 0; i < e->v.func_call.args_len; ++i)
@@ -202,7 +210,7 @@ static void print_expr(expr *e, int indent) {
   case EXPR_CAST: {
     EMIT_TYPE_INTO_BUF(type_buf_for_print_ast, 256, e->v.cast.tp);
     printf("CastExpr (%s)", type_buf_for_print_ast);
-    print_ast_pos(e->pos);
+    print_type_and_pos(e->tp, e->pos);
     printf("\n");
     print_expr(e->v.cast.e, indent + 1);
     return;
