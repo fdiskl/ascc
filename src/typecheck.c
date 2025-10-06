@@ -171,10 +171,6 @@ static void typecheck_binary_expr(checker *c, expr *e) {
     return;
   }
 
-  type *common = get_common_type(e->v.b.l->tp, e->v.b.r->tp);
-  e->v.b.l = convert_to(c, e->v.b.l, common);
-  e->v.b.r = convert_to(c, e->v.b.r, common);
-
   switch (e->v.b.t) {
   case BINARY_ADD:
   case BINARY_SUB:
@@ -183,19 +179,38 @@ static void typecheck_binary_expr(checker *c, expr *e) {
   case BINARY_MOD:
   case BINARY_BITWISE_AND:
   case BINARY_BITWISE_OR:
-  case BINARY_XOR:
+  case BINARY_XOR: {
+    type *common = get_common_type(e->v.b.l->tp, e->v.b.r->tp);
+    e->v.b.l = convert_to(c, e->v.b.l, common);
+    e->v.b.r = convert_to(c, e->v.b.r, common);
+    e->tp = common;
+    return;
+  }
   case BINARY_LSHIFT:
   case BINARY_RSHIFT:
-    e->tp = common;
+    e->v.b.l = convert_to(c, e->v.b.l, e->v.b.l->tp);
+    e->v.b.r = convert_to(c, e->v.b.r, e->v.b.r->tp);
+    e->tp = e->v.b.l->tp;
+    /*
+    The integer promotions are performed on each of the operands. The type of
+    the result is that of the promoted left operand.
+
+    (6.5.7/3 of C99)
+     */
     return;
   case BINARY_EQ:
   case BINARY_NE:
   case BINARY_LT:
   case BINARY_GT:
   case BINARY_LE:
-  case BINARY_GE:
+  case BINARY_GE: {
+    type *common = get_common_type(e->v.b.l->tp, e->v.b.r->tp);
+    e->v.b.l = convert_to(c, e->v.b.l, common);
+    e->v.b.r = convert_to(c, e->v.b.r, common);
+
     e->tp = new_type(TYPE_INT);
     return;
+  }
   case BINARY_AND:
   case BINARY_OR:
     UNREACHABLE();
