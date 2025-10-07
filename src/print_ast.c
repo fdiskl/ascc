@@ -29,6 +29,15 @@ static void print_indent(int indent) {
     printf("  ");
 }
 
+const char *get_const_name(constt t) {
+  switch (t) {
+  case CONST_INT:
+    return "int";
+  case CONST_LONG:
+    return "long";
+  }
+}
+
 static void print_expr(expr *e, int indent) {
   if (!e) {
     print_indent(indent);
@@ -39,7 +48,8 @@ static void print_expr(expr *e, int indent) {
   print_indent(indent);
   switch (e->t) {
   case EXPR_INT_CONST:
-    printf("IntConst (%llu)", (unsigned long long)e->v.intc.v);
+    printf("IntConst (%llu) (%s)", (unsigned long long)e->v.intc.v,
+           get_const_name(e->v.intc.t));
     print_type_and_pos(e->tp, e->pos);
     printf("\n");
     return;
