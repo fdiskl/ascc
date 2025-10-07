@@ -179,10 +179,33 @@ typedef struct _x86_program x86_program;
 struct _x86_program {
   arena *instr_arena;     // will be freed by free_x86_program
   arena *top_level_arena; // will be freed by free_x86_program
+  arena *be_syme_arena;   // will be freed by free_x86_program
   x86_top_level *first;
+  ht *be_st; // will be destoyed by free_x86_program
+};
+
+typedef struct _be_syme be_syme;
+
+typedef enum {
+  BE_SYME_OBJ,
+  BE_SYME_FN,
+} be_syme_t;
+
+struct _be_syme {
+  be_syme_t t;
+  union {
+    struct {
+      x86_asm_type type;
+      bool is_static;
+    } obj;
+    struct {
+      bool defined;
+    } fn;
+  } v;
 };
 
 x86_program gen_asm(tac_program *tac_prog, sym_table *st);
+void emit_be_st(ht *be_st);
 
 void free_x86_program(x86_program *p);
 

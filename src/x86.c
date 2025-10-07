@@ -568,11 +568,59 @@ x86_top_level *gen_asm_from_static_var(x86_asm_gen *ag, tac_static_var *sv) {
   return res;
 }
 
+static void convert_to_be_syme(be_syme *e, syme *olde) {
+  switch (olde->t->t) {
+  case TYPE_INT:
+    e->t = BE_SYME_OBJ;
+    e->v.obj.type = get_x86_asm_type_from_type(olde->t);
+    e->v.obj.is_static = olde->a.t == ATTR_STATIC;
+    break;
+  case TYPE_LONG:
+    e->t = BE_SYME_OBJ;
+    e->v.obj.type = get_x86_asm_type_from_type(olde->t);
+    e->v.obj.is_static = olde->a.t == ATTR_STATIC;
+    break;
+  case TYPE_FN:
+    e->t = BE_SYME_FN;
+    assert(olde->a.t == ATTR_FUNC);
+    e->v.fn.defined = olde->a.v.f.defined;
+    break;
+  }
+}
+
+static void convert_symtable(arena *be_syme_arena, ht *be_st, sym_table *st) {
+  ht *fe_st = st->t;
+
+  hti it = ht_iterator(fe_st);
+  while (ht_next(&it)) {
+    be_syme *be_entry = ARENA_ALLOC_OBJ(be_syme_arena, be_syme);
+    convert_to_be_syme(be_entry, (syme *)it.value);
+    ht_set(be_st, it.key, be_entry);
+  }
+}
+
+void emit_be_st(ht *be_st) {
+  hti it = ht_iterator(be_st);
+  while (ht_next(&it)) {
+    TODO();
+  }
+}
+
 x86_program gen_asm(tac_program *prog, sym_table *st) {
   x86_program res;
   x86_asm_gen ag;
 
   init_x86_asm_gen(&ag, st);
+
+  arena *be_syme_arena;
+  NEW_ARENA(be_syme_arena, be_syme);
+
+  ht *be_st = ht_create();
+
+  res.be_syme_arena = be_syme_arena;
+  res.be_st = be_st;
+
+  convert_symtable(be_syme_arena, be_st, st);
 
   res.top_level_arena = ag.top_level_arena;
   res.instr_arena = ag.instr_arena;
@@ -622,4 +670,6 @@ x86_program gen_asm(tac_program *prog, sym_table *st) {
 void free_x86_program(x86_program *p) {
   destroy_arena(p->instr_arena);
   destroy_arena(p->top_level_arena);
+  destroy_arena(p->be_syme_arena);
+  ht_destroy(p->be_st);
 }
