@@ -42,7 +42,7 @@ static syme *add_to_symtable(checker *c, type *t, string name, decl *origin,
   return e;
 }
 
-static bool types_eq(type *t1, type *t2) {
+bool types_eq(type *t1, type *t2) {
 
   if (t1->t != t2->t)
     return false;

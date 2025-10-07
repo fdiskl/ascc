@@ -40,4 +40,6 @@ string *emit_type_name_str(type *t);
 
 type *new_type(int t); // defined in typecheck.c
 
+bool types_eq(type *t1, type *t2);
+
 #endif
