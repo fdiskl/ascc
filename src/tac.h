@@ -19,20 +19,22 @@ typedef enum {
   TAC_DEC, // --
 
   // unary
-  TAC_NEGATE,     // -
-  TAC_COMPLEMENT, // ~
-  TAC_NOT,        // !
-  TAC_CPY,        // a = b
-  TAC_ASADD,      // +=
-  TAC_ASSUB,      // -=
-  TAC_ASMUL,      // *=
-  TAC_ASDIV,      // /=
-  TAC_ASMOD,      // %=
-  TAC_ASAND,      // &=
-  TAC_ASOR,       // |=
-  TAC_ASXOR,      // ^=
-  TAC_ASLSHIFT,   // >>=
-  TAC_ASRSHIFT,   // <<=
+  TAC_NEGATE,      // -
+  TAC_COMPLEMENT,  // ~
+  TAC_NOT,         // !
+  TAC_CPY,         // a = b
+  TAC_ASADD,       // +=
+  TAC_ASSUB,       // -=
+  TAC_ASMUL,       // *=
+  TAC_ASDIV,       // /=
+  TAC_ASMOD,       // %=
+  TAC_ASAND,       // &=
+  TAC_ASOR,        // |=
+  TAC_ASXOR,       // ^=
+  TAC_ASLSHIFT,    // >>=
+  TAC_ASRSHIFT,    // <<=
+  TAC_SIGN_EXTEND, // sign extend
+  TAC_TRUNCATE,    // truncate
 
   // binary
   TAC_ADD,    // +
@@ -70,7 +72,7 @@ struct _tac_val {
   tacvt t;
 
   union {
-    uint64_t intv;
+    int_const iconst;
     string var;
   } v;
 };
@@ -104,7 +106,8 @@ typedef struct _tac_top_level tac_top_level;
 struct _tac_static_var {
   string name;
   bool global;
-  uint64_t v;
+  type *tp;
+  initial_init init;
 };
 
 struct _tac_func {
