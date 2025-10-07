@@ -44,6 +44,7 @@ typedef enum {
   X86_R9,
   X86_R10,
   X86_R11,
+  X86_SP,
 } x86_reg;
 
 typedef enum {
@@ -78,10 +79,9 @@ typedef enum {
   X86_SHL,
   X86_SAR,
   X86_CMP,
+  X86_MOVSX,
 
   // special
-  X86_ALLOC_STACK,
-  X86_DEALLOC_STACK,
   X86_JMP,
   X86_JMPCC,
   X86_SETCC,
@@ -90,6 +90,11 @@ typedef enum {
 
   X86_COMMENT,
 } x86_t;
+
+typedef enum {
+  X86_LONGWORD,
+  X86_QUADWORD,
+} x86_asm_type;
 
 struct _x86_op {
   x86_op_t t;
@@ -108,9 +113,11 @@ struct _x86_instr {
     struct {
       x86_op dst;
       x86_op src;
+      x86_asm_type type;
     } binary;
     struct {
       x86_op src;
+      x86_asm_type type;
     } unary;
     struct {
       x86_cc cc;
@@ -125,7 +132,9 @@ struct _x86_instr {
       char plt;
       string str_label; // call
     } call;
-    int bytes_to_alloc;
+    struct {
+      x86_asm_type type;
+    } cdq;
     string comment; // for comment instr
   } v;
   x86_instr *next;
@@ -143,7 +152,8 @@ struct _x86_func {
 struct _x86_static_var {
   string name;
   bool global;
-  uint64_t v;
+  initial_init init;
+  int alignment;
 };
 
 struct _x86_top_level {
@@ -159,6 +169,8 @@ struct _x86_asm_gen {
   arena *instr_arena;
   arena *top_level_arena;
 
+  sym_table *st;
+
   x86_instr *head; // head of instr linked list for curr func
   x86_instr *tail; // tail of instr linked list for curr func
 };
@@ -170,13 +182,13 @@ struct _x86_program {
   x86_top_level *first;
 };
 
-x86_program gen_asm(tac_program *tac_prog, sym_table st);
+x86_program gen_asm(tac_program *tac_prog, sym_table *st);
 
 void free_x86_program(x86_program *p);
 
 // replaces pseudo instructions, is called by gen_asm
 // returns amount of bytes to be allocated for locals
-int fix_pseudo_for_func(x86_asm_gen *ag, x86_func *f, sym_table st);
+int fix_pseudo_for_func(x86_asm_gen *ag, x86_func *f, sym_table *st);
 
 // fixes invalid instructions, is called by gen_asm
 void fix_instructions_for_func(x86_asm_gen *ag, x86_func *f);
