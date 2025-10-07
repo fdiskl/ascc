@@ -80,7 +80,7 @@ static x86_op new_x86_pseudo(string name) {
 static x86_op operand_from_tac_val(tacv v) {
   switch (v.t) {
   case TACV_CONST:
-    return new_x86_imm(v.v.intv);
+    // return new_x86_imm(v.v.intv);  FIXME
   case TACV_VAR:
     return new_x86_pseudo(v.v.var);
   }
@@ -463,7 +463,7 @@ static x86_top_level *gen_asm_from_func(x86_asm_gen *ag, tacf *f) {
 x86_top_level *gen_asm_from_static_var(x86_asm_gen *ag, tac_static_var *sv) {
   x86_top_level *res = alloc_x86_static_var(ag, sv->name);
   res->v.v.global = sv->global;
-  res->v.v.v = sv->v;
+  // res->v.v.v = sv->v; FIXME
   return res;
 }
 

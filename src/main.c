@@ -141,10 +141,10 @@ int main(int argc, char *argv[]) {
 
   tac_program tac_prog = gen_tac(&parsed_ast, &st);
 
-  free_program(&parsed_ast); // at this point AST is not needed
-
   if (opts.dof == DOF_TAC) {
     print_tac(&tac_prog);
+    printf("\n");
+    print_sym_table(&st);
     free_sym_table(&st);
     free_tac(&tac_prog);
     return 0;
@@ -152,6 +152,8 @@ int main(int argc, char *argv[]) {
 
   x86_program x86_prog = gen_asm(&tac_prog, st);
   free_sym_table(&st);
+  free_program(&parsed_ast); // sym table has pointers to AST, so it can't be
+                             // freed while sym table is alive
 
   if (opts.dof == DOF_CODEGEN) {
     free_tac(&tac_prog);
