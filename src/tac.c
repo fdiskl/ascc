@@ -5,6 +5,7 @@
 #include "parser.h"
 #include "strings.h"
 #include "table.h"
+#include "type.h"
 #include "typecheck.h"
 #include "vec.h"
 #include <stdint.h>
@@ -23,6 +24,20 @@ static void init_tacgen(tacgen *tg, sym_table *st) {
   NEW_ARENA(tg->tacv_arena, tacv);
 
   tg->st = st;
+}
+
+static int_const new_int_const(int x) {
+  int_const res;
+  res.t = CONST_INT;
+  res.v = x;
+  return res;
+}
+
+static initial_init new_int_initial_init(int x) {
+  initial_init res;
+  res.t = INITIAL_INT;
+  res.v = x;
+  return res;
 }
 
 static void free_tacgen(tacgen *tg) { ht_destroy(var_map); }
@@ -61,16 +76,16 @@ static taci *insert_taci(tacgen *tg, int op) {
   return i;
 }
 
-static tacv new_const(uint64_t c) {
+static tacv new_const(int_const c) {
   tacv v;
   v.t = TACV_CONST;
-  v.v.intv = c;
+  v.v.iconst = c;
   return v;
 }
 
 extern int var_name_idx_counter; // defined in resolve.c
 
-static tacv new_tmp() {
+static tacv new_tmp(tacgen *tg, type *t) {
   static char buf[256];
   int e;
   // not rly elegant, FIXME
@@ -83,6 +98,16 @@ static tacv new_tmp() {
   v.t = TACV_VAR;
   string name = new_string(buf);
   v.v.var = name;
+
+  syme *entry = ARENA_ALLOC_OBJ(tg->st->entry_arena, syme);
+  entry->original_name = entry->name = name;
+  entry->ref = NULL;
+  entry->t = t;
+  attrs a;
+  a.t = ATTR_LOCAL;
+  entry->a = a;
+  ht_set(tg->st->t, name, entry);
+
   return v;
 }
 
@@ -97,34 +122,33 @@ extern int label_idx_counter; // defined in resolve.c
 static int new_label() { return ++label_idx_counter; }
 
 static tacv gen_tac_from_int_const_expr(tacgen *_, int_const ic) {
-  tacv v;
-  v.t = TACV_CONST;
-  v.v.intv = ic.v;
-  return v;
+  return new_const(ic);
 }
 
 static tacv gen_tac_from_expr(tacgen *tg, expr *e);
 
-static tacv gen_inc_dec_prefix(tacgen *tg, unary u, tacv inner_v) {
-  taci *inc_dec = insert_taci(tg, u.t == UNARY_PREFIX_INC ? TAC_INC : TAC_DEC);
+static tacv gen_inc_dec_prefix(tacgen *tg, expr *e, tacv inner_v) {
+  taci *inc_dec =
+      insert_taci(tg, e->v.u.t == UNARY_PREFIX_INC ? TAC_INC : TAC_DEC);
   inc_dec->v.s.src1 = inner_v;
   return inner_v;
 }
 
-static tacv gen_inc_dec_postfix(tacgen *tg, unary u, tacv inner_v) {
+static tacv gen_inc_dec_postfix(tacgen *tg, expr *e, tacv inner_v) {
   taci *cpy = insert_taci(tg, TAC_CPY);
-  cpy->dst = new_tmp();
+  cpy->dst = new_tmp(tg, e->tp);
   cpy->v.s.src1 = inner_v;
-  taci *inc_dec = insert_taci(tg, u.t == UNARY_POSTFIX_INC ? TAC_INC : TAC_DEC);
+  taci *inc_dec =
+      insert_taci(tg, e->v.u.t == UNARY_POSTFIX_INC ? TAC_INC : TAC_DEC);
   inc_dec->v.s.src1 = inner_v;
   return cpy->dst;
 }
 
-static tacv gen_tac_from_unary_expr(tacgen *tg, unary u) {
-  tacv inner_v = gen_tac_from_expr(tg, u.e);
+static tacv gen_tac_from_unary_expr(tacgen *tg, expr *e) {
+  tacv inner_v = gen_tac_from_expr(tg, e->v.u.e);
 
   int op;
-  switch (u.t) {
+  switch (e->v.u.t) {
   case UNARY_NEGATE:
     op = TAC_NEGATE;
     break;
@@ -136,75 +160,75 @@ static tacv gen_tac_from_unary_expr(tacgen *tg, unary u) {
     break;
   case UNARY_PREFIX_INC:
   case UNARY_PREFIX_DEC:
-    return gen_inc_dec_prefix(tg, u, inner_v);
+    return gen_inc_dec_prefix(tg, e, inner_v);
   case UNARY_POSTFIX_INC:
   case UNARY_POSTFIX_DEC:
-    return gen_inc_dec_postfix(tg, u, inner_v);
+    return gen_inc_dec_postfix(tg, e, inner_v);
   }
 
   taci *i = insert_taci(tg, op);
 
-  i->dst = new_tmp();
+  i->dst = new_tmp(tg, e->tp);
   i->v.s.src1 = inner_v;
 
   return i->dst;
 }
 
-static tacv gen_tac_from_OR_binary(tacgen *tg, binary b) {
-  tacv res = new_tmp();
+static tacv gen_tac_from_OR_binary(tacgen *tg, expr *e) {
+  tacv res = new_tmp(tg, e->tp);
 
-  tacv v1 = gen_tac_from_expr(tg, b.l);
+  tacv v1 = gen_tac_from_expr(tg, e->v.b.l);
   taci *jnz1 = insert_taci(tg, TAC_JNZ);
   jnz1->v.s.src1 = v1;
   int true_label = jnz1->label_idx = new_label();
-  tacv v2 = gen_tac_from_expr(tg, b.r);
+  tacv v2 = gen_tac_from_expr(tg, e->v.b.r);
   taci *jnz2 = insert_taci(tg, TAC_JNZ);
   jnz2->v.s.src1 = v2;
   jnz2->label_idx = true_label;
   taci *cpy1 = insert_taci(tg, TAC_CPY);
   cpy1->dst = res;
-  cpy1->v.s.src1 = new_const(0);
+  cpy1->v.s.src1 = new_const(new_int_const(0));
   taci *jmp = insert_taci(tg, TAC_JMP);
   int end_label = jmp->label_idx = new_label();
   taci *true_label_i = insert_taci(tg, TAC_LABEL);
   true_label_i->label_idx = true_label;
   taci *cpy2 = insert_taci(tg, TAC_CPY);
   cpy2->dst = res;
-  cpy2->v.s.src1 = new_const(1);
+  cpy2->v.s.src1 = new_const(new_int_const(1));
   taci *end_label_i = insert_taci(tg, TAC_LABEL);
   end_label_i->label_idx = end_label;
 
   return res;
 }
 
-static tacv gen_tac_from_AND_binary(tacgen *tg, binary b) {
-  tacv res = new_tmp();
+static tacv gen_tac_from_AND_binary(tacgen *tg, expr *e) {
+  tacv res = new_tmp(tg, e->tp);
 
-  tacv v1 = gen_tac_from_expr(tg, b.l);
+  tacv v1 = gen_tac_from_expr(tg, e->v.b.l);
   taci *jz1 = insert_taci(tg, TAC_JZ);
   jz1->v.s.src1 = v1;
   int false_label = jz1->label_idx = new_label();
-  tacv v2 = gen_tac_from_expr(tg, b.r);
+  tacv v2 = gen_tac_from_expr(tg, e->v.b.r);
   taci *jz2 = insert_taci(tg, TAC_JZ);
   jz2->v.s.src1 = v2;
   jz2->label_idx = false_label;
   taci *cpy1 = insert_taci(tg, TAC_CPY);
   cpy1->dst = res;
-  cpy1->v.s.src1 = new_const(1);
+  cpy1->v.s.src1 = new_const(new_int_const(1));
   taci *jmp = insert_taci(tg, TAC_JMP);
   int end_label = jmp->label_idx = new_label();
   taci *false_label_i = insert_taci(tg, TAC_LABEL);
   false_label_i->label_idx = false_label;
   taci *cpy2 = insert_taci(tg, TAC_CPY);
   cpy2->dst = res;
-  cpy2->v.s.src1 = new_const(0);
+  cpy2->v.s.src1 = new_const(new_int_const(1));
   taci *end_label_i = insert_taci(tg, TAC_LABEL);
   end_label_i->label_idx = end_label;
 
   return res;
 }
 
-static tacv gen_tac_from_binary_expr(tacgen *tg, binary b) {
+static tacv gen_tac_from_binary_expr(tacgen *tg, expr *e) {
 #define b(bin, tac)                                                            \
   case bin:                                                                    \
     op = tac;                                                                  \
@@ -212,7 +236,7 @@ static tacv gen_tac_from_binary_expr(tacgen *tg, binary b) {
 
   int op;
 
-  switch (b.t) {
+  switch (e->v.b.t) {
     b(BINARY_ADD, TAC_ADD);
     b(BINARY_SUB, TAC_SUB);
     b(BINARY_MUL, TAC_MUL);
@@ -231,18 +255,18 @@ static tacv gen_tac_from_binary_expr(tacgen *tg, binary b) {
     b(BINARY_GE, TAC_GE);
     break;
   case BINARY_OR:
-    return gen_tac_from_OR_binary(tg, b);
+    return gen_tac_from_OR_binary(tg, e);
   case BINARY_AND:
-    return gen_tac_from_AND_binary(tg, b);
+    return gen_tac_from_AND_binary(tg, e);
   }
 
-  tacv v1 = gen_tac_from_expr(tg, b.l);
-  tacv v2 = gen_tac_from_expr(tg, b.r);
+  tacv v1 = gen_tac_from_expr(tg, e->v.b.l);
+  tacv v2 = gen_tac_from_expr(tg, e->v.b.r);
 
   taci *i = insert_taci(tg, op);
   i->v.s.src1 = v1;
   i->v.s.src2 = v2;
-  i->dst = new_tmp();
+  i->dst = new_tmp(tg, e->tp);
 
   return i->dst;
 }
@@ -296,15 +320,15 @@ static tacv gen_tac_from_assignment_expr(tacgen *tg, assignment a) {
   return dst;
 }
 
-static tacv gen_tac_from_ternary_expr(tacgen *tg, ternary_expr te) {
-  tacv dst = new_tmp();
-  tacv condv = gen_tac_from_expr(tg, te.cond);
+static tacv gen_tac_from_ternary_expr(tacgen *tg, expr *e) {
+  tacv dst = new_tmp(tg, e->tp);
+  tacv condv = gen_tac_from_expr(tg, e->v.ternary.cond);
 
   taci *jz = insert_taci(tg, TAC_JZ);
   int else_label = jz->label_idx = new_label();
   jz->v.s.src1 = condv;
 
-  tacv thenv = gen_tac_from_expr(tg, te.then);
+  tacv thenv = gen_tac_from_expr(tg, e->v.ternary.then);
   taci *cpy_then = insert_taci(tg, TAC_CPY);
   cpy_then->dst = dst;
   cpy_then->v.s.src1 = thenv;
@@ -313,7 +337,7 @@ static tacv gen_tac_from_ternary_expr(tacgen *tg, ternary_expr te) {
   int end_label = j->label_idx = new_label();
 
   insert_taci(tg, TAC_LABEL)->label_idx = else_label;
-  tacv elzev = gen_tac_from_expr(tg, te.elze);
+  tacv elzev = gen_tac_from_expr(tg, e->v.ternary.elze);
   taci *cpy_else = insert_taci(tg, TAC_CPY);
   cpy_else->dst = dst;
   cpy_else->v.s.src1 = elzev;
@@ -323,22 +347,23 @@ static tacv gen_tac_from_ternary_expr(tacgen *tg, ternary_expr te) {
   return dst;
 }
 
-static tacv gen_tac_from_func_call_expr(tacgen *tg, func_call_expr fe) {
+static tacv gen_tac_from_func_call_expr(tacgen *tg, expr *e) {
   VEC(tacv) v;
   vec_init(v);
 
+  func_call_expr fe = e->v.func_call;
   if (fe.args != NULL)
     for (int i = 0; i < fe.args_len; ++i)
       vec_push_back(v, gen_tac_from_expr(tg, fe.args[i]));
 
   taci *i = insert_taci(tg, TAC_CALL);
-  i->dst = new_tmp();
+  i->dst = new_tmp(tg, e->tp);
   i->v.call.name = fe.name;
 
-  syme *e = ht_get(tg->st->t, fe.name);
-  assert(e);
-  assert(e->a.t == ATTR_FUNC);
-  if (e->a.v.f.defined)
+  syme *entry = ht_get(tg->st->t, fe.name);
+  assert(entry);
+  assert(entry->a.t == ATTR_FUNC);
+  if (entry->a.v.f.defined)
     i->v.call.plt = 0;
   else
     i->v.call.plt = 1;
@@ -354,26 +379,45 @@ static tacv gen_tac_from_func_call_expr(tacgen *tg, func_call_expr fe) {
   return i->dst;
 }
 
+static tacv gen_tac_from_cast_expr(tacgen *tg, cast_expr cast) {
+  tacv v = gen_tac_from_expr(tg, cast.e);
+  if (types_eq(cast.tp, cast.e->tp))
+    return v;
+
+  tacv dst = new_tmp(tg, cast.tp);
+  // FIXME: changing sym table on the fly in tac gen sounds like a bad idea
+
+  taci *i;
+  if (cast.tp->t == TYPE_LONG) {
+    i = insert_taci(tg, TAC_SIGN_EXTEND);
+  } else {
+    i = insert_taci(tg, TAC_TRUNCATE);
+  }
+
+  i->dst = dst;
+  i->v.s.src1 = v;
+
+  return dst;
+}
+
 static tacv gen_tac_from_expr(tacgen *tg, expr *e) {
   switch (e->t) {
   case EXPR_INT_CONST:
     return gen_tac_from_int_const_expr(tg, e->v.intc);
   case EXPR_UNARY:
-    return gen_tac_from_unary_expr(tg, e->v.u);
+    return gen_tac_from_unary_expr(tg, e);
   case EXPR_BINARY:
-    return gen_tac_from_binary_expr(tg, e->v.b);
+    return gen_tac_from_binary_expr(tg, e);
   case EXPR_ASSIGNMENT:
     return gen_tac_from_assignment_expr(tg, e->v.assignment);
-    break;
   case EXPR_VAR:
     return new_var(e->v.var.name);
-    break;
   case EXPR_TERNARY:
-    return gen_tac_from_ternary_expr(tg, e->v.ternary);
-    break;
+    return gen_tac_from_ternary_expr(tg, e);
   case EXPR_FUNC_CALL:
-    return gen_tac_from_func_call_expr(tg, e->v.func_call);
-    break;
+    return gen_tac_from_func_call_expr(tg, e);
+  case EXPR_CAST:
+    return gen_tac_from_cast_expr(tg, e->v.cast);
   }
   UNREACHABLE();
 }
@@ -485,7 +529,7 @@ static void gen_tac_from_for_stmt(tacgen *tg, for_stmt f) {
   if (f.cond != NULL)
     condv = gen_tac_from_expr(tg, f.cond);
   else
-    condv = new_const(1);
+    condv = new_const(new_int_const(1));
 
   taci *jz = insert_taci(tg, TAC_JZ);
   jz->v.s.src1 = condv;
@@ -511,7 +555,7 @@ static void gen_tac_from_switch_stmt(tacgen *tg, switch_stmt s) {
     je->label_idx = s.cases[i]->v.case_stmt.label_idx;
     assert(s.cases[i]->v.case_stmt.e->t == EXPR_INT_CONST);
     je->v.s.src1 = condv;
-    je->v.s.src2 = new_const(s.cases[i]->v.case_stmt.e->v.intc.v);
+    je->v.s.src2 = new_const(s.cases[i]->v.case_stmt.e->v.intc);
   }
 
   if (s.default_stmt != NULL) {
@@ -589,7 +633,7 @@ static tac_top_level *gen_tac_from_func_decl(tacgen *tg, func_decl fd) {
     gen_tac_from_block_item(tg, fd.bs->v.block.items[i]);
 
   taci *ret_at_end = insert_taci(tg, TAC_RET);
-  ret_at_end->v.s.src1 = new_const(0);
+  ret_at_end->v.s.src1 = new_const(new_int_const(0));
 
   res->v.f.firsti = tg->head;
 
@@ -669,7 +713,7 @@ tac_program gen_tac(program *p, sym_table *st) {
       case INIT_TENTATIVE: {
         tac_top_level *sv = alloc_static_var(&tg, e->name);
         sv->v.v.global = e->a.v.s.global;
-        sv->v.v.v = 0;
+        sv->v.v.init = new_int_initial_init(0);
         tail->next = sv;
         tail = sv;
         break;
@@ -677,8 +721,7 @@ tac_program gen_tac(program *p, sym_table *st) {
       case INIT_INITIAL: {
         tac_top_level *sv = alloc_static_var(&tg, e->name);
         sv->v.v.global = e->a.v.s.global;
-        // sv->v.v.v = e->a.v.s.init.v; FIXME
-        TODO();
+        sv->v.v.init = e->a.v.s.init.v;
         tail->next = sv;
         tail = sv;
         break;
