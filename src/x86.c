@@ -64,6 +64,18 @@ static x86_op new_x86_imm(uint64_t v) {
   return op;
 }
 
+static x86_asm_type get_x86_asm_type_from_type(type *t) {
+  switch (t->t) {
+  case TYPE_INT:
+    return X86_LONGWORD;
+  case TYPE_LONG:
+    return X86_QUADWORD;
+  case TYPE_FN:
+    UNREACHABLE();
+    break;
+  }
+}
+
 // NOTE: when using get_x86_asm_type, its doesnt really matter which tacv is
 // given, bc types already should be equal
 static x86_asm_type get_x86_asm_type(x86_asm_gen *ag, tacv v) {
@@ -78,15 +90,7 @@ static x86_asm_type get_x86_asm_type(x86_asm_gen *ag, tacv v) {
   case TACV_VAR: {
     syme *e = ht_get(ag->st->t, v.v.var);
     assert(e);
-    switch (e->t->t) {
-    case TYPE_INT:
-      return X86_LONGWORD;
-    case TYPE_LONG:
-      return X86_QUADWORD;
-    case TYPE_FN:
-      UNREACHABLE();
-      break;
-    }
+    return get_x86_asm_type_from_type(e->t);
   }
   }
 }
@@ -419,6 +423,19 @@ static void gen_asm_from_call(x86_asm_gen *ag, taci *i) {
   mov->v.binary.src = new_x86_reg(X86_AX);
 }
 
+static void gen_asm_from_sextend(x86_asm_gen *ag, taci *i) {
+  x86_instr *res = insert_x86_instr(ag, X86_MOVSX, i);
+  res->v.binary.dst = operand_from_tac_val(i->dst);
+  res->v.binary.src = operand_from_tac_val(i->dst);
+}
+
+static void gen_asm_from_truncate(x86_asm_gen *ag, taci *i) {
+  x86_instr *res = insert_x86_instr(ag, X86_MOV, i);
+  res->v.binary.dst = operand_from_tac_val(i->dst);
+  res->v.binary.src = operand_from_tac_val(i->dst);
+  res->v.binary.type = X86_LONGWORD;
+}
+
 static void gen_asm_from_instr(x86_asm_gen *ag, taci *i) {
   switch (i->op) {
   case TAC_RET:
@@ -483,8 +500,10 @@ static void gen_asm_from_instr(x86_asm_gen *ag, taci *i) {
     gen_asm_from_call(ag, i);
     break;
   case TAC_SIGN_EXTEND:
+    gen_asm_from_sextend(ag, i);
+    break;
   case TAC_TRUNCATE:
-    TODO();
+    gen_asm_from_truncate(ag, i);
     break;
   }
 }
@@ -495,6 +514,10 @@ static x86_top_level *gen_asm_from_func(x86_asm_gen *ag, tacf *f) {
   ag->head = NULL;
   ag->tail = NULL;
 
+  syme *fn_e = ht_get(ag->st->t, f->name);
+  assert(fn_e);
+  type *fn_type = fn_e->t;
+
   for (int i = 0; i < f->params_len && i < sizeof(arg_regs) / sizeof(x86_reg);
        ++i) {
     x86_instr *mov = insert_x86_instr(ag, X86_MOV, NULL);
@@ -503,6 +526,8 @@ static x86_top_level *gen_asm_from_func(x86_asm_gen *ag, tacf *f) {
     op.v.pseudo = f->params[i];
     mov->v.binary.dst = op;
     mov->v.binary.src = new_x86_reg(arg_regs[i]);
+    mov->v.binary.type =
+        get_x86_asm_type_from_type(fn_type->v.fntype.params[i]);
   }
 
   for (int i = sizeof(arg_regs) / sizeof(x86_reg); i < f->params_len; ++i) {
@@ -515,6 +540,8 @@ static x86_top_level *gen_asm_from_func(x86_asm_gen *ag, tacf *f) {
     op2.v.stack_offset = (i - 5) * -8 - 8;
     mov->v.binary.dst = op;
     mov->v.binary.src = op2;
+    mov->v.binary.type =
+        get_x86_asm_type_from_type(fn_type->v.fntype.params[i]);
   }
 
   for (taci *i = f->firsti; i != NULL; i = i->next)
@@ -524,10 +551,20 @@ static x86_top_level *gen_asm_from_func(x86_asm_gen *ag, tacf *f) {
   return func;
 }
 
+static int x86_alignment(inital_init_t t) {
+  switch (t) {
+  case INITIAL_INT:
+    return 4;
+  case INITIAL_LONG:
+    return 8;
+  }
+}
+
 x86_top_level *gen_asm_from_static_var(x86_asm_gen *ag, tac_static_var *sv) {
   x86_top_level *res = alloc_x86_static_var(ag, sv->name);
   res->v.v.global = sv->global;
   res->v.v.init = sv->init;
+  res->v.v.alignment = x86_alignment(sv->init.t);
   return res;
 }
 
