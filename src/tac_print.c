@@ -70,6 +70,10 @@ const char *tacop_str(tacop op) {
     return "<<=";
   case TAC_ASRSHIFT:
     return ">>=";
+  case TAC_SIGN_EXTEND:
+    return "s-ext";
+  case TAC_TRUNCATE:
+    return "trunc";
   case TAC_CPY:
   case TAC_JMP:
   case TAC_JZ:
@@ -86,7 +90,7 @@ const char *tacop_str(tacop op) {
 static void fprint_val(FILE *f, tacv *v) {
   switch (v->t) {
   case TACV_CONST:
-    fprintf(f, "%llu", (unsigned long long)v->v.intv);
+    fprintf(f, "%llu", (unsigned long long)v->v.iconst.v);
     break;
   case TACV_VAR:
     fprintf(f, "%s", v->v.var);
@@ -132,6 +136,8 @@ void fprint_taci(FILE *f, taci *i) {
   case TAC_COMPLEMENT:
   case TAC_NEGATE:
   case TAC_NOT:
+  case TAC_SIGN_EXTEND:
+  case TAC_TRUNCATE:
     fprint_unary(f, &i->dst, &i->v.s.src1, tacop_str(i->op));
     break;
   case TAC_ASADD:
@@ -227,9 +233,9 @@ static void print_tac_func(tacf *f) {
 
 static void print_tac_static_var(tac_static_var *sv) {
   if (sv->global)
-    printf("global static %s = %llu", sv->name, (long long unsigned)sv->v);
+    printf("global static %s = %llu", sv->name, (long long unsigned)sv->init.v);
   else
-    printf("static %s = %llu", sv->name, (long long unsigned)sv->v);
+    printf("static %s = %llu", sv->name, (long long unsigned)sv->init.v);
 }
 
 void print_tac(tac_program *prog) {
