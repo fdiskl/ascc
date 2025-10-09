@@ -4,8 +4,8 @@
 #include "table.h"
 #include "typecheck.h"
 #include "x86.h"
+#include <assert.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 static int max_offset = 0;
@@ -16,14 +16,15 @@ static ht *offset_table;
 x86_instr *alloc_x86_instr(x86_asm_gen *ag, int op);
 
 // TODO: register allocation, graph coloring etc.
-static void fix_pseudo_op(x86_op *op, sym_table st) {
+static void fix_pseudo_op(x86_op *op, ht *bst) {
   if (op->t != X86_OP_PSEUDO)
     return;
 
-  syme *se = ht_get(st.t, op->v.pseudo);
-  if (se != NULL && se->a.t == ATTR_STATIC) {
+  be_syme *be = ht_get(bst, op->v.pseudo);
+  assert(be != NULL && be->t == BE_SYME_OBJ);
+  if (be->v.obj.is_static) {
     op->t = X86_OP_DATA;
-    op->v.data = se->name;
+    op->v.data = op->v.pseudo;
     return;
   }
 
@@ -36,7 +37,15 @@ static void fix_pseudo_op(x86_op *op, sym_table st) {
       max_offset = d;
     op->v.stack_offset = d;
   } else {
-    offset += 4;
+    switch (be->v.obj.type) {
+    case X86_LONGWORD:
+      offset += 4;
+      break;
+    case X86_QUADWORD:
+      offset += 8;
+      offset = (offset + 7) & ~7; // align to 8
+      break;
+    }
     if (offset > max_offset)
       max_offset = offset;
     ht_set(offset_table, op->v.pseudo, (void *)(intptr_t)offset);
@@ -48,7 +57,7 @@ static void fix_pseudo_op(x86_op *op, sym_table st) {
     max_offset = op->v.stack_offset;
 }
 
-static void fix_pseudo_for_instr(x86_instr *i, sym_table st) {
+static void fix_pseudo_for_instr(x86_instr *i, ht *bst) {
   switch (i->op) {
   case X86_NOT:
   case X86_NEG:
@@ -56,7 +65,7 @@ static void fix_pseudo_for_instr(x86_instr *i, sym_table st) {
   case X86_INC:
   case X86_DEC:
   case X86_PUSH:
-    fix_pseudo_op(&i->v.unary.src, st);
+    fix_pseudo_op(&i->v.unary.src, bst);
     break;
   case X86_MOV:
   case X86_ADD:
@@ -68,20 +77,19 @@ static void fix_pseudo_for_instr(x86_instr *i, sym_table st) {
   case X86_SHL:
   case X86_SAR:
   case X86_CMP:
-    fix_pseudo_op(&i->v.binary.src, st);
-    fix_pseudo_op(&i->v.binary.dst, st);
+  case X86_MOVSX:
+    fix_pseudo_op(&i->v.binary.src, bst);
+    fix_pseudo_op(&i->v.binary.dst, bst);
     break;
   case X86_SETCC:
-    fix_pseudo_op(&i->v.setcc.op, st);
+    fix_pseudo_op(&i->v.setcc.op, bst);
     break;
   case X86_RET:
-  case X86_ALLOC_STACK:
   case X86_CDQ:
   case X86_LABEL:
   case X86_JMP:
   case X86_JMPCC:
   case X86_COMMENT:
-  case X86_DEALLOC_STACK:
   case X86_CALL:
     break;
   }
@@ -103,14 +111,14 @@ int tmp_entry_cmp(const void *a, const void *b) {
 
 #endif
 
-int fix_pseudo_for_func(x86_asm_gen *ag, x86_func *f, sym_table st) {
+int fix_pseudo_for_func(x86_asm_gen *ag, x86_func *f, ht *bst) {
   max_offset = 0;
   offset = 0;
 
   offset_table = ht_create();
 
   for (x86_instr *i = f->first; i != NULL; i = i->next)
-    fix_pseudo_for_instr(i, st);
+    fix_pseudo_for_instr(i, bst);
 
 #ifdef PRINT_VARS_LAYOUT_X86
   x86_instr *head = alloc_x86_instr(ag, X86_COMMENT);
@@ -142,10 +150,10 @@ int fix_pseudo_for_func(x86_asm_gen *ag, x86_func *f, sym_table st) {
   }
 
   // print static vars
-  it = ht_iterator(st.t);
+  it = ht_iterator(bst);
   while (ht_next(&it)) {
-    syme *e = it.value;
-    if (e->a.t != ATTR_STATIC)
+    be_syme *e = it.value;
+    if (e->t != BE_SYME_FN && !e->v.obj.is_static)
       continue;
     x86_instr *c = alloc_x86_instr(ag, X86_COMMENT);
     c->v.comment = string_sprintf(" %s: %s(%%rsp)", it.key, it.key);
