@@ -211,7 +211,7 @@ void free_x86_program(x86_program *p);
 
 // replaces pseudo instructions, is called by gen_asm
 // returns amount of bytes to be allocated for locals
-int fix_pseudo_for_func(x86_asm_gen *ag, x86_func *f, sym_table *st);
+int fix_pseudo_for_func(x86_asm_gen *ag, x86_func *f, ht *bst);
 
 // fixes invalid instructions, is called by gen_asm
 void fix_instructions_for_func(x86_asm_gen *ag, x86_func *f);

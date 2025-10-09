@@ -6,9 +6,11 @@
 #include "parser.h"
 #include "table.h"
 #include "tac.h"
+#include "type.h"
 #include "typecheck.h"
 #include <assert.h>
 #include <stdint.h>
+#include <stdio.h>
 
 void init_x86_asm_gen(x86_asm_gen *ag, sym_table *st) {
   NEW_ARENA(ag->instr_arena, x86_instr);
@@ -599,10 +601,33 @@ static void convert_symtable(arena *be_syme_arena, ht *be_st, sym_table *st) {
   }
 }
 
+static const char *asm_type_name(x86_asm_type t) {
+  switch (t) {
+  case X86_LONGWORD:
+    return "longw";
+  case X86_QUADWORD:
+    return "quadw";
+  }
+}
+
+static void print_be_entry(be_syme *e) {
+  switch (e->t) {
+  case BE_SYME_OBJ:
+    printf("obj (%s, static: %s)", asm_type_name(e->v.obj.type),
+           e->v.obj.is_static ? "true" : "false");
+    break;
+  case BE_SYME_FN:
+    printf("fn (defined: %s)", e->v.fn.defined ? "true" : "false");
+    break;
+  }
+}
+
 void emit_be_st(ht *be_st) {
   hti it = ht_iterator(be_st);
   while (ht_next(&it)) {
-    TODO();
+    printf("%s:", it.key);
+    print_be_entry(it.value);
+    printf("\n");
   }
 }
 
