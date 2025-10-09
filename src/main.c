@@ -150,7 +150,7 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
-  x86_program x86_prog = gen_asm(&tac_prog, st);
+  x86_program x86_prog = gen_asm(&tac_prog, &st);
   free_sym_table(&st);
   free_program(&parsed_ast); // sym table has pointers to AST, so it can't be
                              // freed while sym table is alive
