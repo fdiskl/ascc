@@ -128,13 +128,39 @@ static void fix_cmp(x86_asm_gen *ag, x86_instr *i) {
   }
 }
 
+static void fix_movsx(x86_asm_gen *ag, x86_instr *i) {
+  // also work when both ops are invalid
+
+  if (i->v.binary.src.t == X86_OP_IMM) {
+    x86_instr *mov = alloc_x86_instr(ag, X86_MOV);
+    insert_before_x86_instr(ag, i, mov);
+    mov->v.binary.src = i->v.binary.src;
+    i->v.binary.src = mov->v.binary.dst = new_r10();
+  }
+
+  if (is_mem(i->v.binary.dst.t)) {
+    x86_instr *mov = alloc_x86_instr(ag, X86_MOV);
+    insert_after_x86_instr(ag, i, mov);
+    mov->v.binary.dst = i->v.binary.dst;
+    mov->v.binary.src = i->v.binary.dst = new_r11();
+  }
+}
+
 static void fix_instr(x86_asm_gen *ag, x86_instr *i) {
   switch (i->op) {
   case X86_RET:
   case X86_NOT:
   case X86_NEG:
   case X86_CDQ:
-  case X86_ALLOC_STACK:
+  case X86_JMP:
+  case X86_JMPCC:
+  case X86_SETCC:
+  case X86_LABEL:
+  case X86_COMMENT:
+  case X86_INC:
+  case X86_DEC:
+  case X86_PUSH:
+  case X86_CALL:
     break;
   case X86_MOV:
   case X86_ADD:
@@ -157,16 +183,8 @@ static void fix_instr(x86_asm_gen *ag, x86_instr *i) {
   case X86_CMP:
     fix_cmp(ag, i);
     break;
-  case X86_JMP:
-  case X86_JMPCC:
-  case X86_SETCC:
-  case X86_LABEL:
-  case X86_COMMENT:
-  case X86_INC:
-  case X86_DEC:
-  case X86_PUSH:
-  case X86_DEALLOC_STACK:
-  case X86_CALL:
+  case X86_MOVSX:
+    fix_movsx(ag, i);
     break;
   }
 }
