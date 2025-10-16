@@ -156,6 +156,7 @@ int main(int argc, char *argv[]) {
                              // freed while sym table is alive
 
   if (opts.dof == DOF_CODEGEN) {
+    emit_be_st(x86_prog.be_st);
     free_tac(&tac_prog);
     free_x86_program(&x86_prog);
     return 0;
@@ -169,6 +170,7 @@ int main(int argc, char *argv[]) {
   printf("-------asm  res-------\n");
   emit_x86(stdout, &x86_prog);
   printf("----------------------\n");
+  emit_be_st(x86_prog.be_st);
 #endif
 
   free_tac(&tac_prog); // only after emittion, bc fprint_taci is used in emit
