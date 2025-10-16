@@ -92,6 +92,7 @@ typedef enum {
 } x86_t;
 
 typedef enum {
+  X86_BYTE,
   X86_LONGWORD,
   X86_QUADWORD,
 } x86_asm_type;

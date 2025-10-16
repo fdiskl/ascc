@@ -1,4 +1,5 @@
 
+#include "common.h"
 #include "parser.h"
 #include "strings.h"
 #include "table.h"
@@ -44,6 +45,9 @@ static void fix_pseudo_op(x86_op *op, ht *bst) {
     case X86_QUADWORD:
       offset += 8;
       offset = (offset + 7) & ~7; // align to 8
+      break;
+    case X86_BYTE:
+      UNREACHABLE();
       break;
     }
     if (offset > max_offset)

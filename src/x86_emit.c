@@ -19,10 +19,22 @@
   } while (0)
 #endif
 
-static void emit_x86_reg(FILE *w, x86_reg reg, int size) {
+static char get_suff(x86_asm_type t) {
+  switch (t) {
+  case X86_LONGWORD:
+    return 'l';
+  case X86_QUADWORD:
+    return 'q';
+  case X86_BYTE:
+    return 'b';
+  }
 
-  switch (size) {
-  case 8: {
+  UNREACHABLE();
+}
+
+static void emit_x86_reg(FILE *w, x86_reg reg, x86_asm_type t) {
+  switch (t) {
+  case X86_QUADWORD: {
     switch (reg) {
     case X86_AX:
       fprintf(w, "%%rax");
@@ -51,10 +63,13 @@ static void emit_x86_reg(FILE *w, x86_reg reg, int size) {
     case X86_R11:
       fprintf(w, "%%r11");
       return;
+    case X86_SP:
+      fprintf(w, "%%rsp");
+      return;
     }
     break;
   }
-  case 4: {
+  case X86_LONGWORD: {
     switch (reg) {
     case X86_AX:
       fprintf(w, "%%eax");
@@ -83,11 +98,14 @@ static void emit_x86_reg(FILE *w, x86_reg reg, int size) {
     case X86_R11:
       fprintf(w, "%%r11d");
       return;
+    case X86_SP:
+      fprintf(w, "%%esp");
+      return;
     }
     break;
   }
 
-  case 1: {
+  case X86_BYTE: {
     switch (reg) {
     case X86_AX:
       fprintf(w, "%%al");
@@ -115,6 +133,9 @@ static void emit_x86_reg(FILE *w, x86_reg reg, int size) {
       return;
     case X86_R11:
       fprintf(w, "%%r11b");
+      return;
+    case X86_SP:
+      fprintf(w, "%%spl");
       return;
     }
     break;
@@ -148,13 +169,13 @@ static void emit_origin(FILE *w, x86_instr *i) {
   fprintf(w, "\n");
 }
 
-static void emit_x86_op(FILE *w, x86_op op, int size) {
+static void emit_x86_op(FILE *w, x86_op op, x86_asm_type t) {
   switch (op.t) {
   case X86_OP_IMM:
     fprintf(w, "$%lu", op.v.imm);
     break;
   case X86_OP_REG:
-    emit_x86_reg(w, op.v.reg, size);
+    emit_x86_reg(w, op.v.reg, t);
     break;
   case X86_OP_PSEUDO:
     fprintf(w, "PSEUDO(%s)", op.v.pseudo);
@@ -171,31 +192,28 @@ static void emit_x86_op(FILE *w, x86_op op, int size) {
   }
 }
 
-static void emit_x86_unary(FILE *w, x86_instr *i, const char *name, int size) {
+static void emit_x86_unary(FILE *w, x86_instr *i, const char *name) {
   SMART_EMIT_ORIGIN({
-    fprintf(w, "\t%s ", name);
-    emit_x86_op(w, i->v.unary.src, size);
+    fprintf(w, "\t%s%c ", name, get_suff(i->v.unary.type));
+    emit_x86_op(w, i->v.unary.src, i->v.unary.type);
   });
 }
 
 static void emit_x86_binary(FILE *w, x86_instr *i, const char *name) {
   SMART_EMIT_ORIGIN({
-    fprintf(w, "\t%s ", name);
-    emit_x86_op(w, i->v.binary.src, 4);
+    fprintf(w, "\t%s%c ", name, get_suff(i->v.binary.type));
+    emit_x86_op(w, i->v.binary.src, i->v.binary.type);
     fprintf(w, ", ");
-    emit_x86_op(w, i->v.binary.dst, 4);
+    emit_x86_op(w, i->v.binary.dst, i->v.binary.type);
   });
 }
 
 static void emit_x86_shift(FILE *w, x86_instr *i, const char *name) {
   SMART_EMIT_ORIGIN({
-    fprintf(w, "\t%s ", name);
-    if (i->v.binary.src.t == X86_OP_REG && i->v.binary.src.v.reg == X86_CX)
-      emit_x86_op(w, i->v.binary.src, 1);
-    else
-      emit_x86_op(w, i->v.binary.src, 1);
+    fprintf(w, "\t%s%c ", name, get_suff(i->v.binary.type));
+    emit_x86_op(w, i->v.binary.src, X86_BYTE);
     fprintf(w, ", ");
-    emit_x86_op(w, i->v.binary.dst, 4);
+    emit_x86_op(w, i->v.binary.dst, i->v.binary.type);
   });
 }
 
@@ -226,55 +244,57 @@ static void emit_x86_instr(FILE *w, x86_instr *i) {
     fprintf(w, "\tret\n");
     break;
   case X86_MOV:
-    emit_x86_binary(w, i, "movl");
+    emit_x86_binary(w, i, "mov");
     break;
   case X86_ADD:
-    emit_x86_binary(w, i, "addl");
+    emit_x86_binary(w, i, "add");
     break;
   case X86_SUB:
-    emit_x86_binary(w, i, "subl");
+    emit_x86_binary(w, i, "sub");
     break;
   case X86_MULT:
-    emit_x86_binary(w, i, "imull");
+    emit_x86_binary(w, i, "imul");
     break;
   case X86_AND:
-    emit_x86_binary(w, i, "andl");
+    emit_x86_binary(w, i, "and");
     break;
   case X86_OR:
-    emit_x86_binary(w, i, "orl");
+    emit_x86_binary(w, i, "or");
     break;
   case X86_XOR:
-    emit_x86_binary(w, i, "xorl");
+    emit_x86_binary(w, i, "xor");
     break;
   case X86_SHL:
-    emit_x86_shift(w, i, "shll");
+    emit_x86_shift(w, i, "shl");
     break;
   case X86_SAR:
-    emit_x86_shift(w, i, "sarl");
+    emit_x86_shift(w, i, "sar");
     break;
   case X86_CMP:
-    emit_x86_binary(w, i, "cmpl");
+    emit_x86_binary(w, i, "cmp");
     break;
   case X86_NOT:
-    emit_x86_unary(w, i, "notl", 4);
+    emit_x86_unary(w, i, "not");
     break;
   case X86_NEG:
-    emit_x86_unary(w, i, "negl", 4);
+    emit_x86_unary(w, i, "neg");
     break;
   case X86_IDIV:
-    emit_x86_unary(w, i, "idivl", 4);
+    emit_x86_unary(w, i, "idiv");
     break;
   case X86_INC:
-    emit_x86_unary(w, i, "incl", 4);
+    emit_x86_unary(w, i, "inc");
     break;
   case X86_DEC:
-    emit_x86_unary(w, i, "decl", 4);
+    emit_x86_unary(w, i, "dec");
     break;
-  case X86_ALLOC_STACK:
-    fprintf(w, "\n\tsubq $%d, %%rsp\n", i->v.bytes_to_alloc);
+  case X86_PUSH:
+    emit_x86_unary(w, i, "push");
     break;
   case X86_CDQ:
-    SMART_EMIT_ORIGIN(fprintf(w, "\tcdq"););
+    SMART_EMIT_ORIGIN(
+        fprintf(w, "\t%s", i->v.cdq.type == X86_QUADWORD ? "cqo" : "cdq"););
+
     break;
   case X86_JMP:
     SMART_EMIT_ORIGIN(fprintf(w, "\tjmp .L%d", i->v.label));
@@ -293,17 +313,19 @@ static void emit_x86_instr(FILE *w, x86_instr *i) {
   case X86_COMMENT:
     fprintf(w, "\t#%s\n", i->v.comment);
     break;
-  case X86_PUSH:
-    emit_x86_unary(w, i, "pushq", 8);
-    break;
-  case X86_DEALLOC_STACK:
-    fprintf(w, "\taddq $%d, %%rsp\n", i->v.bytes_to_alloc);
-    break;
   case X86_CALL:
     if (i->v.call.plt)
       SMART_EMIT_ORIGIN(fprintf(w, "\tcall %s@plt\n", i->v.call.str_label););
     else
       SMART_EMIT_ORIGIN(fprintf(w, "\tcall %s\n", i->v.call.str_label););
+    break;
+  case X86_MOVSX:
+    SMART_EMIT_ORIGIN({
+      fprintf(w, "\tmovslq ");
+      emit_x86_op(w, i->v.binary.src, X86_LONGWORD);
+      fprintf(w, ", ");
+      emit_x86_op(w, i->v.binary.dst, X86_QUADWORD);
+    });
     break;
   }
 }
@@ -332,7 +354,7 @@ static void emit_x86_func(FILE *w, x86_func *f) {
 
 static void emit_x86_static_var(FILE *w, x86_static_var *sv) {
   emit_x86_global(w, sv->global, sv->name);
-  if (sv->v == 0)
+  if (sv->init.v == 0)
     fprintf(w, "\t.bss\n");
   else
     fprintf(w, "\t.data\n");
@@ -340,10 +362,22 @@ static void emit_x86_static_var(FILE *w, x86_static_var *sv) {
   fprintf(w, "\t.balign 4\n");
   fprintf(w, "%s:\n", sv->name);
 
-  if (sv->v == 0)
-    fprintf(w, "\t.zero 4\n");
-  else
-    fprintf(w, "\t.long %llu\n", (long long unsigned)sv->v);
+  switch (sv->init.t) {
+  case INITIAL_INT:
+    if (sv->init.v == 0) {
+      fprintf(w, "\t.zero 4\n");
+    } else {
+      fprintf(w, "\t.long %llu\n", (unsigned long long)sv->init.v);
+    }
+    break;
+  case INITIAL_LONG:
+    if (sv->init.v == 0) {
+      fprintf(w, "\t.zero 8\n");
+    } else {
+      fprintf(w, "\t.quad %llu\n", (unsigned long long)sv->init.v);
+    }
+    break;
+  }
 }
 
 void emit_x86(FILE *w, x86_program *prog) {
