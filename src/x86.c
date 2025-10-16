@@ -127,6 +127,7 @@ static void gen_asm_from_ret_instr(x86_asm_gen *ag, taci *i) {
 
   mov->v.binary.dst = new_x86_reg(X86_AX);
   mov->v.binary.src = operand_from_tac_val(i->v.s.src1);
+  mov->v.binary.type = get_x86_asm_type(ag, i->v.s.src1);
 }
 
 static void gen_asm_from_unary_instr(x86_asm_gen *ag, taci *i) {
@@ -607,6 +608,9 @@ static const char *asm_type_name(x86_asm_type t) {
     return "longw";
   case X86_QUADWORD:
     return "quadw";
+  case X86_BYTE:
+    return "byte";
+    break;
   }
 }
 
@@ -625,7 +629,7 @@ static void print_be_entry(be_syme *e) {
 void emit_be_st(ht *be_st) {
   hti it = ht_iterator(be_st);
   while (ht_next(&it)) {
-    printf("%s:", it.key);
+    printf("%s: ", it.key);
     print_be_entry(it.value);
     printf("\n");
   }
@@ -659,17 +663,18 @@ x86_program gen_asm(tac_program *prog, sym_table *st) {
 
 // 2 step fix
 #ifndef ASM_DONT_FIX_PSEUDO
-      x86_instr *alloc_stack = alloc_x86_instr(&ag, X86_SUB);
+      x86_instr *alloc_instr = alloc_x86_instr(&ag, X86_SUB);
 
-      alloc_stack->next = res->v.f.first;
-      res->v.f.first = alloc_stack;
-      alloc_stack->next->prev = alloc_stack;
+      alloc_instr->next = res->v.f.first;
+      res->v.f.first = alloc_instr;
+      alloc_instr->next->prev = alloc_instr;
 
-      x86_instr *alloc_instr = insert_x86_instr(&ag, X86_SUB, NULL);
+      int bytes_to_alloc = fix_pseudo_for_func(&ag, &res->v.f, be_st);
+
       alloc_instr->v.binary.dst = new_x86_reg(X86_SP);
-      alloc_instr->v.binary.src =
-          new_x86_imm(fix_pseudo_for_func(&ag, &res->v.f, st));
+      alloc_instr->v.binary.src = new_x86_imm(bytes_to_alloc);
       alloc_instr->v.binary.type = X86_QUADWORD;
+
 #endif
 
 #ifndef ASM_DONT_FIX_INSTRUCTIONS
