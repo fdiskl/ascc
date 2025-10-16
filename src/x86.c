@@ -429,13 +429,13 @@ static void gen_asm_from_call(x86_asm_gen *ag, taci *i) {
 static void gen_asm_from_sextend(x86_asm_gen *ag, taci *i) {
   x86_instr *res = insert_x86_instr(ag, X86_MOVSX, i);
   res->v.binary.dst = operand_from_tac_val(i->dst);
-  res->v.binary.src = operand_from_tac_val(i->dst);
+  res->v.binary.src = operand_from_tac_val(i->v.s.src1);
 }
 
 static void gen_asm_from_truncate(x86_asm_gen *ag, taci *i) {
   x86_instr *res = insert_x86_instr(ag, X86_MOV, i);
   res->v.binary.dst = operand_from_tac_val(i->dst);
-  res->v.binary.src = operand_from_tac_val(i->dst);
+  res->v.binary.src = operand_from_tac_val(i->v.s.src1);
   res->v.binary.type = X86_LONGWORD;
 }
 
