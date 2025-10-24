@@ -385,7 +385,6 @@ static tacv gen_tac_from_cast_expr(tacgen *tg, cast_expr cast) {
     return v;
 
   tacv dst = new_tmp(tg, cast.tp);
-  // FIXME: changing sym table on the fly in tac gen sounds like a bad idea
 
   taci *i;
   if (cast.tp->t == TYPE_LONG) {
@@ -620,7 +619,6 @@ static void gen_tac_from_stmt(tacgen *tg, stmt *s) {
 }
 
 static tac_top_level *gen_tac_from_func_decl(tacgen *tg, func_decl fd) {
-  tmp_var_counter = 0;
   if (fd.bs == NULL)
     return NULL;
   tac_top_level *res = alloc_tacf(tg, fd.name);
