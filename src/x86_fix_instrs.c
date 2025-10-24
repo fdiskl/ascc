@@ -65,9 +65,18 @@ static void insert_after_x86_instr(x86_asm_gen *ag, x86_instr *i,
   i->next = new;
 }
 
-static void fix_too_big_const(x86_asm_gen *ag, x86_instr *i) {
-  if (i->v.binary.type == X86_QUADWORD && i->v.binary.src.t == X86_OP_IMM &&
-      i->v.binary.src.v.imm > INT32_MAX) {
+static void fix_unary_too_big_const(x86_asm_gen *ag, x86_instr *i) {
+  if (i->v.unary.src.t == X86_OP_IMM && i->v.unary.src.v.imm > INT32_MAX) {
+    x86_instr *mov = alloc_x86_instr(ag, X86_MOV);
+    mov->v.binary.src = i->v.unary.src;
+    i->v.unary.src = mov->v.binary.dst = new_r10();
+    mov->v.binary.type = i->v.unary.type;
+    insert_before_x86_instr(ag, i, mov);
+  }
+}
+
+static void fix_binary_too_big_const(x86_asm_gen *ag, x86_instr *i) {
+  if (i->v.binary.src.t == X86_OP_IMM && i->v.binary.src.v.imm > INT32_MAX) {
     x86_instr *mov = alloc_x86_instr(ag, X86_MOV);
     mov->v.binary.src = i->v.binary.src;
     i->v.binary.src = mov->v.binary.dst = new_r10();
@@ -118,7 +127,7 @@ static void fix_mult(x86_asm_gen *ag, x86_instr *i) {
     insert_after_x86_instr(ag, i, mov_after);
   }
 
-  fix_too_big_const(ag, i);
+  fix_binary_too_big_const(ag, i);
 }
 
 static void fix_shifts(x86_asm_gen *ag, x86_instr *i) {
@@ -138,7 +147,7 @@ static void fix_shifts(x86_asm_gen *ag, x86_instr *i) {
 }
 
 static void fix_cmp(x86_asm_gen *ag, x86_instr *i) {
-  fix_too_big_const(ag, i);
+  fix_binary_too_big_const(ag, i);
   fix_both_ops_mem(ag, i);
 
   if (i->v.binary.dst.t == X86_OP_IMM) {
@@ -151,14 +160,14 @@ static void fix_cmp(x86_asm_gen *ag, x86_instr *i) {
 }
 
 static void fix_movsx(x86_asm_gen *ag, x86_instr *i) {
-  // also work when both ops are invalid
+  // also works when both ops are invalid
 
   if (i->v.binary.src.t == X86_OP_IMM) {
     x86_instr *mov = alloc_x86_instr(ag, X86_MOV);
     insert_before_x86_instr(ag, i, mov);
     mov->v.binary.src = i->v.binary.src;
     i->v.binary.src = mov->v.binary.dst = new_r10();
-    mov->v.binary.type = i->v.binary.type;
+    mov->v.binary.type = X86_LONGWORD;
   }
 
   if (is_mem(i->v.binary.dst.t)) {
@@ -166,13 +175,13 @@ static void fix_movsx(x86_asm_gen *ag, x86_instr *i) {
     insert_after_x86_instr(ag, i, mov);
     mov->v.binary.dst = i->v.binary.dst;
     mov->v.binary.src = i->v.binary.dst = new_r11();
-    mov->v.binary.type = i->v.binary.type;
+    mov->v.binary.type = X86_QUADWORD;
   }
 }
 
 static void fix_add_sub(x86_asm_gen *ag, x86_instr *i) {
   fix_both_ops_mem(ag, i);
-  fix_too_big_const(ag, i);
+  fix_binary_too_big_const(ag, i);
 }
 
 static void fix_mov(x86_asm_gen *ag, x86_instr *i) {
@@ -203,7 +212,7 @@ static void fix_instr(x86_asm_gen *ag, x86_instr *i) {
   case X86_CALL:
     break;
   case X86_PUSH:
-    fix_too_big_const(ag, i);
+    fix_unary_too_big_const(ag, i);
     break;
   case X86_ADD:
   case X86_SUB:
