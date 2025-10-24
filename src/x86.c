@@ -388,6 +388,7 @@ static void gen_asm_from_call(x86_asm_gen *ag, taci *i) {
     x86_instr *mov = insert_x86_instr(ag, X86_MOV, i);
     mov->v.binary.dst = new_x86_reg(arg_regs[j]);
     mov->v.binary.src = operand_from_tac_val(i->v.call.args[j]);
+    mov->v.binary.type = get_x86_asm_type(ag, i->v.call.args[j]);
   }
 
   int stack_args = 0;
@@ -395,18 +396,22 @@ static void gen_asm_from_call(x86_asm_gen *ag, taci *i) {
     ++stack_args;
     x86_op op = operand_from_tac_val(i->v.call.args[j]);
 
-    if (op.t == X86_OP_REG || op.t == X86_OP_IMM ||
-        get_x86_asm_type(ag, i->v.call.args[j]) == X86_QUADWORD)
-      insert_x86_instr(ag, X86_PUSH, i)->v.unary.src = op;
-    else {
+    x86_asm_type asm_type = get_x86_asm_type(ag, i->v.call.args[j]);
+    if (op.t == X86_OP_REG || op.t == X86_OP_IMM || asm_type == X86_QUADWORD) {
+      x86_instr *push = insert_x86_instr(ag, X86_PUSH, i);
+      push->v.unary.src = op;
+      push->v.unary.type = X86_QUADWORD;
+    } else {
       // work around bc pushing 4 byte value by using 8 byte pushq will cause
-      // problems so we move 4 byte value into eax and then push rax
+      // problems so we move 4 byte value into eax and then push rax.
       // quadwords dont need this workaround so they are handled in if before
       x86_instr *mov = insert_x86_instr(ag, X86_MOV, i);
       mov->v.binary.dst = new_x86_reg(X86_AX);
       mov->v.binary.src = op;
       mov->v.binary.type = X86_LONGWORD;
-      insert_x86_instr(ag, X86_PUSH, i)->v.unary.src = new_x86_reg(X86_AX);
+      x86_instr *push = insert_x86_instr(ag, X86_PUSH, i);
+      push->v.unary.src = new_x86_reg(X86_AX);
+      push->v.unary.type = X86_QUADWORD;
     }
   }
 
@@ -424,6 +429,10 @@ static void gen_asm_from_call(x86_asm_gen *ag, taci *i) {
   x86_instr *mov = insert_x86_instr(ag, X86_MOV, i);
   mov->v.binary.dst = dst;
   mov->v.binary.src = new_x86_reg(X86_AX);
+  syme *e = ht_get(ag->st->t, i->v.call.name);
+  assert(e);
+  assert(e->t->t == TYPE_FN);
+  mov->v.binary.type = get_x86_asm_type_from_type(e->t->v.fntype.return_type);
 }
 
 static void gen_asm_from_sextend(x86_asm_gen *ag, taci *i) {
@@ -530,7 +539,7 @@ static x86_top_level *gen_asm_from_func(x86_asm_gen *ag, tacf *f) {
     mov->v.binary.dst = op;
     mov->v.binary.src = new_x86_reg(arg_regs[i]);
     mov->v.binary.type =
-        get_x86_asm_type_from_type(fn_type->v.fntype.params[i]);
+        get_x86_asm_type_from_type(fn_type->v.fntype.params[i]); // !!!
   }
 
   for (int i = sizeof(arg_regs) / sizeof(x86_reg); i < f->params_len; ++i) {
