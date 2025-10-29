@@ -167,9 +167,6 @@ int main(int argc, char *argv[]) {
   emit_x86(asm_file, &x86_prog);
   fclose(asm_file);
 #ifdef DEBUG_INFO
-  printf("-------asm  res-------\n");
-  emit_x86(stdout, &x86_prog);
-  printf("----------------------\n");
   emit_be_st(x86_prog.be_st);
 #endif
 
