@@ -125,7 +125,7 @@ static expr *parse_int_const_expr(parser *p) {
     exit(1);
   }
 
-  if (v.suff == INT_SUFF_NONE && v.suff >= (1ULL << 31) - 1) {
+  if (v.suff == INT_SUFF_NONE && v.v <= (1ULL << 31) - 1) {
     e->v.intc.t = CONST_INT;
   } else {
     e->v.intc.t = CONST_LONG;
