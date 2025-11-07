@@ -230,7 +230,10 @@ static void typecheck_ternary_expr(checker *c, expr *e) {
   typecheck_expr(c, e->v.ternary.then);
   typecheck_expr(c, e->v.ternary.elze);
 
-  e->tp = new_type(TYPE_INT);
+  e->tp = get_common_type(e->v.ternary.then->tp, e->v.ternary.elze->tp);
+
+  e->v.ternary.then = convert_to(c, e->v.ternary.then, e->tp);
+  e->v.ternary.elze = convert_to(c, e->v.ternary.elze, e->tp);
 }
 
 static void typecheck_expr(checker *c, expr *e) {
