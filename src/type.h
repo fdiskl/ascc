@@ -29,8 +29,10 @@ struct _type {
 
 #define EMIT_TYPE_INTO_BUF(buf_name, buf_len, type)                            \
   static char buf_name[buf_len];                                               \
-  size_t pos = 0;                                                              \
-  emit_type_name_buf(buf_name, buf_len, &pos, type);
+  {                                                                            \
+    size_t pos = 0;                                                            \
+    emit_type_name_buf(buf_name, buf_len, &pos, type);                         \
+  }
 
 void emit_type_name_buf(char *buf, size_t size, size_t *pos, type *t);
 
