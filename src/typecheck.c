@@ -6,6 +6,7 @@
 #include "table.h"
 #include "type.h"
 #include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
 
 typedef struct _checker checker;
@@ -132,15 +133,14 @@ static void typecheck_fn_call_expr(checker *c, expr *e) {
 }
 
 static void typecheck_const_expr(checker *c, expr *e) {
-  // TODO: make so 2l is till int
-  switch (e->v.intc.t) {
-  case CONST_INT:
-    e->tp = new_type(TYPE_INT);
-    break;
-  case CONST_LONG:
+  if (e->v.intc.v > INT32_MAX || e->v.intc.t == CONST_LONG) {
     e->tp = new_type(TYPE_LONG);
-    break;
+    e->v.intc.t = CONST_LONG;
+    return;
   }
+
+  e->tp = new_type(TYPE_INT);
+  e->v.intc.t = CONST_INT;
 }
 
 static void typecheck_cast_expr(checker *c, expr *e) {
