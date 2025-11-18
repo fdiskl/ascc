@@ -222,7 +222,7 @@ static tacv gen_tac_from_AND_binary(tacgen *tg, expr *e) {
   false_label_i->label_idx = false_label;
   taci *cpy2 = insert_taci(tg, TAC_CPY);
   cpy2->dst = res;
-  cpy2->v.s.src1 = new_const(new_int_const(1));
+  cpy2->v.s.src1 = new_const(new_int_const(0));
   taci *end_label_i = insert_taci(tg, TAC_LABEL);
   end_label_i->label_idx = end_label;
 
