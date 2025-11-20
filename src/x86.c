@@ -168,6 +168,7 @@ static void gen_asm_from_binary_instr(x86_asm_gen *ag, taci *i) {
     mov1->v.binary.type = get_x86_asm_type(ag, i->v.s.src1);
 
     idiv->v.unary.src = operand_from_tac_val(i->v.s.src2);
+    idiv->v.unary.type = get_x86_asm_type(ag, i->v.s.src2);
 
     mov2->v.binary.src = new_x86_reg(i->op == TAC_DIV ? X86_AX : X86_DX);
     mov2->v.binary.dst = operand_from_tac_val(i->dst);
