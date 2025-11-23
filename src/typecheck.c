@@ -626,8 +626,10 @@ static void typecheck_local_var_decl(checker *c, decl *d) {
         c, d->tp, d->v.var.name, d, a,
         d->v.var.original_name); // important to do before typechecking expr
 
-    if (d->v.var.init != NULL)
+    if (d->v.var.init != NULL) {
       typecheck_expr(c, d->v.var.init);
+      d->v.var.init = convert_to(c, d->v.var.init, d->tp);
+    }
 
     return;
 
