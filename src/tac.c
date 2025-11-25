@@ -33,9 +33,10 @@ static int_const new_int_const(int x) {
   return res;
 }
 
-static initial_init new_int_initial_init(int x) {
+static initial_init new_int_initial_init(int x, type *t) {
   initial_init res;
-  res.t = INITIAL_INT;
+  assert(t->t != TYPE_FN);
+  res.t = t->t == TYPE_INT ? INITIAL_INT : INITIAL_LONG;
   res.v = x;
   return res;
 }
@@ -711,7 +712,7 @@ tac_program gen_tac(program *p, sym_table *st) {
       case INIT_TENTATIVE: {
         tac_top_level *sv = alloc_static_var(&tg, e->name);
         sv->v.v.global = e->a.v.s.global;
-        sv->v.v.init = new_int_initial_init(0);
+        sv->v.v.init = new_int_initial_init(0, e->t);
         tail->next = sv;
         tail = sv;
         break;
