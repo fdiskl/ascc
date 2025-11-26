@@ -90,7 +90,14 @@ const char *tacop_str(tacop op) {
 static void fprint_val(FILE *f, tacv *v) {
   switch (v->t) {
   case TACV_CONST:
-    fprintf(f, "%llu", (unsigned long long)v->v.iconst.v);
+    switch (v->v.iconst.t) {
+    case CONST_INT:
+      fprintf(f, "int(%llu)", (unsigned long long)v->v.iconst.v);
+      break;
+    case CONST_LONG:
+      fprintf(f, "long(%llu)", (unsigned long long)v->v.iconst.v);
+      break;
+    }
     break;
   case TACV_VAR:
     fprintf(f, "%s", v->v.var);
