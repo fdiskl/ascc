@@ -186,6 +186,12 @@ static void fix_add_sub(x86_asm_gen *ag, x86_instr *i) {
 
 static void fix_mov(x86_asm_gen *ag, x86_instr *i) {
   fix_both_ops_mem(ag, i);
+
+  if (i->v.binary.src.t == X86_OP_IMM && i->v.binary.src.v.imm > INT32_MAX &&
+      i->v.binary.type == X86_LONGWORD) {
+    i->v.binary.src.v.imm &= 0xffffffff;
+  }
+
   if (i->v.binary.src.t == X86_OP_IMM && i->v.binary.src.v.imm > INT32_MAX &&
       i->v.binary.dst.t != X86_OP_REG) {
     x86_instr *mov = alloc_x86_instr(ag, X86_MOV);
@@ -222,6 +228,7 @@ static void fix_instr(x86_asm_gen *ag, x86_instr *i) {
   case X86_OR:
   case X86_XOR:
     fix_both_ops_mem(ag, i);
+    fix_binary_too_big_const(ag, i);
     break;
   case X86_MOV:
     fix_mov(ag, i);
