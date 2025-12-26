@@ -2,7 +2,6 @@
 #include "x86.h"
 #include "arena.h"
 #include "common.h"
-#include "driver.h"
 #include "parser.h"
 #include "table.h"
 #include "tac.h"
@@ -319,17 +318,22 @@ static void gen_asm_from_inc_dec(x86_asm_gen *ag, taci *i) {
 static void gen_asm_from_assign(x86_asm_gen *ag, taci *i) {
   if (i->op == TAC_ASDIV || i->op == TAC_ASMOD) {
     x86_instr *mov1 = insert_x86_instr(ag, X86_MOV, i);
-    insert_x86_instr(ag, X86_CDQ, i);
+    x86_instr *cdq = insert_x86_instr(ag, X86_CDQ, i);
     x86_instr *idiv = insert_x86_instr(ag, X86_IDIV, i);
     x86_instr *mov2 = insert_x86_instr(ag, X86_MOV, i);
+
+    cdq->v.cdq.type = get_x86_asm_type(ag, i->dst);
 
     mov1->v.binary.dst = new_x86_reg(X86_AX);
     mov2->v.binary.dst = mov1->v.binary.src = operand_from_tac_val(i->dst);
     mov2->v.binary.type = mov1->v.binary.type = get_x86_asm_type(ag, i->dst);
+    mov2->v.binary.src = new_x86_reg(i->op == TAC_ASDIV ? X86_AX : X86_DX);
 
     idiv->v.unary.src = operand_from_tac_val(i->v.s.src1);
 
-    mov2->v.binary.src = new_x86_reg(i->op == TAC_ASDIV ? X86_AX : X86_DX);
+    mov1->v.binary.type = get_x86_asm_type(ag, i->v.s.src1);
+    mov2->v.binary.type = get_x86_asm_type(ag, i->dst);
+    idiv->v.unary.type = get_x86_asm_type(ag, i->v.s.src2);
     return;
   }
 
