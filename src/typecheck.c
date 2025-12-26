@@ -1,7 +1,6 @@
 #include "typecheck.h"
 #include "arena.h"
 #include "common.h"
-#include "driver.h"
 #include "parser.h"
 #include "table.h"
 #include "type.h"
@@ -220,9 +219,62 @@ static void typecheck_binary_expr(checker *c, expr *e) {
 static void typecheck_assignment_expr(checker *c, expr *e) {
   typecheck_expr(c, e->v.assignment.l);
   typecheck_expr(c, e->v.assignment.r);
-
-  e->v.assignment.r = convert_to(c, e->v.assignment.r, e->v.assignment.l->tp);
   e->tp = e->v.assignment.l->tp;
+
+  if (e->v.assignment.t == ASSIGN ||
+      types_eq(e->v.assignment.l->tp, e->v.assignment.r->tp)) {
+    e->v.assignment.r = convert_to(c, e->v.assignment.r, e->v.assignment.l->tp);
+    return;
+  }
+
+  type *common = get_common_type(e->v.assignment.l->tp, e->v.assignment.r->tp);
+
+  // convert assign with op into assign and binary
+  binaryt op;
+  switch (e->v.assignment.t) {
+  case ASSIGN:
+    UNREACHABLE();
+  case ASSIGN_ADD:
+    op = BINARY_ADD;
+    break;
+  case ASSIGN_SUB:
+    op = BINARY_SUB;
+    break;
+  case ASSIGN_MUL:
+    op = BINARY_MUL;
+    break;
+  case ASSIGN_DIV:
+    op = BINARY_DIV;
+    break;
+  case ASSIGN_MOD:
+    op = BINARY_MOD;
+    break;
+  case ASSIGN_AND:
+    op = BINARY_BITWISE_AND;
+    break;
+  case ASSIGN_OR:
+    op = BINARY_BITWISE_OR;
+    break;
+  case ASSIGN_XOR:
+    op = BINARY_XOR;
+    break;
+  case ASSIGN_LSHIFT:
+    op = BINARY_LSHIFT;
+    break;
+  case ASSIGN_RSHIFT:
+    op = BINARY_RSHIFT;
+    break;
+  }
+
+  expr *b_expr = ARENA_ALLOC_OBJ(c->expr_arena, expr);
+  b_expr->t = EXPR_BINARY;
+  b_expr->tp = common;
+  b_expr->v.b.l = convert_to(c, e->v.assignment.l, common);
+  b_expr->v.b.r = convert_to(c, e->v.assignment.r, common);
+  b_expr->v.b.t = op;
+
+  e->v.assignment.t = ASSIGN;
+  e->v.assignment.r = convert_to(c, b_expr, e->v.assignment.l->tp);
 }
 
 static void typecheck_ternary_expr(checker *c, expr *e) {
