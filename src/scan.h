@@ -135,6 +135,8 @@ enum {
   TOK_CONST,
   TOK_GOTO,
   TOK_DO,
+  TOK_UNSIGNED,
+  TOK_SIGNED,
 
   // literals
   TOK_INTLIT,

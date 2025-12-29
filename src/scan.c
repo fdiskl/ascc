@@ -1,5 +1,4 @@
 #include "scan.h"
-#include "common.h"
 #include "string.h"
 #include <assert.h>
 #include <ctype.h>
@@ -136,23 +135,42 @@ static int chrpos(char *s, int c) {
 }
 
 static int_literal_suffix convert_suff(const char *s, int line, int pos) {
-  char u = false, l = false, ll = false;
+  bool u = false;
+  char l = 0; // 'l' or 'L'
+  char ll = 0;
+
+  int first_l = -1;
+  int last_l = -1;
 
   for (int i = 0; s[i]; i++) {
-    if (s[i] == 'u' || s[i] == 'U') {
+    char c = s[i];
+
+    if (c == 'u' || c == 'U') {
       if (u)
-        goto invalid; // duplicate
+        goto invalid;
       u = true;
-    } else if (s[i] == 'l' || s[i] == 'L') {
+    } else if (c == 'l' || c == 'L') {
       if (!l)
-        l = s[i];
+        l = c;
       else if (!ll) {
-        if (l != s[i]) {
+        if (l != c)
           goto invalid;
-        }
-        ll = s[i];
+        ll = c;
       } else
-        goto invalid; // more than two L's
+        goto invalid; // >2 Ls
+
+      if (first_l == -1)
+        first_l = i;
+      last_l = i;
+    } else {
+      goto invalid;
+    }
+  }
+
+  if (first_l != -1) {
+    for (int i = first_l; i <= last_l; i++) {
+      if (s[i] != l)
+        goto invalid;
     }
   }
 
@@ -310,9 +328,11 @@ int is_keyword(lexer *l) {
     else check_kw("switch", TOK_SWITCH);
     else check_kw("sizeof", TOK_SIZEOF);
     else check_kw("static", TOK_STATIC);
+    else check_kw("signed", TOK_SIGNED);
     break;
   case 'u':
     check_kw("union", TOK_UNION);
+    else check_kw("unsigned", TOK_UNSIGNED);
     break;
   case 't':
     check_kw("typedef", TOK_TYPEDEF);
@@ -323,6 +343,7 @@ int is_keyword(lexer *l) {
   case 'd':
     check_kw("default", TOK_DEFAULT);
     else check_kw("do", TOK_DO);
+    break;
   case 'g':
     check_kw("goto", TOK_GOTO);
   }
