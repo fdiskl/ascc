@@ -35,6 +35,11 @@ const char *get_const_name(constt t) {
     return "int";
   case CONST_LONG:
     return "long";
+  case CONST_UINT:
+    return "uint";
+  case CONST_ULONG:
+    return "ulong";
+    break;
   }
 }
 

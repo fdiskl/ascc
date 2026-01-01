@@ -70,6 +70,8 @@ struct _ternary_expr {
 typedef enum {
   CONST_INT,
   CONST_LONG,
+  CONST_UINT,
+  CONST_ULONG,
 } constt;
 
 struct _int_const {

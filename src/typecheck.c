@@ -802,9 +802,14 @@ void emit_type_name_buf(char *buf, size_t size, size_t *pos, type *t) {
   case TYPE_INT:
     buf_write(buf, size, pos, "int");
     return;
-
   case TYPE_LONG:
     buf_write(buf, size, pos, "long");
+    return;
+  case TYPE_UINT:
+    buf_write(buf, size, pos, "uint");
+    return;
+  case TYPE_ULONG:
+    buf_write(buf, size, pos, "ulong");
     return;
 
   case TYPE_FN:

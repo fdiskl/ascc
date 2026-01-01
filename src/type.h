@@ -11,6 +11,8 @@ typedef struct _type type;
 typedef enum {
   TYPE_INT,
   TYPE_LONG,
+  TYPE_UINT,
+  TYPE_ULONG,
   TYPE_FN,
 } typet;
 
