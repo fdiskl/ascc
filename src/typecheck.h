@@ -32,6 +32,8 @@ typedef struct _initial_init initial_init;
 typedef enum {
   INITIAL_INT,
   INITIAL_LONG,
+  INITIAL_UINT,
+  INITIAL_ULONG,
 } inital_init_t;
 
 struct _initial_init {
