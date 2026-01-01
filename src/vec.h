@@ -100,3 +100,28 @@
     arr = ARENA_ALLOC_ARRAY(arena_ptr, type, v.size);                          \
     memcpy(arr, v.data, sizeof(type) * v.size);                                \
   } while (0)
+
+#define vec_contains(type, vec, value, out)                                    \
+  do {                                                                         \
+    (out) = false;                                                             \
+    vec_foreach(type, vec, it) {                                               \
+      if (*(it) == (value)) {                                                  \
+        (out) = true;                                                          \
+        break;                                                                 \
+      }                                                                        \
+    }                                                                          \
+  } while (0)
+
+#define vec_contains_at_least(type, vec, value, min_count, out)                \
+  do {                                                                         \
+    size_t _count = 0;                                                         \
+    (out) = false;                                                             \
+    vec_foreach(type, vec, it) {                                               \
+      if (*(it) == (value)) {                                                  \
+        if (++_count >= (min_count)) {                                         \
+          (out) = true;                                                        \
+          break;                                                               \
+        }                                                                      \
+      }                                                                        \
+    }                                                                          \
+  } while (0)
