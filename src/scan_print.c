@@ -138,6 +138,10 @@ const char *token_name(int token) {
     return "goto";
   case TOK_DO:
     return "do";
+  case TOK_UNSIGNED:
+    return "unsigned";
+  case TOK_SIGNED:
+    return "signed";
 
   // literals
   case TOK_INTLIT:
