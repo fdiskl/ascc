@@ -6,6 +6,7 @@
 #include "type.h"
 #include "vec.h"
 #include <assert.h>
+#include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -115,23 +116,57 @@ static expr *parse_int_const_expr(parser *p) {
     v = expect(p, TOK_INTLIT)->v.int_lit;
   else if (p->next.token == TOK_LONGLIT)
     v = expect(p, TOK_LONGLIT)->v.int_lit;
+  else
+    UNREACHABLE();
 
-  e->v.intc.v = v.v;
+  uint64_t val = v.v;
 
-  if (v.v > (1ULL << 63) - 1) //  1ULL << 63 = 2^63
-  {
-    fprintf(stderr, "constant is too big (%d:%d:%d)\n", p->curr.pos.line,
+  /* absolute maximum for our type system */
+  if (val > ULONG_MAX) {
+    fprintf(stderr, "integer constant too large (%d:%d:%d)\n", p->curr.pos.line,
             p->curr.pos.start_pos, p->curr.pos.end_pos);
     exit(1);
   }
 
-  if (v.suff == INT_SUFF_NONE && v.v <= (1ULL << 31) - 1) {
-    e->v.intc.t = CONST_INT;
-  } else {
-    e->v.intc.t = CONST_LONG;
+  switch (v.suff) {
+  case INT_SUFF_NONE:
+    if (val <= INT_MAX)
+      e->v.intc.t = CONST_INT;
+    else if (val <= LONG_MAX)
+      e->v.intc.t = CONST_LONG;
+    else
+      goto overflow;
+    break;
+
+  case INT_SUFF_L:
+    if (val <= LONG_MAX)
+      e->v.intc.t = CONST_LONG;
+    else
+      goto overflow;
+    break;
+
+  case INT_SUFF_U:
+    if (val <= UINT_MAX)
+      e->v.intc.t = CONST_UINT;
+    else
+      e->v.intc.t = CONST_ULONG;
+    break;
+
+  case INT_SUFF_UL:
+    e->v.intc.t = CONST_ULONG;
+    break;
+
+  default:
+    UNREACHABLE();
   }
 
+  e->v.intc.v = val;
   return e;
+
+overflow:
+  fprintf(stderr, "integer constant out of range (%d:%d:%d)\n",
+          p->curr.pos.line, p->curr.pos.start_pos, p->curr.pos.end_pos);
+  exit(1);
 }
 
 void resolve_expr(parser *p, expr *e);
@@ -459,16 +494,27 @@ static expr *parse_constant_expr(parser *p) {
   return e;
 }
 
-// returns true if given token is start of declaration
-static bool is_decl(int toktype) {
+// returns true if given token is type token
+static bool is_type(int toktype) {
   switch (toktype) {
   case TOK_INT:
-  case TOK_STATIC:
-  case TOK_EXTERN:
   case TOK_LONG:
+  case TOK_SIGNED:
+  case TOK_UNSIGNED:
     return true;
   default:
     return false;
+  }
+}
+
+// returns true if given token is start of declaration
+static bool is_decl(int toktype) {
+  switch (toktype) {
+  case TOK_STATIC:
+  case TOK_EXTERN:
+    return true;
+  default:
+    return is_type(toktype);
   }
 }
 
@@ -831,42 +877,46 @@ static void parse_params(parser *p, func_decl *f, type *ft) {
 VEC_T(type_vector_t, int);
 
 static type *convert_type(type_vector_t tokens, tok_pos pos) {
-  typet t;
-  switch (tokens.size) {
-  case 1:
-    if (tokens.data[0] == TOK_INT) {
-      t = TYPE_INT;
-      break;
-    }
-    if (tokens.data[0] == TOK_LONG) {
-      t = TYPE_LONG;
-      break;
-    }
-    goto fail;
-    break;
-  case 2:
-    if (tokens.data[0] == TOK_INT && tokens.data[1] == TOK_LONG) {
-      t = TYPE_LONG;
-      break;
-    }
-    if (tokens.data[0] == TOK_LONG && tokens.data[1] == TOK_INT) {
-      t = TYPE_LONG;
-      break;
-    }
-    goto fail;
-    break;
-  default:
-    goto fail;
-    break;
+  bool contains_int;
+  bool contains_long;
+  bool contains_unsigned;
+  bool contains_signed;
+
+  bool contains_2times;
+  {
+    bool contains_2int;
+    bool contains_2long;
+    bool contains_2unsigned;
+    bool contains_2signed;
+
+    vec_contains_at_least(int, tokens, TOK_INT, 2, contains_2int);
+    vec_contains_at_least(int, tokens, TOK_LONG, 2, contains_2long);
+    vec_contains_at_least(int, tokens, TOK_SIGNED, 2, contains_2signed);
+    vec_contains_at_least(int, tokens, TOK_UNSIGNED, 2, contains_2unsigned);
+
+    contains_2times = contains_2int || contains_2signed || contains_2long ||
+                      contains_2unsigned;
   }
 
-  return new_type(t);
+  vec_contains(int, tokens, TOK_INT, contains_int);
+  vec_contains(int, tokens, TOK_LONG, contains_long);
+  vec_contains(int, tokens, TOK_SIGNED, contains_signed);
+  vec_contains(int, tokens, TOK_UNSIGNED, contains_unsigned);
 
-fail: {
-  fprintf(stderr, "invalid type %d:%d\n", pos.line, pos.start_pos);
-  exit(1);
-  return NULL;
-}
+  if (tokens.size <= 0 || (contains_signed && contains_unsigned) ||
+      contains_2times) {
+    fprintf(stderr, "invalid type %d:%d\n", pos.line, pos.start_pos);
+    exit(1);
+    return NULL;
+  }
+
+  if (contains_unsigned && contains_long)
+    return new_type(TYPE_ULONG);
+  if (contains_unsigned)
+    return new_type(TYPE_UINT);
+  if (contains_long)
+    return new_type(TYPE_LONG);
+  return new_type(TYPE_INT);
 }
 
 static type *parse_type(parser *p) {
@@ -874,8 +924,7 @@ static type *parse_type(parser *p) {
   vec_init(types);
 
   tok_pos pos = p->next.pos;
-  while (p->next.token != TOK_IDENT &&
-         (p->next.token == TOK_INT || p->next.token == TOK_LONG)) {
+  while (p->next.token != TOK_IDENT && (is_type(p->next.token))) {
     advance(p);
     vec_push_back(types, p->curr.token);
   }
@@ -897,11 +946,12 @@ static sct parse_type_and_storage_class(parser *p, type **tp_ptr) {
   tok_pos pos = p->next.pos;
 
   while (p->next.token != TOK_IDENT &&
-         (p->next.token == TOK_INT || p->next.token == TOK_STATIC ||
-          p->next.token == TOK_EXTERN || p->next.token == TOK_LONG)) {
+         (p->next.token == TOK_STATIC || p->next.token == TOK_EXTERN ||
+          is_type(p->next.token))) {
+    print_token(&p->next);
     advance(p);
 
-    if (p->curr.token == TOK_INT || p->curr.token == TOK_LONG)
+    if (is_type(p->curr.token))
       vec_push_back(types, p->curr.token);
     else
       vec_push_back(scs, p->curr.token);
