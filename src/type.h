@@ -46,4 +46,7 @@ type *new_type(int t); // defined in typecheck.c
 
 bool types_eq(type *t1, type *t2);
 
+int type_rank(type *t);
+bool type_signed(type *t);
+
 #endif

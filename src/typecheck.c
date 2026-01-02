@@ -76,47 +76,19 @@ static void typecheck_var_expr(checker *c, expr *e) {
   e->tp = entry->t;
 }
 
-static int type_size(type *t) {
-  switch (t->t) {
-  case TYPE_INT:
-  case TYPE_UINT:
-    return 4;
-  case TYPE_LONG:
-  case TYPE_ULONG:
-    return 5;
-  case TYPE_FN:
-    return -1;
-    break;
-  }
-}
-
-static bool type_signed(type *t) {
-  switch (t->t) {
-  case TYPE_INT:
-  case TYPE_LONG:
-    return false;
-  case TYPE_UINT:
-  case TYPE_ULONG:
-    return true;
-  case TYPE_FN:
-    return -1;
-    break;
-  }
-}
-
 static type *get_common_type(type *t1, type *t2) {
   assert(t1->t != TYPE_FN && t2->t != TYPE_FN);
 
   if (types_eq(t1, t2))
     return new_type(t1->t);
-  if (type_size(t1) == type_size(t2)) {
+  if (type_rank(t1) == type_rank(t2)) {
     if (type_signed(t1))
       return t2;
     else
       return t1;
   }
 
-  if (type_size(t1) > type_size(t2))
+  if (type_rank(t1) > type_rank(t2))
     return t1;
   else
     return t2;
@@ -781,6 +753,12 @@ static void print_attr(attrs *a) {
       case INITIAL_LONG:
         printf("long");
         break;
+      case INITIAL_UINT:
+        printf("uint");
+        break;
+      case INITIAL_ULONG:
+        printf("ulong");
+        break;
       }
 
       printf(") (%llu)", (long long unsigned)a->v.s.init.v.v);
@@ -860,5 +838,33 @@ void emit_type_name_buf(char *buf, size_t size, size_t *pos, type *t) {
     }
     buf_write(buf, size, pos, ")");
     return;
+  }
+}
+
+int type_rank(type *t) {
+  switch (t->t) {
+  case TYPE_INT:
+  case TYPE_UINT:
+    return 4;
+  case TYPE_LONG:
+  case TYPE_ULONG:
+    return 5;
+  case TYPE_FN:
+    return -1;
+    break;
+  }
+}
+
+bool type_signed(type *t) {
+  switch (t->t) {
+  case TYPE_INT:
+  case TYPE_LONG:
+    return false;
+  case TYPE_UINT:
+  case TYPE_ULONG:
+    return true;
+  case TYPE_FN:
+    return -1;
+    break;
   }
 }
