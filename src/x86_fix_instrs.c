@@ -131,7 +131,7 @@ static void fix_mult(x86_asm_gen *ag, x86_instr *i) {
 }
 
 static void fix_shifts(x86_asm_gen *ag, x86_instr *i) {
-  assert(i->op == X86_SAR || i->op == X86_SHL);
+  assert(i->op == X86_SAR || i->op == X86_SHL || i->op == X86_SHR);
 
   // if not imm or cl
   if (i->v.binary.src.t != X86_OP_IMM &&
@@ -262,6 +262,7 @@ static void fix_instr(x86_asm_gen *ag, x86_instr *i) {
     break;
   case X86_SHL:
   case X86_SAR:
+  case X86_SHR:
     fix_shifts(ag, i);
     break;
   case X86_CMP:

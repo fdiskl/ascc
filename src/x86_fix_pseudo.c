@@ -82,6 +82,7 @@ static void fix_pseudo_for_instr(x86_instr *i, ht *bst) {
   case X86_XOR:
   case X86_SHL:
   case X86_SAR:
+  case X86_SHR:
   case X86_CMP:
   case X86_MOVSX:
     fix_pseudo_op(&i->v.binary.src, bst);

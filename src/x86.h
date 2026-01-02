@@ -82,6 +82,7 @@ typedef enum {
   X86_OR,
   X86_XOR,
   X86_SHL,
+  X86_SHR,
   X86_SAR,
   X86_CMP,
   X86_MOVSX,

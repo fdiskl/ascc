@@ -279,6 +279,9 @@ static void emit_x86_instr(FILE *w, x86_instr *i) {
   case X86_SAR:
     emit_x86_shift(w, i, "sar");
     break;
+  case X86_SHR:
+    emit_x86_shift(w, i, "shr");
+    break;
   case X86_CMP:
     emit_x86_binary(w, i, "cmp");
     break;

@@ -224,11 +224,6 @@ static void typecheck_binary_expr(checker *c, expr *e) {
   case BINARY_LE:
   case BINARY_GE: {
     type *common = get_common_type(e->v.b.l->tp, e->v.b.r->tp);
-    EMIT_TYPE_INTO_BUF(tmp, 256, common);
-    EMIT_TYPE_INTO_BUF(tmp1, 256, e->v.b.l->tp);
-    EMIT_TYPE_INTO_BUF(tmp2, 256, e->v.b.r->tp);
-    printf("!!!! %s %s %s %d:%d\n", tmp1, tmp2, tmp, e->pos.line_start,
-           e->pos.pos_start);
     e->v.b.l = convert_to(c, e->v.b.l, common);
     e->v.b.r = convert_to(c, e->v.b.r, common);
 
@@ -252,10 +247,9 @@ static void typecheck_assignment_expr(checker *c, expr *e) {
     return;
   }
 
-  type *common = get_common_type(e->v.assignment.l->tp, e->v.assignment.r->tp);
-
   // convert assign with op into assign and binary
   binaryt op;
+  bool is_shift = false;
   switch (e->v.assignment.t) {
   case ASSIGN:
     UNREACHABLE();
@@ -285,11 +279,26 @@ static void typecheck_assignment_expr(checker *c, expr *e) {
     break;
   case ASSIGN_LSHIFT:
     op = BINARY_LSHIFT;
+    is_shift = true;
     break;
   case ASSIGN_RSHIFT:
     op = BINARY_RSHIFT;
+    is_shift = true;
     break;
   }
+
+  /*
+  For shifts:
+
+  The integer promotions are performed on each of the operands. The type of
+  the result is that of the promoted left operand.
+
+  (6.5.7/3 of C99)
+   */
+
+  type *common =
+      is_shift ? e->v.assignment.l->tp
+               : get_common_type(e->v.assignment.l->tp, e->v.assignment.r->tp);
 
   expr *b_expr = ARENA_ALLOC_OBJ(c->expr_arena, expr);
   b_expr->t = EXPR_BINARY;

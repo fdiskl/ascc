@@ -247,9 +247,10 @@ static void gen_asm_from_binary_instr(x86_asm_gen *ag, taci *i) {
   case TAC_LSHIFT:
     op = X86_SHL;
     break;
-  case TAC_RSHIFT:
-    op = X86_SAR;
+  case TAC_RSHIFT: {
+    op = type_signed(get_type(ag, i->v.s.src1)) ? X86_SAR : X86_SHR;
     break;
+  }
   default:
     UNREACHABLE();
   }
@@ -411,9 +412,10 @@ static void gen_asm_from_assign(x86_asm_gen *ag, taci *i) {
   case TAC_ASLSHIFT:
     op = X86_SHL;
     break;
-  case TAC_ASRSHIFT:
-    op = X86_SAR;
+  case TAC_ASRSHIFT: {
+    op = type_signed(get_type(ag, i->v.s.src1)) ? X86_SAR : X86_SHR;
     break;
+  }
   default:
     UNREACHABLE();
   }
