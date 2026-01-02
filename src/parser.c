@@ -948,7 +948,6 @@ static sct parse_type_and_storage_class(parser *p, type **tp_ptr) {
   while (p->next.token != TOK_IDENT &&
          (p->next.token == TOK_STATIC || p->next.token == TOK_EXTERN ||
           is_type(p->next.token))) {
-    print_token(&p->next);
     advance(p);
 
     if (is_type(p->curr.token))

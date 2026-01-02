@@ -140,14 +140,26 @@ static void typecheck_fn_call_expr(checker *c, expr *e) {
 }
 
 static void typecheck_const_expr(checker *c, expr *e) {
-  if (e->v.intc.v > INT32_MAX || e->v.intc.t == CONST_LONG) {
-    e->tp = new_type(TYPE_LONG);
-    e->v.intc.t = CONST_LONG;
+  switch (e->v.intc.t) {
+  case CONST_INT:
+    e->tp = new_type(TYPE_INT);
     return;
-  }
 
-  e->tp = new_type(TYPE_INT);
-  e->v.intc.t = CONST_INT;
+  case CONST_UINT:
+    e->tp = new_type(TYPE_UINT);
+    return;
+
+  case CONST_LONG:
+    e->tp = new_type(TYPE_LONG);
+    return;
+
+  case CONST_ULONG:
+    e->tp = new_type(TYPE_ULONG);
+    return;
+
+  default:
+    UNREACHABLE();
+  }
 }
 
 static void typecheck_cast_expr(checker *c, expr *e) {
@@ -212,6 +224,11 @@ static void typecheck_binary_expr(checker *c, expr *e) {
   case BINARY_LE:
   case BINARY_GE: {
     type *common = get_common_type(e->v.b.l->tp, e->v.b.r->tp);
+    EMIT_TYPE_INTO_BUF(tmp, 256, common);
+    EMIT_TYPE_INTO_BUF(tmp1, 256, e->v.b.l->tp);
+    EMIT_TYPE_INTO_BUF(tmp2, 256, e->v.b.r->tp);
+    printf("!!!! %s %s %s %d:%d\n", tmp1, tmp2, tmp, e->pos.line_start,
+           e->pos.pos_start);
     e->v.b.l = convert_to(c, e->v.b.l, common);
     e->v.b.r = convert_to(c, e->v.b.r, common);
 
@@ -860,10 +877,10 @@ bool type_signed(type *t) {
   switch (t->t) {
   case TYPE_INT:
   case TYPE_LONG:
-    return false;
+    return true;
   case TYPE_UINT:
   case TYPE_ULONG:
-    return true;
+    return false;
   case TYPE_FN:
     return -1;
   default:

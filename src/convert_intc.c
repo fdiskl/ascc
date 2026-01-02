@@ -31,27 +31,33 @@ int_const convert_const(int_const original, type *convert_to) {
   int_const res;
 
   switch (convert_to->t) {
-
-  case TYPE_INT:
+  case TYPE_INT: {
     res.t = CONST_INT;
-    // implementation-defined: drop upper 4 bytes (subtract 2^32)
-    res.v = original.v & MASK32;
-    return res;
 
-  case TYPE_UINT:
+    uint64_t v = (uint64_t)original.v;
+    v &= 0xFFFFFFFFu;
+    res.v = (int32_t)v;
+
+    return res;
+  }
+
+  case TYPE_UINT: {
     res.t = CONST_UINT;
-    res.v = original.v & MASK32;
+    res.v = (uint32_t)original.v;
     return res;
+  }
 
-  case TYPE_LONG:
+  case TYPE_LONG: {
     res.t = CONST_LONG;
-    res.v = original.v & MASK64;
+    res.v = (int64_t)original.v;
     return res;
+  }
 
-  case TYPE_ULONG:
+  case TYPE_ULONG: {
     res.t = CONST_ULONG;
-    res.v = original.v & MASK64;
+    res.v = (uint64_t)original.v;
     return res;
+  }
 
   case TYPE_FN:
     UNREACHABLE();

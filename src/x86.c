@@ -81,6 +81,35 @@ static x86_asm_type get_x86_asm_type_from_type(type *t) {
   }
 }
 
+static type *get_type(x86_asm_gen *ag, tacv v) {
+  int t;
+  switch (v.t) {
+  case TACV_CONST: {
+    switch (v.v.iconst.t) {
+    case CONST_INT:
+      t = TYPE_INT;
+      break;
+    case CONST_LONG:
+      t = TYPE_LONG;
+      break;
+    case CONST_UINT:
+      t = TYPE_UINT;
+      break;
+    case CONST_ULONG:
+      t = TYPE_ULONG;
+      break;
+    }
+
+    return new_type(t);
+  }
+  case TACV_VAR: {
+    syme *e = ht_get(ag->st->t, v.v.var);
+    assert(e);
+    return e->t;
+  }
+  }
+}
+
 // NOTE: when using get_x86_asm_type, its doesnt really matter which tacv is
 // given, bc types already should be equal
 static x86_asm_type get_x86_asm_type(x86_asm_gen *ag, tacv v) {
@@ -163,36 +192,34 @@ static void gen_asm_from_unary_instr(x86_asm_gen *ag, taci *i) {
 
 static void gen_asm_from_binary_instr(x86_asm_gen *ag, taci *i) {
   if (i->op == TAC_DIV || i->op == TAC_MOD) {
-    assert(i->dst.t == TACV_VAR);
-    syme *e = ht_get(ag->st->t, i->dst.v.var);
-    assert(e);
-    bool is_signed = type_signed(e->t);
+    bool is_signed = type_signed(get_type(ag, i->v.s.src1));
 
     x86_instr *mov1 = insert_x86_instr(ag, X86_MOV, i);
     x86_instr *ext;
-    x86_instr *idiv = insert_x86_instr(ag, is_signed ? X86_IDIV : X86_DIV, i);
-    x86_instr *mov2 = insert_x86_instr(ag, X86_MOV, i);
 
     if (is_signed) {
       ext = insert_x86_instr(ag, X86_CDQ, i);
-      ext->v.cdq.type = get_x86_asm_type(ag, i->dst);
+      ext->v.cdq.type = get_x86_asm_type(ag, i->v.s.src1);
     } else {
       ext = insert_x86_instr(ag, X86_MOV, i);
       ext->v.binary.src = new_x86_imm(0);
-      ext->v.binary.dst = new_x86_reg(i->op == TAC_DIV ? X86_DX : X86_AX);
-      ext->v.binary.type = get_x86_asm_type(ag, i->dst);
+      ext->v.binary.dst = new_x86_reg(X86_DX);
+      ext->v.binary.type = get_x86_asm_type(ag, i->v.s.src1);
     }
+
+    x86_instr *idiv = insert_x86_instr(ag, is_signed ? X86_IDIV : X86_DIV, i);
+    x86_instr *mov2 = insert_x86_instr(ag, X86_MOV, i);
 
     mov1->v.binary.dst = new_x86_reg(X86_AX);
     mov1->v.binary.src = operand_from_tac_val(i->v.s.src1);
     mov1->v.binary.type = get_x86_asm_type(ag, i->v.s.src1);
 
     idiv->v.unary.src = operand_from_tac_val(i->v.s.src2);
-    idiv->v.unary.type = get_x86_asm_type(ag, i->v.s.src2);
+    idiv->v.unary.type = get_x86_asm_type(ag, i->v.s.src1);
 
     mov2->v.binary.src = new_x86_reg(i->op == TAC_DIV ? X86_AX : X86_DX);
     mov2->v.binary.dst = operand_from_tac_val(i->dst);
-    mov2->v.binary.type = get_x86_asm_type(ag, i->dst);
+    mov2->v.binary.type = get_x86_asm_type(ag, i->v.s.src1);
 
     return;
   }
@@ -264,12 +291,7 @@ static void gen_asm_from_cpy_instr(x86_asm_gen *ag, taci *i) {
 }
 
 static void gen_asm_from_comparing_instr(x86_asm_gen *ag, taci *i) {
-  assert(i->dst.t == TACV_VAR);
-
-  syme *e = ht_get(ag->st->t, i->dst.v.var);
-  assert(e);
-
-  bool is_signed = type_signed(e->t);
+  bool is_signed = type_signed(get_type(ag, i->v.s.src1));
 
   x86_instr *cmp = insert_x86_instr(ag, X86_CMP, i);
   x86_instr *mov = insert_x86_instr(ag, X86_MOV, i);
