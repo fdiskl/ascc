@@ -34,6 +34,7 @@ typedef enum {
   TAC_ASLSHIFT,    // >>=
   TAC_ASRSHIFT,    // <<=
   TAC_SIGN_EXTEND, // sign extend
+  TAC_ZERO_EXTEND, // zero extend
   TAC_TRUNCATE,    // truncate
 
   // binary

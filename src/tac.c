@@ -382,17 +382,21 @@ static tacv gen_tac_from_func_call_expr(tacgen *tg, expr *e) {
 
 static tacv gen_tac_from_cast_expr(tacgen *tg, cast_expr cast) {
   tacv v = gen_tac_from_expr(tg, cast.e);
-  if (types_eq(cast.tp, cast.e->tp))
-    return v;
-
+  type *inner_type = cast.e->tp;
+  type *t = cast.tp;
   tacv dst = new_tmp(tg, cast.tp);
 
-  taci *i;
-  if (cast.tp->t == TYPE_LONG) {
-    i = insert_taci(tg, TAC_SIGN_EXTEND);
-  } else {
-    i = insert_taci(tg, TAC_TRUNCATE);
-  }
+  int op;
+  if (type_rank(t) == type_rank(inner_type))
+    op = TAC_CPY;
+  else if (type_rank(t) < type_rank(inner_type))
+    op = TAC_TRUNCATE;
+  else if (type_signed(inner_type))
+    op = TAC_SIGN_EXTEND;
+  else
+    op = TAC_ZERO_EXTEND;
+
+  taci *i = insert_taci(tg, op);
 
   i->dst = dst;
   i->v.s.src1 = v;
