@@ -66,12 +66,14 @@ static void fix_pseudo_for_instr(x86_instr *i, ht *bst) {
   case X86_NOT:
   case X86_NEG:
   case X86_IDIV:
+  case X86_DIV:
   case X86_INC:
   case X86_DEC:
   case X86_PUSH:
     fix_pseudo_op(&i->v.unary.src, bst);
     break;
   case X86_MOV:
+  case X86_MOVZEXT:
   case X86_ADD:
   case X86_SUB:
   case X86_MULT:

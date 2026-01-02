@@ -231,6 +231,15 @@ static const char *cc_code(x86_cc cc) {
     return "l";
   case CC_LE:
     return "le";
+  case CC_A:
+    return "a";
+  case CC_AE:
+    return "ae";
+  case CC_B:
+    return "b";
+  case CC_BE:
+    return "be";
+    break;
   }
 
   UNREACHABLE();
@@ -282,6 +291,9 @@ static void emit_x86_instr(FILE *w, x86_instr *i) {
   case X86_IDIV:
     emit_x86_unary(w, i, "idiv");
     break;
+  case X86_DIV:
+    emit_x86_unary(w, i, "div");
+    break;
   case X86_INC:
     emit_x86_unary(w, i, "inc");
     break;
@@ -327,6 +339,9 @@ static void emit_x86_instr(FILE *w, x86_instr *i) {
       emit_x86_op(w, i->v.binary.dst, X86_QUADWORD);
     });
     break;
+  case X86_MOVZEXT:
+    UNREACHABLE();
+    break;
   }
 }
 
@@ -364,6 +379,7 @@ static void emit_x86_static_var(FILE *w, x86_static_var *sv) {
 
   switch (sv->init.t) {
   case INITIAL_INT:
+  case INITIAL_UINT:
     if (sv->init.v == 0) {
       fprintf(w, "\t.zero 4\n");
     } else {
@@ -371,6 +387,7 @@ static void emit_x86_static_var(FILE *w, x86_static_var *sv) {
     }
     break;
   case INITIAL_LONG:
+  case INITIAL_ULONG:
     if (sv->init.v == 0) {
       fprintf(w, "\t.zero 8\n");
     } else {

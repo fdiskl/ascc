@@ -97,8 +97,8 @@ static void fix_both_ops_mem(x86_asm_gen *ag, x86_instr *i) {
   }
 }
 
-static void fix_idiv(x86_asm_gen *ag, x86_instr *i) {
-  assert(i->op == X86_IDIV);
+static void fix_div(x86_asm_gen *ag, x86_instr *i) {
+  assert(i->op == X86_IDIV || i->op == X86_DIV);
 
   if (i->v.unary.src.t == X86_OP_IMM) {
     x86_instr *mov = alloc_x86_instr(ag, X86_MOV);
@@ -202,6 +202,26 @@ static void fix_mov(x86_asm_gen *ag, x86_instr *i) {
   }
 }
 
+static void fix_movzext(x86_asm_gen *ag, x86_instr *i) {
+  if (i->v.binary.dst.t == X86_OP_REG) {
+    i->op = X86_MOV;
+    i->v.binary.type = X86_LONGWORD;
+  } else if (is_mem(i->v.binary.dst.t)) {
+    x86_instr *mov = alloc_x86_instr(ag, X86_MOV);
+    insert_after_x86_instr(ag, i, mov);
+
+    i->op = X86_MOV;
+    i->v.binary.type = X86_LONGWORD;
+
+    mov->v.binary.dst = i->v.binary.dst;
+    mov->v.binary.src = i->v.binary.dst = new_r11();
+
+    mov->v.binary.type = X86_QUADWORD;
+  } else {
+    UNREACHABLE();
+  }
+}
+
 static void fix_instr(x86_asm_gen *ag, x86_instr *i) {
   switch (i->op) {
   case X86_RET:
@@ -234,7 +254,8 @@ static void fix_instr(x86_asm_gen *ag, x86_instr *i) {
     fix_mov(ag, i);
     break;
   case X86_IDIV:
-    fix_idiv(ag, i);
+  case X86_DIV:
+    fix_div(ag, i);
     break;
   case X86_MULT:
     fix_mult(ag, i);
@@ -248,6 +269,9 @@ static void fix_instr(x86_asm_gen *ag, x86_instr *i) {
     break;
   case X86_MOVSX:
     fix_movsx(ag, i);
+    break;
+  case X86_MOVZEXT:
+    fix_movzext(ag, i);
     break;
   }
 }
