@@ -32,6 +32,10 @@ typedef enum {
   CC_GE,
   CC_L,
   CC_LE,
+  CC_A,
+  CC_AE,
+  CC_B,
+  CC_BE,
 } x86_cc;
 
 typedef enum {
@@ -64,6 +68,7 @@ typedef enum {
   X86_NOT,
   X86_NEG,
   X86_IDIV,
+  X86_DIV,
   X86_INC,
   X86_DEC,
   X86_PUSH,
@@ -80,6 +85,7 @@ typedef enum {
   X86_SAR,
   X86_CMP,
   X86_MOVSX,
+  X86_MOVZEXT,
 
   // special
   X86_JMP,

@@ -71,6 +71,10 @@ static x86_asm_type get_x86_asm_type_from_type(type *t) {
     return X86_LONGWORD;
   case TYPE_LONG:
     return X86_QUADWORD;
+  case TYPE_UINT:
+    return X86_LONGWORD;
+  case TYPE_ULONG:
+    return X86_QUADWORD;
   case TYPE_FN:
     UNREACHABLE();
     break;
@@ -86,6 +90,10 @@ static x86_asm_type get_x86_asm_type(x86_asm_gen *ag, tacv v) {
     case CONST_INT:
       return X86_LONGWORD;
     case CONST_LONG:
+      return X86_QUADWORD;
+    case CONST_UINT:
+      return X86_LONGWORD;
+    case CONST_ULONG:
       return X86_QUADWORD;
     }
   case TACV_VAR: {
@@ -155,12 +163,25 @@ static void gen_asm_from_unary_instr(x86_asm_gen *ag, taci *i) {
 
 static void gen_asm_from_binary_instr(x86_asm_gen *ag, taci *i) {
   if (i->op == TAC_DIV || i->op == TAC_MOD) {
+    assert(i->dst.t == TACV_VAR);
+    syme *e = ht_get(ag->st->t, i->dst.v.var);
+    assert(e);
+    bool is_signed = type_signed(e->t);
+
     x86_instr *mov1 = insert_x86_instr(ag, X86_MOV, i);
-    x86_instr *cdq = insert_x86_instr(ag, X86_CDQ, i);
-    x86_instr *idiv = insert_x86_instr(ag, X86_IDIV, i);
+    x86_instr *ext;
+    x86_instr *idiv = insert_x86_instr(ag, is_signed ? X86_IDIV : X86_DIV, i);
     x86_instr *mov2 = insert_x86_instr(ag, X86_MOV, i);
 
-    cdq->v.cdq.type = get_x86_asm_type(ag, i->dst);
+    if (is_signed) {
+      ext = insert_x86_instr(ag, X86_CDQ, i);
+      ext->v.cdq.type = get_x86_asm_type(ag, i->dst);
+    } else {
+      ext = insert_x86_instr(ag, X86_MOV, i);
+      ext->v.binary.src = new_x86_imm(0);
+      ext->v.binary.dst = new_x86_reg(i->op == TAC_DIV ? X86_DX : X86_AX);
+      ext->v.binary.type = get_x86_asm_type(ag, i->dst);
+    }
 
     mov1->v.binary.dst = new_x86_reg(X86_AX);
     mov1->v.binary.src = operand_from_tac_val(i->v.s.src1);
@@ -243,6 +264,13 @@ static void gen_asm_from_cpy_instr(x86_asm_gen *ag, taci *i) {
 }
 
 static void gen_asm_from_comparing_instr(x86_asm_gen *ag, taci *i) {
+  assert(i->dst.t == TACV_VAR);
+
+  syme *e = ht_get(ag->st->t, i->dst.v.var);
+  assert(e);
+
+  bool is_signed = type_signed(e->t);
+
   x86_instr *cmp = insert_x86_instr(ag, X86_CMP, i);
   x86_instr *mov = insert_x86_instr(ag, X86_MOV, i);
   x86_instr *setcc = insert_x86_instr(ag, X86_SETCC, i);
@@ -266,16 +294,16 @@ static void gen_asm_from_comparing_instr(x86_asm_gen *ag, taci *i) {
     cc = CC_NE;
     break;
   case TAC_LT:
-    cc = CC_L;
+    cc = is_signed ? CC_L : CC_B;
     break;
   case TAC_LE:
-    cc = CC_LE;
+    cc = is_signed ? CC_LE : CC_BE;
     break;
   case TAC_GT:
-    cc = CC_G;
+    cc = is_signed ? CC_G : CC_A;
     break;
   case TAC_GE:
-    cc = CC_GE;
+    cc = is_signed ? CC_GE : CC_AE;
     break;
   default:
     UNREACHABLE();
@@ -446,6 +474,12 @@ static void gen_asm_from_sextend(x86_asm_gen *ag, taci *i) {
   res->v.binary.src = operand_from_tac_val(i->v.s.src1);
 }
 
+static void gen_asm_from_zextend(x86_asm_gen *ag, taci *i) {
+  x86_instr *res = insert_x86_instr(ag, X86_MOVZEXT, i);
+  res->v.binary.dst = operand_from_tac_val(i->dst);
+  res->v.binary.src = operand_from_tac_val(i->v.s.src1);
+}
+
 static void gen_asm_from_truncate(x86_asm_gen *ag, taci *i) {
   x86_instr *res = insert_x86_instr(ag, X86_MOV, i);
   res->v.binary.dst = operand_from_tac_val(i->dst);
@@ -522,6 +556,9 @@ static void gen_asm_from_instr(x86_asm_gen *ag, taci *i) {
   case TAC_TRUNCATE:
     gen_asm_from_truncate(ag, i);
     break;
+  case TAC_ZERO_EXTEND:
+    gen_asm_from_zextend(ag, i);
+    break;
   }
 }
 
@@ -571,8 +608,10 @@ static x86_top_level *gen_asm_from_func(x86_asm_gen *ag, tacf *f) {
 static int x86_alignment(inital_init_t t) {
   switch (t) {
   case INITIAL_INT:
+  case INITIAL_UINT:
     return 4;
   case INITIAL_LONG:
+  case INITIAL_ULONG:
     return 8;
   }
 }
@@ -588,11 +627,9 @@ x86_top_level *gen_asm_from_static_var(x86_asm_gen *ag, tac_static_var *sv) {
 static void convert_to_be_syme(be_syme *e, syme *olde) {
   switch (olde->t->t) {
   case TYPE_INT:
-    e->t = BE_SYME_OBJ;
-    e->v.obj.type = get_x86_asm_type_from_type(olde->t);
-    e->v.obj.is_static = olde->a.t == ATTR_STATIC;
-    break;
   case TYPE_LONG:
+  case TYPE_UINT:
+  case TYPE_ULONG:
     e->t = BE_SYME_OBJ;
     e->v.obj.type = get_x86_asm_type_from_type(olde->t);
     e->v.obj.is_static = olde->a.t == ATTR_STATIC;
