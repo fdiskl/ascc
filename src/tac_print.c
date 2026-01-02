@@ -1,4 +1,3 @@
-#include "arena.h"
 #include "common.h"
 #include "tac.h"
 #include <stdint.h>
@@ -72,6 +71,9 @@ const char *tacop_str(tacop op) {
     return ">>=";
   case TAC_SIGN_EXTEND:
     return "s-ext";
+  case TAC_ZERO_EXTEND:
+    return "z-ext";
+    break;
   case TAC_TRUNCATE:
     return "trunc";
   case TAC_CPY:
@@ -96,6 +98,9 @@ static void fprint_val(FILE *f, tacv *v) {
       break;
     case CONST_LONG:
       fprintf(f, "long(%llu)", (unsigned long long)v->v.iconst.v);
+      break;
+    case CONST_UINT:
+    case CONST_ULONG:
       break;
     }
     break;
@@ -144,6 +149,7 @@ void fprint_taci(FILE *f, taci *i) {
   case TAC_NEGATE:
   case TAC_NOT:
   case TAC_SIGN_EXTEND:
+  case TAC_ZERO_EXTEND:
   case TAC_TRUNCATE:
     fprint_unary(f, &i->dst, &i->v.s.src1, tacop_str(i->op));
     break;

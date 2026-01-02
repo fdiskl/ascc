@@ -851,7 +851,8 @@ int type_rank(type *t) {
     return 5;
   case TYPE_FN:
     return -1;
-    break;
+  default:
+    UNREACHABLE();
   }
 }
 
@@ -865,6 +866,7 @@ bool type_signed(type *t) {
     return true;
   case TYPE_FN:
     return -1;
-    break;
+  default:
+    UNREACHABLE();
   }
 }
