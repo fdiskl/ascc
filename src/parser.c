@@ -112,12 +112,7 @@ static expr *parse_int_const_expr(parser *p) {
 
   int_literal v;
 
-  if (p->next.token == TOK_INTLIT)
-    v = expect(p, TOK_INTLIT)->v.int_lit;
-  else if (p->next.token == TOK_LONGLIT)
-    v = expect(p, TOK_LONGLIT)->v.int_lit;
-  else
-    UNREACHABLE();
+  v = expect(p, TOK_INTLIT)->v.int_lit;
 
   uint64_t val = v.v;
 

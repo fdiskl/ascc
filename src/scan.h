@@ -48,12 +48,25 @@ struct _int_literal {
   int_literal_suffix suff;
 };
 
+typedef enum {
+  FLOAT_SUFF_NONE,
+  FLOAT_SUFF_L,
+  FLOAT_SUFF_F,
+} float_literal_suffix;
+
+typedef struct _float_literal float_literal;
+struct _float_literal {
+  long double v;
+  float_literal_suffix suff;
+};
+
 struct _token {
   int token; // token type
   union {
-    int_literal int_lit; // for TOK_INTLIT
-    string s_val;        // for TOK_STRLIT
-    string ident;        // for TOK_IDENT
+    int_literal int_lit;     // for TOK_INTLIT
+    float_literal float_lit; // for TOK_FLOATLIT
+    string s_val;            // for TOK_STRLIT
+    string ident;            // for TOK_IDENT
   } v;
   tok_pos pos;
 };
@@ -137,10 +150,11 @@ enum {
   TOK_DO,
   TOK_UNSIGNED,
   TOK_SIGNED,
+  TOK_DOUBLE,
 
   // literals
   TOK_INTLIT,
-  TOK_LONGLIT,
+  TOK_FLOATLIT,
   TOK_STRLIT,
 
   // structural

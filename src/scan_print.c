@@ -142,12 +142,16 @@ const char *token_name(int token) {
     return "unsigned";
   case TOK_SIGNED:
     return "signed";
+  case TOK_DOUBLE:
+    return "double";
 
   // literals
   case TOK_INTLIT:
     return "<int literal>";
   case TOK_STRLIT:
     return "<string literal>";
+  case TOK_FLOATLIT:
+    return "<float literal>";
 
   // structural
   case TOK_SEMI:
@@ -178,7 +182,18 @@ const char *token_name(int token) {
   }
 }
 
-static const char *suff_name(int_literal_suffix suff) {
+static const char *float_suff_name(float_literal_suffix suff) {
+  switch (suff) {
+  case FLOAT_SUFF_NONE:
+    return "none";
+  case FLOAT_SUFF_L:
+    return "l";
+  case FLOAT_SUFF_F:
+    return "f";
+  }
+}
+
+static const char *int_suff_name(int_literal_suffix suff) {
   switch (suff) {
   case INT_SUFF_NONE:
     return "none";
@@ -205,13 +220,17 @@ void print_token(const token *t) {
   switch (t->token) {
   case TOK_INTLIT:
     printf(" (%llu) (%s)", (unsigned long long)t->v.int_lit.v,
-           suff_name(t->v.int_lit.suff));
+           int_suff_name(t->v.int_lit.suff));
     break;
   case TOK_STRLIT:
     printf(" (\"%s\")", t->v.s_val);
     break;
   case TOK_IDENT:
     printf(" (%s)", t->v.ident);
+    break;
+  case TOK_FLOATLIT:
+    printf(" (%Lf) (%s)", t->v.float_lit.v,
+           float_suff_name(t->v.float_lit.suff));
     break;
   default:
     break;

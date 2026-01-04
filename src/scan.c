@@ -134,7 +134,7 @@ static int chrpos(char *s, int c) {
   return (p ? p - s : -1);
 }
 
-static int_literal_suffix convert_suff(const char *s, int line, int pos) {
+static int_literal_suffix convert_int_suff(const char *s, int line, int pos) {
   bool u = false;
   char l = 0; // 'l' or 'L'
   char ll = 0;
@@ -174,8 +174,11 @@ static int_literal_suffix convert_suff(const char *s, int line, int pos) {
     }
   }
 
-  if (ll && u)
+  if (ll && u) {
+    printf("integer suffix ULL is not supported (%d:%d)\n", line, pos);
+    exit(1);
     return INT_SUFF_ULL;
+  }
   if (ll)
     return INT_SUFF_LL;
   if (l && u)
@@ -192,35 +195,139 @@ invalid:
   return INT_SUFF_NONE;
 }
 
-static void scan_int(lexer *l, char c, token *t) {
-  uint64_t val = 0;
-  int k = 0;
+static float_literal_suffix convert_float_suff(const char *s, int line,
+                                               int pos) {
+  int ret;
+  if (s[0]) {
+    char c = s[0];
+    switch (c) {
+    case 'l':
+    case 'L':
+      ret = FLOAT_SUFF_L;
+      break;
+    case 'f':
+    case 'F':
+      ret = FLOAT_SUFF_F;
+      break;
+    }
+  } else {
+    return FLOAT_SUFF_NONE;
+  }
 
-  // Convert each character into an int value
-  while ((k = chrpos("0123456789", c)) >= 0) {
-    val = val * 10 + k;
+  printf("float suffixes are not supported (%d:%d)\n", line, pos);
+  exit(1);
+  return ret;
+}
+
+static void scan_const(lexer *l, char c, token *t) {
+  uint64_t ival = 0;
+  long double fval = 0.0;
+
+  while (isdigit(c)) {
+    ival = ival * 10 + (c - '0');
+    fval = fval * 10.0 + (c - '0');
     c = next_char(l);
   }
 
-  static char suffix_buf[4]; // max len is 3, ULL
-  suffix_buf[0] = suffix_buf[1] = suffix_buf[2] = suffix_buf[3] = INT_SUFF_NONE;
+  int is_float = 0;
+
+  if (c == '.') {
+    is_float = 1;
+    c = next_char(l);
+
+    if (c == '_') {
+      printf("malformed constant ('.' followed by '_') at line %d, pos %d\n",
+             l->line, l->pos);
+      exit(1);
+    }
+
+    double frac = 0.0;
+    double base = 1.0;
+
+    while (isdigit(c)) {
+      frac = frac * 10.0 + (c - '0');
+      base *= 10.0;
+      c = next_char(l);
+    }
+
+    fval += frac / base;
+  }
+
+  // exponent
+  if (c == 'e' || c == 'E') {
+    is_float = 1;
+    c = next_char(l);
+
+    int exp = 0;
+    int sign = 1;
+
+    if (c == '+' || c == '-') {
+      if (c == '-')
+        sign = -1;
+      c = next_char(l);
+    }
+
+    if (!isdigit(c)) {
+      printf("invalid exponent on line %d, pos %d\n", l->line, l->pos);
+      exit(1);
+    }
+
+    while (isdigit(c)) {
+      exp = exp * 10 + (c - '0');
+      c = next_char(l);
+    }
+
+    if (c == '.') {
+      printf("malformed exponent at line %d, pos %d\n", l->line, l->pos);
+      exit(1);
+    }
+
+    long double pow10 = 1.0;
+    for (int i = 0; i < exp; i++)
+      pow10 *= 10.0;
+
+    if (sign < 0)
+      fval /= pow10;
+    else
+      fval *= pow10;
+  }
+
+  // suff
+  static char suff[4]; // max len is ULL
+  suff[0] = suff[1] = suff[2] = suff[3] = '\0';
   int n = 0;
 
-  if (isalpha(c) && !((c == 'u' || c == 'U' || c == 'l' || c == 'L'))) {
-    printf("invalid identifier on line %d, pos %d\n", l->line, l->pos);
+  while (c == 'u' || c == 'U' || c == 'l' || c == 'L' || c == 'f' || c == 'F') {
+
+    if (n < 3)
+      suff[n++] = c;
+
+    // float suffix forces float
+    if (c == 'f' || c == 'F')
+      is_float = 1;
+
+    else if ((c == 'l' || c == 'L') && is_float)
+      is_float = 1; // redundant, but shows logic
+
+    c = next_char(l);
+  }
+
+  if (isalpha(c)) {
+    printf("invalid numeric literal on line %d, pos %d\n", l->line, l->pos);
     exit(1);
   }
 
-  while (c == 'u' || c == 'U' || c == 'l' || c == 'L') {
-    if (n < 3)
-      suffix_buf[n++] = c;
-    c = next_char(l);
-  }
-  suffix_buf[n] = '\0';
-
   putback(l, c);
-  t->v.int_lit.v = val;
-  t->v.int_lit.suff = convert_suff(suffix_buf, l->line, l->pos);
+
+  if (is_float) {
+    t->token = TOK_FLOATLIT;
+    t->v.float_lit.v = fval;
+    t->v.float_lit.suff = convert_float_suff(suff, l->line, l->pos);
+  } else {
+    t->token = TOK_INTLIT;
+    t->v.int_lit.v = ival;
+    t->v.int_lit.suff = convert_int_suff(suff, l->line, l->pos);
+  }
 }
 
 static uint64_t scan_simple_int(lexer *l, char c) {
@@ -343,6 +450,7 @@ int is_keyword(lexer *l) {
   case 'd':
     check_kw("default", TOK_DEFAULT);
     else check_kw("do", TOK_DO);
+    else check_kw("double", TOK_DOUBLE);
     break;
   case 'g':
     check_kw("goto", TOK_GOTO);
@@ -464,9 +572,18 @@ void next(lexer *l, token *t) {
   case ',':
     t->token = TOK_COMMA;
     break;
-  case '.':
-    t->token = TOK_DOT;
+  case '.': {
+    char next_c = next_char(l);
+
+    if (isdigit(next_c)) {
+      putback(l, c);
+      scan_const(l, c, t);
+    } else {
+      t->token = TOK_DOT;
+    }
+
     break;
+  }
 
   case '"':
     t->token = TOK_STRLIT;
@@ -475,8 +592,7 @@ void next(lexer *l, token *t) {
 
   default:
     if (isdigit(c)) {
-      t->token = TOK_INTLIT;
-      scan_int(l, c, t);
+      scan_const(l, c, t);
       break;
     } else if (isalpha(c) || c == '_') {
       scan_ident(l, c);
