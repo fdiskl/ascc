@@ -14,6 +14,7 @@ typedef enum {
   TYPE_UINT,
   TYPE_ULONG,
   TYPE_FN,
+  TYPE_DOUBLE,
 } typet;
 
 struct _fn_type {

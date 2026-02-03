@@ -37,6 +37,7 @@ struct _ast_pos {
  */
 
 typedef struct _int_const int_const;
+typedef struct _double_const double_const;
 typedef struct _unary unary;
 typedef struct _binary binary;
 typedef struct _assignment assignment;
@@ -47,6 +48,7 @@ typedef struct _cast_expr cast_expr;
 
 typedef enum {
   EXPR_INT_CONST,
+  EXPR_DOUBLE_CONST,
   EXPR_UNARY,
   EXPR_BINARY,
   EXPR_ASSIGNMENT,
@@ -73,6 +75,10 @@ typedef enum {
   CONST_UINT,
   CONST_ULONG,
 } constt;
+
+struct _double_const {
+  long double v;
+};
 
 struct _int_const {
   constt t;
@@ -162,6 +168,7 @@ struct _expr {
   ast_pos pos;
   union {
     int_const intc;
+    double_const dc;
     unary u;
     binary b;
     assignment assignment;

@@ -58,7 +58,11 @@ static void print_expr(expr *e, int indent) {
     print_type_and_pos(e->tp, e->pos);
     printf("\n");
     return;
-
+  case EXPR_DOUBLE_CONST:
+    printf("DoubleConst (%Lfl)", e->v.dc.v);
+    print_type_and_pos(e->tp, e->pos);
+    printf("\n");
+    return;
   case EXPR_UNARY:
     printf("Unary (");
     switch (e->v.u.t) {

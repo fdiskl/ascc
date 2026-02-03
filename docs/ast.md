@@ -35,8 +35,8 @@ assignment_op =  Assign | AddAssign | SubAssign | MulAssign
                | DivAssign | ModAssign
                | BitwiseAndAssgin | BitwiseOrAssign
                | XorAssign | LshiftAssign | RshiftAssign
-const = ConstInt(int) | ConstLong(int) | ConstUInt(int) | ConstULong(int)
-type = Int | Long | UInt | ULong | FuncType(type *params, type ret)
+const = ConstInt(int) | ConstLong(int) | ConstUInt(int) | ConstULong(int) | ConstDouble(float)
+type = Int | Long | UInt | ULong | FuncType(type *params, type ret) | Double
 ```
 
 (For now compiler actually uses `constant_expr = const` because it requires expr eval which will be implemented after types are added)
@@ -72,7 +72,7 @@ type = Int | Long | UInt | ULong | FuncType(type *params, type ret)
         | "&" | "|" | "^" | "<<" | ">>"
         | "&&" | "||" | "==" | "!=" | "<" | ">" | "<=" | ">="
         | "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^=" | "<<=" ">>="
-<type_specifier> ::= "int" | "long" | "unsigned" | "signed"
+<type_specifier> ::= "int" | "long" | "unsigned" | "signed" | "double"
 <prefix-unop> ::= "-" | "~" | "!" | "++" | "--"
 <postfix-unop> ::= "++" | "--"
 <identifier> ::= ? ident token ?
@@ -81,4 +81,5 @@ type = Int | Long | UInt | ULong | FuncType(type *params, type ret)
 <long> ::= ? long literal token ?
 <uint> ::= ? unsigned int literal token ?
 <ulong> ::= ? unsigned long literal token ?
+<double> ::= ? double floatinhg point number literal token ?
 ```
