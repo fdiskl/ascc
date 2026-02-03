@@ -131,6 +131,7 @@ void resolve_func_call_expr(parser *p, expr *e) {
 void resolve_expr(parser *p, expr *e) {
   switch (e->t) {
   case EXPR_INT_CONST:
+  case EXPR_DOUBLE_CONST:
     break;
   case EXPR_UNARY:
     if ((e->v.u.t == UNARY_POSTFIX_DEC || e->v.u.t == UNARY_POSTFIX_INC ||

@@ -12,8 +12,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-// TODO RN: types in params, return types
-
 // TODO: location for block stmt
 
 extern arena ptr_arena; // in main.c
@@ -276,6 +274,15 @@ static expr *parse_type_casting(parser *p) {
   return res;
 }
 
+static expr *parse_float_const_expr(parser *p) {
+  expr *e = alloc_expr(p, EXPR_DOUBLE_CONST);
+
+  e->t = EXPR_DOUBLE_CONST;
+  e->v.dc.v = expect(p, TOK_FLOATLIT)->v.float_lit.v;
+
+  return e;
+}
+
 static bool is_decl(int toktype);
 
 static expr *parse_factor(parser *p) {
@@ -284,6 +291,9 @@ static expr *parse_factor(parser *p) {
   switch (p->next.token) {
   case TOK_INTLIT:
     e = parse_int_const_expr(p);
+    break;
+  case TOK_FLOATLIT:
+    e = parse_float_const_expr(p);
     break;
   case TOK_TILDE:
   case TOK_MINUS:
@@ -496,6 +506,7 @@ static bool is_type(int toktype) {
   case TOK_LONG:
   case TOK_SIGNED:
   case TOK_UNSIGNED:
+  case TOK_DOUBLE:
     return true;
   default:
     return false;
@@ -872,25 +883,31 @@ static void parse_params(parser *p, func_decl *f, type *ft) {
 VEC_T(type_vector_t, int);
 
 static type *convert_type(type_vector_t tokens, tok_pos pos) {
+  if (tokens.size == 1 && tokens.data[0] == TOK_DOUBLE) {
+    return new_type(TYPE_DOUBLE);
+  }
+
   bool contains_int;
   bool contains_long;
   bool contains_unsigned;
   bool contains_signed;
 
-  bool contains_2times;
+  bool invalid;
   {
     bool contains_2int;
     bool contains_2long;
     bool contains_2unsigned;
     bool contains_2signed;
+    bool contains_double;
 
     vec_contains_at_least(int, tokens, TOK_INT, 2, contains_2int);
     vec_contains_at_least(int, tokens, TOK_LONG, 2, contains_2long);
     vec_contains_at_least(int, tokens, TOK_SIGNED, 2, contains_2signed);
     vec_contains_at_least(int, tokens, TOK_UNSIGNED, 2, contains_2unsigned);
+    vec_contains(int, tokens, TOK_DOUBLE, contains_double);
 
-    contains_2times = contains_2int || contains_2signed || contains_2long ||
-                      contains_2unsigned;
+    invalid = contains_2int || contains_2signed || contains_2long ||
+              contains_2unsigned || contains_double;
   }
 
   vec_contains(int, tokens, TOK_INT, contains_int);
@@ -898,8 +915,7 @@ static type *convert_type(type_vector_t tokens, tok_pos pos) {
   vec_contains(int, tokens, TOK_SIGNED, contains_signed);
   vec_contains(int, tokens, TOK_UNSIGNED, contains_unsigned);
 
-  if (tokens.size <= 0 || (contains_signed && contains_unsigned) ||
-      contains_2times) {
+  if (tokens.size <= 0 || (contains_signed && contains_unsigned) || invalid) {
     fprintf(stderr, "invalid type %d:%d\n", pos.line, pos.start_pos);
     exit(1);
     return NULL;
