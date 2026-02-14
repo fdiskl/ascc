@@ -3,6 +3,7 @@
 
 #include "arena.h"
 #include "common.h"
+#include "strings.h"
 #include "table.h"
 #include "vec.h"
 
@@ -26,6 +27,8 @@ struct _driver_options {
   const char *output; // output file name, NULL if output file is not specified
                       // | -o <name>, --output <name>
   const char *input;  // input file path
+
+  VEC(string) l_args; // list of all passed `-l<lib>` flags
 };
 
 void parse_driver_options(driver_options *d, int argc, char *argv[]);

@@ -1,11 +1,12 @@
 #include "driver.h"
-#include "arena.h"
 #include "common.h"
-#include "table.h"
+#include "strings.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define L_FLAG_BUF_SIZE 256
 
 static void print_driver_options(const driver_options *d);
 
@@ -40,10 +41,12 @@ void parse_driver_options(driver_options *d, int argc, char *argv[]) {
   d->dof = DOF_INVALID;
   d->output = NULL;
   d->input = NULL;
+  vec_init(d->l_args);
+  size_t len;
 
   // i=0 for program name :)
   for (int i = 1; i < argc; ++i) {
-    assert(strlen(argv[i]) > 1);
+    assert((len = strlen(argv[i])) > 1);
     if (argv[i][0] == '-') { // flag
       if (next_arg_is_out) {
         fprintf(stderr, "expected outfile file name, found flag %s\n", argv[i]);
@@ -83,7 +86,7 @@ void parse_driver_options(driver_options *d, int argc, char *argv[]) {
             SET_COMPILER_DOF(d, DOF_TAC);
           break;
         }
-      else
+      else // short flag
         switch (argv[i][1]) {
         case 'o': // -o
           SET_OUTPUT_FLAG(d, next_arg_is_out);
@@ -96,6 +99,21 @@ void parse_driver_options(driver_options *d, int argc, char *argv[]) {
         case 'C':
           SET_COMPILER_DOF(d, DOF_C);
           break;
+        case 'l': // -l<lib>
+        {
+          int j = 2;
+          char buf[L_FLAG_BUF_SIZE];
+
+          while (argv[i][j] != EOF && argv[i][j] != ' ' && j < len) {
+            buf[j - 2] = argv[i][j];
+            j++;
+          }
+
+          buf[j - 2] = '\0';
+
+          vec_push_back(d->l_args, new_string(buf));
+          continue;
+        }; break;
         }
 
       fprintf(stderr, "invalid flag %s\n", argv[i]);
@@ -160,5 +178,9 @@ static void print_driver_options(const driver_options *d) {
   printf("Input file : %s\n", d->input ? d->input : "(none)");
   printf("Output file: %s\n", d->output ? d->output : "(none)");
   printf("Stage      : %s\n", dof_to_string(d->dof));
+  if (d->l_args.size != 0) {
+    printf("Linked libraries: \n");
+    vec_foreach(string, d->l_args, it) { printf("\t- %s\n", *it); }
+  }
   printf("----------------------\n");
 }

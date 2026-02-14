@@ -38,6 +38,11 @@ int main(int argc, char *argv[]) {
 
   driver_options opts;
   parse_driver_options(&opts, argc, argv);
+
+  if (opts.dof != DOF_ALL) {
+    vec_free(opts.l_args);
+  }
+
   assert(strlen(opts.input) <= 255 && "input file name is too long");
 
   // create some file names
@@ -171,7 +176,6 @@ int main(int argc, char *argv[]) {
 #endif
 
   free_tac(&tac_prog); // only after emittion, bc fprint_taci is used in emit
-  free_arena(&str_arena);
   free_arena(&ptr_arena);
   destroy_arena(types_arena);
   free_x86_program(&x86_prog);
@@ -211,6 +215,8 @@ int main(int argc, char *argv[]) {
 
     remove(asm_file_path);
 
+    free_arena(&str_arena);
+
     // TODO: free
     return 0;
   }
@@ -219,7 +225,20 @@ int main(int argc, char *argv[]) {
   {
 
     char cmd[1024];
-    sprintf(cmd, "gcc %s -o %s", asm_file_path, opts.output);
+    sprintf(cmd, "gcc %s -o %s  ", asm_file_path, opts.output);
+    int len = strlen(cmd) - 1;
+    vec_foreach(string, opts.l_args, it) {
+      int s_len = strlen(*it);
+      cmd[len++] = '-';
+      cmd[len++] = 'l';
+      for (int i = 0; i < s_len; ++i) {
+        cmd[len++] = (*it)[i];
+      }
+      cmd[len++] = ' ';
+    }
+
+    vec_free(opts.l_args);
+    free_arena(&str_arena);
 
     int status = system(cmd);
 
