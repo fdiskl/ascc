@@ -222,10 +222,12 @@ static float_literal_suffix convert_float_suff(const char *s, int line,
 static void scan_const(lexer *l, char c, token *t) {
   uint64_t ival = 0;
   long double fval = 0.0;
+  int saw_digit = 0;
 
   while (isdigit(c)) {
     ival = ival * 10 + (c - '0');
     fval = fval * 10.0 + (c - '0');
+    saw_digit = 1;
     c = next_char(l);
   }
 
@@ -235,9 +237,16 @@ static void scan_const(lexer *l, char c, token *t) {
     is_float = 1;
     c = next_char(l);
 
+    if (!isdigit(c))
+      putback(l, c);
+
     if (c == '_') {
       printf("malformed constant ('.' followed by '_') at line %d, pos %d\n",
              l->line, l->pos);
+      exit(1);
+    }
+    if (!isdigit(c) && !saw_digit) {
+      printf("malformed constant at line %d, pos %d\n", l->line, l->pos);
       exit(1);
     }
 
@@ -245,12 +254,18 @@ static void scan_const(lexer *l, char c, token *t) {
     double base = 1.0;
 
     while (isdigit(c)) {
+      saw_digit = 1;
       frac = frac * 10.0 + (c - '0');
       base *= 10.0;
       c = next_char(l);
     }
 
     fval += frac / base;
+  }
+
+  if (!saw_digit) {
+    printf("invalid numeric literal at line %d, pos %d\n", l->line, l->pos);
+    exit(1);
   }
 
   // exponent
