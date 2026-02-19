@@ -208,14 +208,23 @@ static void typecheck_binary_expr(checker *c, expr *e) {
               pos.pos_start, pos.line_end, pos.pos_end);
       exit(1);
     }
+  /* fallthrough */
+  case BINARY_BITWISE_AND:
+  case BINARY_BITWISE_OR:
+  case BINARY_XOR:
+
+    if (e->v.b.l->tp->t == TYPE_DOUBLE || e->v.b.r->tp->t == TYPE_DOUBLE) {
+      ast_pos pos = e->pos;
+      fprintf(stderr, "Can't use bitwise operations with double (%d:%d-%d:%d)",
+              pos.line_start, pos.pos_start, pos.line_end, pos.pos_end);
+      exit(1);
+    }
+
     /* fallthrough */
   case BINARY_ADD:
   case BINARY_SUB:
-  case BINARY_MUL:
   case BINARY_DIV:
-  case BINARY_BITWISE_AND:
-  case BINARY_BITWISE_OR:
-  case BINARY_XOR: {
+  case BINARY_MUL: {
     type *common = get_common_type(e->v.b.l->tp, e->v.b.r->tp);
     e->v.b.l = convert_to(c, e->v.b.l, common);
     e->v.b.r = convert_to(c, e->v.b.r, common);
@@ -224,6 +233,12 @@ static void typecheck_binary_expr(checker *c, expr *e) {
   }
   case BINARY_LSHIFT:
   case BINARY_RSHIFT:
+    if (e->v.b.l->tp->t == TYPE_DOUBLE || e->v.b.r->tp->t == TYPE_DOUBLE) {
+      ast_pos pos = e->pos;
+      fprintf(stderr, "Can't use shifts with double (%d:%d-%d:%d)",
+              pos.line_start, pos.pos_start, pos.line_end, pos.pos_end);
+      exit(1);
+    }
     e->v.b.l = convert_to(c, e->v.b.l, e->v.b.l->tp);
     e->v.b.r = convert_to(c, e->v.b.r, e->v.b.r->tp);
     e->tp = e->v.b.l->tp;
@@ -262,6 +277,32 @@ static void typecheck_assignment_expr(checker *c, expr *e) {
       types_eq(e->v.assignment.l->tp, e->v.assignment.r->tp)) {
     e->v.assignment.r = convert_to(c, e->v.assignment.r, e->v.assignment.l->tp);
     return;
+  }
+
+  switch (e->v.assignment.t) {
+  case ASSIGN_AND:
+  case ASSIGN_OR:
+  case ASSIGN_XOR:
+  case ASSIGN_LSHIFT:
+  case ASSIGN_RSHIFT:
+    if (e->v.b.l->tp->t == TYPE_DOUBLE || e->v.b.r->tp->t == TYPE_DOUBLE) {
+      ast_pos pos = e->pos;
+      fprintf(stderr, "Can't use bitwise operations with double (%d:%d-%d:%d)",
+              pos.line_start, pos.pos_start, pos.line_end, pos.pos_end);
+      exit(1);
+    }
+    break;
+  case ASSIGN_MOD:
+
+    if (e->v.b.l->tp->t == TYPE_DOUBLE || e->v.b.r->tp->t == TYPE_DOUBLE) {
+      ast_pos pos = e->pos;
+      fprintf(stderr, "Can't use mod with double (%d:%d-%d:%d)", pos.line_start,
+              pos.pos_start, pos.line_end, pos.pos_end);
+      exit(1);
+    }
+    break;
+  default:
+    break;
   }
 
   // convert assign with op into assign and binary
