@@ -63,6 +63,8 @@ bool types_eq(type *t1, type *t2) {
   return true;
 }
 
+bool is_type_int(type *t) { return t->t != TYPE_DOUBLE; }
+
 static void typecheck_var_expr(checker *c, expr *e) {
   syme *entry = ht_get(c->st, e->v.var.name);
   if (entry->t->t == TYPE_FN) {
@@ -81,6 +83,8 @@ static type *get_common_type(type *t1, type *t2) {
 
   if (types_eq(t1, t2))
     return new_type(t1->t);
+  if (t1->t == TYPE_DOUBLE || t2->t == TYPE_DOUBLE)
+    return new_type(TYPE_DOUBLE);
   if (type_rank(t1) == type_rank(t2)) {
     if (type_signed(t1))
       return t2;
@@ -173,9 +177,15 @@ static void typecheck_unary_expr(checker *c, expr *e) {
   case UNARY_NOT:
     e->tp = new_type(TYPE_INT);
     return;
+  case UNARY_COMPLEMENT:
+    if (e->v.u.e->tp->t == TYPE_DOUBLE) {
+      fprintf(stderr, "Can't use complement with double");
+      exit(1);
+    }
+  /* falltrough */
   default:
     e->tp = e->v.u.e->tp;
-    return;
+    break;
   }
 }
 
@@ -191,11 +201,18 @@ static void typecheck_binary_expr(checker *c, expr *e) {
   }
 
   switch (e->v.b.t) {
+  case BINARY_MOD:
+    if (e->v.b.l->tp->t == TYPE_DOUBLE || e->v.b.r->tp->t == TYPE_DOUBLE) {
+      ast_pos pos = e->pos;
+      fprintf(stderr, "Can't use mod with double (%d:%d-%d:%d)", pos.line_start,
+              pos.pos_start, pos.line_end, pos.pos_end);
+      exit(1);
+    }
+    /* fallthrough */
   case BINARY_ADD:
   case BINARY_SUB:
   case BINARY_MUL:
   case BINARY_DIV:
-  case BINARY_MOD:
   case BINARY_BITWISE_AND:
   case BINARY_BITWISE_OR:
   case BINARY_XOR: {
@@ -322,6 +339,10 @@ static void typecheck_ternary_expr(checker *c, expr *e) {
   e->v.ternary.elze = convert_to(c, e->v.ternary.elze, e->tp);
 }
 
+static void typecheck_double_const_expr(checker *c, expr *e) {
+  e->tp = new_type(TYPE_DOUBLE);
+}
+
 static void typecheck_expr(checker *c, expr *e) {
   switch (e->t) {
   case EXPR_INT_CONST:
@@ -347,6 +368,9 @@ static void typecheck_expr(checker *c, expr *e) {
     break;
   case EXPR_CAST:
     typecheck_cast_expr(c, e);
+    break;
+  case EXPR_DOUBLE_CONST:
+    typecheck_double_const_expr(c, e);
     break;
   }
 }
@@ -422,6 +446,12 @@ static void typecheck_stmt(checker *c, stmt *s) {
     break;
   case STMT_SWITCH:
     typecheck_expr(c, s->v.switch_stmt.e);
+    if (!is_type_int(s->v.switch_stmt.e->tp)) {
+      ast_pos pos = s->v.switch_stmt.e->pos;
+      fprintf(stderr, "Can't use non int type in switch stmt (%d:%d-%d:%d)",
+              pos.line_start, pos.pos_start, pos.line_end, pos.pos_end);
+      exit(1);
+    }
     typecheck_stmt(c, s->v.switch_stmt.s);
     break;
   case STMT_LABEL:
@@ -537,9 +567,22 @@ static void typecheck_filescope_var_decl(checker *c, decl *d) {
 
     // FIXME: eval here, (or at some other stage but eval)
     {
-      assert(d->v.var.init->t == EXPR_INT_CONST);
-      d->v.var.init->v.intc = convert_const(d->v.var.init->v.intc, d->tp);
-      iv.v = const_to_initial(d->v.var.init->v.intc);
+      assert(d->v.var.init->t == EXPR_INT_CONST ||
+             d->v.var.init->t == EXPR_DOUBLE_CONST);
+      int_const *intc_ptr =
+          d->v.var.init->t == EXPR_INT_CONST ? &d->v.var.init->v.intc : NULL;
+      double_const *dc_ptr =
+          d->v.var.init->t == EXPR_DOUBLE_CONST ? &d->v.var.init->v.dc : NULL;
+
+      if (d->tp->t == TYPE_DOUBLE) {
+        d->v.var.init->v.dc = convert_const_to_double(intc_ptr, dc_ptr, d->tp);
+        d->v.var.init->t = EXPR_DOUBLE_CONST;
+        iv.v = const_to_initial_double(d->v.var.init->v.dc);
+      } else {
+        d->v.var.init->v.intc = convert_const_to_int(intc_ptr, dc_ptr, d->tp);
+        d->v.var.init->t = EXPR_INT_CONST;
+        iv.v = const_to_initial(d->v.var.init->v.intc);
+      }
     }
   } else if (d->sc == SC_EXTERN)
     iv.t = INIT_NOINIT;
@@ -687,17 +730,38 @@ static void typecheck_local_var_decl(checker *c, decl *d) {
     iv.t = INIT_INITIAL;
     if (d->v.var.init != NULL) {
       check_for_constant_expr(d->v.var.init);
-      d->v.var.init->v.intc = convert_const(d->v.var.init->v.intc, d->tp);
       // FIXME: eval here, (or at some other stage but eval)
       {
-        assert(d->v.var.init->t == EXPR_INT_CONST);
-        iv.v = const_to_initial(d->v.var.init->v.intc);
+        assert(d->v.var.init->t == EXPR_INT_CONST ||
+               d->v.var.init->t == EXPR_DOUBLE_CONST);
+        int_const *intc_ptr =
+            d->v.var.init->t == EXPR_INT_CONST ? &d->v.var.init->v.intc : NULL;
+        double_const *dc_ptr =
+            d->v.var.init->t == EXPR_DOUBLE_CONST ? &d->v.var.init->v.dc : NULL;
+
+        if (d->tp->t == TYPE_DOUBLE) {
+          d->v.var.init->v.dc =
+              convert_const_to_double(intc_ptr, dc_ptr, d->tp);
+          d->v.var.init->t = EXPR_DOUBLE_CONST;
+          iv.v = const_to_initial_double(d->v.var.init->v.dc);
+        } else {
+          d->v.var.init->v.intc = convert_const_to_int(intc_ptr, dc_ptr, d->tp);
+          d->v.var.init->t = EXPR_INT_CONST;
+          iv.v = const_to_initial(d->v.var.init->v.intc);
+        }
       }
     } else {
-      int_const tmp;
-      tmp.t = CONST_INT;
-      tmp.v = 0;
-      iv.v = const_to_initial(convert_const(tmp, d->tp));
+      if (d->tp->t == TYPE_DOUBLE) {
+        double_const tmp;
+        tmp.v = 0.0;
+        iv.v =
+            const_to_initial_double(convert_const_to_double(NULL, &tmp, d->tp));
+      } else {
+        int_const tmp;
+        tmp.t = CONST_INT;
+        tmp.v = 0;
+        iv.v = const_to_initial(convert_const_to_int(&tmp, NULL, d->tp));
+      }
     }
 
     a.t = ATTR_STATIC;
@@ -785,9 +849,15 @@ static void print_attr(attrs *a) {
       case INITIAL_ULONG:
         printf("ulong");
         break;
+      case INITIAL_DOUBLE:
+        printf("double");
+        break;
       }
 
-      printf(") (%llu)", (long long unsigned)a->v.s.init.v.v);
+      if (a->v.s.init.v.t == INITIAL_DOUBLE)
+        printf(") (%Lf)", (long double)a->v.s.init.v.dv);
+      else
+        printf(") (%llu)", (long long unsigned)a->v.s.init.v.v);
       break;
     case INIT_NOINIT:
       printf("no init");
@@ -850,6 +920,10 @@ void emit_type_name_buf(char *buf, size_t size, size_t *pos, type *t) {
     return;
   case TYPE_ULONG:
     buf_write(buf, size, pos, "ulong");
+    return;
+
+  case TYPE_DOUBLE:
+    buf_write(buf, size, pos, "double");
     return;
 
   case TYPE_FN:

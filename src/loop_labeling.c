@@ -250,7 +250,7 @@ static void loop_resolve_case_stmt(loop_resolver *lr, stmt *s) {
   loop_resolve_info *i = &lr->stack_loop_resolve_info.data[switch_idx];
   assert(s->v.case_stmt.e->t == EXPR_INT_CONST); // TODO: eval here or smth
   s->v.case_stmt.e->v.intc =
-      convert_const(s->v.case_stmt.e->v.intc, i->v.s.cond_type);
+      convert_const_to_int(&s->v.case_stmt.e->v.intc, NULL, i->v.s.cond_type);
 
   string key = hash_for_constant_expr(s->v.case_stmt.e);
   stmt *old = (stmt *)ht_get(i->v.s.cases, key);

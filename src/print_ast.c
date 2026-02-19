@@ -40,6 +40,8 @@ const char *get_const_name(constt t) {
   case CONST_ULONG:
     return "ulong";
     break;
+  default:
+    UNREACHABLE();
   }
 }
 
@@ -59,7 +61,7 @@ static void print_expr(expr *e, int indent) {
     printf("\n");
     return;
   case EXPR_DOUBLE_CONST:
-    printf("DoubleConst (%Lfl)", e->v.dc.v);
+    printf("DoubleConst (%Le)", e->v.dc.v);
     print_type_and_pos(e->tp, e->pos);
     printf("\n");
     return;

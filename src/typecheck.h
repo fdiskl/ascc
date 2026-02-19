@@ -34,11 +34,13 @@ typedef enum {
   INITIAL_LONG,
   INITIAL_UINT,
   INITIAL_ULONG,
+  INITIAL_DOUBLE,
 } inital_init_t;
 
 struct _initial_init {
   inital_init_t t;
   uint64_t v;
+  long double dv; // TODO: move into union
 };
 
 struct _init_value {
@@ -77,7 +79,12 @@ void print_sym_table(sym_table *st);
 void free_sym_table(sym_table *st);
 void label_loop(program *p); // loop-labeling.c
 
-initial_init const_to_initial(int_const original); // convert_intc.c
-int_const convert_const(int_const original,
-                        type *convert_to); // convert_intc.c
+initial_init const_to_initial(int_const original);           // convert_intc.c
+initial_init const_to_initial_double(double_const original); // convert_intc.c
+int_const convert_const_to_int(int_const *original, double_const *d_original,
+                               type *convert_to); // convert_intc.c
+double_const convert_const_to_double(int_const *original,
+                                     double_const *d_original,
+                                     type *convert_to); // convert_intc.c
+
 #endif

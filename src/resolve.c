@@ -51,7 +51,7 @@ static bool is_lvalue(expr *e) {
 }
 
 bool is_constant_expr(expr *e) {
-  return e->t == EXPR_INT_CONST; // TODO
+  return e->t == EXPR_INT_CONST || e->t == EXPR_DOUBLE_CONST; // TODO
 }
 
 void check_for_constant_expr(expr *e) {
