@@ -237,7 +237,7 @@ static void scan_const(lexer *l, char c, token *t) {
     is_float = 1;
     c = next_char(l);
 
-    if (!isdigit(c))
+    if (!isdigit(c) && c != 'e' && c != 'E')
       putback(l, c);
 
     if (c == '_') {
@@ -246,7 +246,9 @@ static void scan_const(lexer *l, char c, token *t) {
       exit(1);
     }
     if (!isdigit(c) && !saw_digit) {
-      printf("malformed constant at line %d, pos %d\n", l->line, l->pos);
+      printf(
+          "malformed constant at line %d, pos %d. Expected digit found '%c'\n",
+          l->line, l->pos, c);
       exit(1);
     }
 
@@ -591,7 +593,6 @@ void next(lexer *l, token *t) {
     char next_c = next_char(l);
 
     if (isdigit(next_c)) {
-      putback(l, c);
       scan_const(l, c, t);
     } else {
       t->token = TOK_DOT;
