@@ -76,6 +76,14 @@ const char *tacop_str(tacop op) {
     break;
   case TAC_TRUNCATE:
     return "trunc";
+  case TAC_DOUBLE_TO_INT:
+    return "double-to-int";
+  case TAC_DOUBLE_TO_UINT:
+    return "double-to-uint";
+  case TAC_INT_TO_DOUBLE:
+    return "int-to-double";
+  case TAC_UINT_TO_DOUBLE:
+    return "uint-to-double";
   case TAC_CPY:
   case TAC_JMP:
   case TAC_JZ:
@@ -106,6 +114,9 @@ static void fprint_val(FILE *f, tacv *v) {
     break;
   case TACV_VAR:
     fprintf(f, "%s", v->v.var);
+    break;
+  case TACV_CONST_DOUBLE:
+    fprintf(f, "%Le", v->v.dconst.v);
     break;
   default:
     UNREACHABLE();
@@ -151,6 +162,10 @@ void fprint_taci(FILE *f, taci *i) {
   case TAC_SIGN_EXTEND:
   case TAC_ZERO_EXTEND:
   case TAC_TRUNCATE:
+  case TAC_DOUBLE_TO_INT:
+  case TAC_DOUBLE_TO_UINT:
+  case TAC_INT_TO_DOUBLE:
+  case TAC_UINT_TO_DOUBLE:
     fprint_unary(f, &i->dst, &i->v.s.src1, tacop_str(i->op));
     break;
   case TAC_ASADD:

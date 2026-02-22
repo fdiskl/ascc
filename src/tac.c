@@ -84,6 +84,13 @@ static tacv new_const(int_const c) {
   return v;
 }
 
+static tacv new_double_const(double_const c) {
+  tacv v;
+  v.t = TACV_CONST_DOUBLE;
+  v.v.dconst = c;
+  return v;
+}
+
 extern int var_name_idx_counter; // defined in resolve.c
 
 static tacv new_tmp(tacgen *tg, type *t) {
@@ -124,6 +131,10 @@ static int new_label() { return ++label_idx_counter; }
 
 static tacv gen_tac_from_int_const_expr(tacgen *_, int_const ic) {
   return new_const(ic);
+}
+
+static tacv gen_tac_from_double_const_expr(tacgen *_, double_const dc) {
+  return new_double_const(dc);
 }
 
 static tacv gen_tac_from_expr(tacgen *tg, expr *e);
@@ -387,7 +398,43 @@ static tacv gen_tac_from_cast_expr(tacgen *tg, cast_expr cast) {
   tacv dst = new_tmp(tg, cast.tp);
 
   int op;
-  if (type_rank(t) == type_rank(inner_type))
+
+  if (inner_type->t == TYPE_DOUBLE && t->t != TYPE_DOUBLE) {
+    int op;
+    switch (t->t) {
+    case TYPE_INT:
+    case TYPE_LONG:
+      op = TAC_DOUBLE_TO_INT;
+      break;
+    case TYPE_UINT:
+    case TYPE_ULONG:
+      op = TAC_DOUBLE_TO_UINT;
+      break;
+    case TYPE_FN:
+    case TYPE_DOUBLE:
+      UNREACHABLE();
+      break;
+    }
+  }
+
+  else if (inner_type->t != TYPE_DOUBLE && t->t == TYPE_DOUBLE) {
+    switch (inner_type->t) {
+    case TYPE_INT:
+    case TYPE_LONG:
+      op = TAC_INT_TO_DOUBLE;
+      break;
+    case TYPE_UINT:
+    case TYPE_ULONG:
+      op = TAC_UINT_TO_DOUBLE;
+      break;
+    case TYPE_FN:
+    case TYPE_DOUBLE:
+      UNREACHABLE();
+      break;
+    }
+  }
+
+  else if (type_rank(t) == type_rank(inner_type))
     op = TAC_CPY;
   else if (type_rank(t) < type_rank(inner_type))
     op = TAC_TRUNCATE;
@@ -408,6 +455,8 @@ static tacv gen_tac_from_expr(tacgen *tg, expr *e) {
   switch (e->t) {
   case EXPR_INT_CONST:
     return gen_tac_from_int_const_expr(tg, e->v.intc);
+  case EXPR_DOUBLE_CONST:
+    return gen_tac_from_double_const_expr(tg, e->v.dc);
   case EXPR_UNARY:
     return gen_tac_from_unary_expr(tg, e);
   case EXPR_BINARY:
@@ -695,6 +744,7 @@ tac_program gen_tac(program *p, sym_table *st) {
 
   tac_top_level *head = NULL;
   tac_top_level *tail = NULL;
+
   for (decl *d = p->first_decl; d != NULL; d = d->next) {
     if (d->t != DECL_FUNC)
       continue;
@@ -725,7 +775,10 @@ tac_program gen_tac(program *p, sym_table *st) {
         tac_top_level *sv = alloc_static_var(&tg, e->name);
         sv->v.v.global = e->a.v.s.global;
         sv->v.v.init = e->a.v.s.init.v;
-        tail->next = sv;
+        if (tail == NULL)
+          head = sv;
+        else
+          tail->next = sv;
         tail = sv;
         break;
       }

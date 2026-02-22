@@ -19,23 +19,27 @@ typedef enum {
   TAC_DEC, // --
 
   // unary
-  TAC_NEGATE,      // -
-  TAC_COMPLEMENT,  // ~
-  TAC_NOT,         // !
-  TAC_CPY,         // a = b
-  TAC_ASADD,       // +=
-  TAC_ASSUB,       // -=
-  TAC_ASMUL,       // *=
-  TAC_ASDIV,       // /=
-  TAC_ASMOD,       // %=
-  TAC_ASAND,       // &=
-  TAC_ASOR,        // |=
-  TAC_ASXOR,       // ^=
-  TAC_ASLSHIFT,    // >>=
-  TAC_ASRSHIFT,    // <<=
-  TAC_SIGN_EXTEND, // sign extend
-  TAC_ZERO_EXTEND, // zero extend
-  TAC_TRUNCATE,    // truncate
+  TAC_NEGATE,         // -
+  TAC_COMPLEMENT,     // ~
+  TAC_NOT,            // !
+  TAC_CPY,            // a = b
+  TAC_ASADD,          // +=
+  TAC_ASSUB,          // -=
+  TAC_ASMUL,          // *=
+  TAC_ASDIV,          // /=
+  TAC_ASMOD,          // %=
+  TAC_ASAND,          // &=
+  TAC_ASOR,           // |=
+  TAC_ASXOR,          // ^=
+  TAC_ASLSHIFT,       // >>=
+  TAC_ASRSHIFT,       // <<=
+  TAC_SIGN_EXTEND,    // sign extend
+  TAC_ZERO_EXTEND,    // zero extend
+  TAC_TRUNCATE,       // truncate
+  TAC_DOUBLE_TO_INT,  // double -> int
+  TAC_DOUBLE_TO_UINT, // double -> uint
+  TAC_INT_TO_DOUBLE,  // int -> double
+  TAC_UINT_TO_DOUBLE, // uint -> double
 
   // binary
   TAC_ADD,    // +
@@ -66,6 +70,7 @@ typedef enum {
 
 typedef enum {
   TACV_CONST,
+  TACV_CONST_DOUBLE,
   TACV_VAR,
 } tacvt;
 
@@ -74,6 +79,7 @@ struct _tac_val {
 
   union {
     int_const iconst;
+    double_const dconst;
     string var;
   } v;
 };
