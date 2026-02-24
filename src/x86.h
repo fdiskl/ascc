@@ -2,8 +2,10 @@
 #define _ASCC_X86_H
 
 #include "arena.h"
+#include "common.h"
 #include "strings.h"
 #include "tac.h"
+#include "type.h"
 #include "typecheck.h"
 #include <stdint.h>
 typedef struct _x86_instr x86_instr;
@@ -12,6 +14,8 @@ typedef struct _x86_op x86_op;
 typedef struct _x86_func x86_func;
 typedef struct _x86_static_var x86_static_var;
 typedef struct _x86_top_level x86_top_level;
+typedef struct _x86_static_init x86_static_init;
+typedef struct _x86_static_const x86_static_const;
 
 // Automatically enable ASM_DONT_FIX_INSTRUCTIONS if ASM_DONT_FIX_PSEUDO is
 // enabled. (see common.h)
@@ -49,6 +53,16 @@ typedef enum {
   X86_R10,
   X86_R11,
   X86_SP,
+  X86_XMM0,
+  X86_XMM1,
+  X86_XMM2,
+  X86_XMM3,
+  X86_XMM4,
+  X86_XMM5,
+  X86_XMM6,
+  X86_XMM7,
+  X86_XMM14,
+  X86_XMM15,
 } x86_reg;
 
 typedef enum {
@@ -87,6 +101,9 @@ typedef enum {
   X86_CMP,
   X86_MOVSX,
   X86_MOVZEXT,
+  X86_CVTTSD2SI,
+  X86_CVTSI2SD,
+  X86_DIV_DOUBLE,
 
   // special
   X86_JMP,
@@ -102,6 +119,7 @@ typedef enum {
   X86_BYTE,
   X86_LONGWORD,
   X86_QUADWORD,
+  X86_DOUBLE,
 } x86_asm_type;
 
 struct _x86_op {
@@ -164,11 +182,35 @@ struct _x86_static_var {
   int alignment;
 };
 
+typedef enum {
+  X86_STATIC_INIT_DOUBLE,
+} x86_static_init_t;
+
+struct _x86_static_init {
+  x86_static_init_t t;
+  union {
+    double d;
+  } v;
+};
+
+struct _x86_static_const {
+  string name;
+  int alignment;
+  x86_static_init init;
+};
+
+typedef enum {
+  X86_TL_FUNC,
+  X86_TL_VAR,
+  X86_TL_CONST,
+} x86_top_level_t;
+
 struct _x86_top_level {
-  bool is_func;
+  x86_top_level_t t;
   union {
     x86_func f;
     x86_static_var v;
+    x86_static_const c;
   } v;
   x86_top_level *next;
 };
@@ -205,6 +247,7 @@ struct _be_syme {
     struct {
       x86_asm_type type;
       bool is_static;
+      bool is_const;
     } obj;
     struct {
       bool defined;

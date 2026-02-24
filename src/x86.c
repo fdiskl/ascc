@@ -44,7 +44,7 @@ static x86_instr *insert_x86_instr(x86_asm_gen *ag, int op, taci *origin) {
 static x86_top_level *alloc_x86_func(x86_asm_gen *ag, string name) {
   x86_top_level *res = ARENA_ALLOC_OBJ(ag->top_level_arena, x86_top_level);
   res->next = NULL;
-  res->is_func = true;
+  res->t = X86_TL_FUNC;
   res->v.f.name = name;
   res->v.f.first = NULL;
   return res;
@@ -53,7 +53,7 @@ static x86_top_level *alloc_x86_func(x86_asm_gen *ag, string name) {
 static x86_top_level *alloc_x86_static_var(x86_asm_gen *ag, string name) {
   x86_top_level *res = ARENA_ALLOC_OBJ(ag->top_level_arena, x86_top_level);
   res->next = NULL;
-  res->is_func = false;
+  res->t = X86_TL_VAR;
   res->v.v.name = name;
   return res;
 }

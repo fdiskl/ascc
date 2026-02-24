@@ -402,10 +402,16 @@ static void emit_x86_static_var(FILE *w, x86_static_var *sv) {
 
 void emit_x86(FILE *w, x86_program *prog) {
   for (x86_top_level *tl = prog->first; tl != NULL; tl = tl->next)
-    if (tl->is_func)
+    switch (tl->t) {
+    case X86_TL_FUNC:
       emit_x86_func(w, &tl->v.f);
-    else
+      break;
+    case X86_TL_VAR:
       emit_x86_static_var(w, &tl->v.v);
+      break;
+    case X86_TL_CONST:
+      break;
+    }
 
 #ifndef _WIN32
   fprintf(w, ".section .note.GNU-stack,\"\",@progbits\n");
